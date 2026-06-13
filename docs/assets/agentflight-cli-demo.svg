@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">AgentFlight CLI workflow animation</title>
+  <desc id="desc">Animated terminal-style demo showing AgentFlight start, verify, snapshot, and status output for an AI coding session.</desc>
+  <style>
+    .bg { fill: #0f111a; }
+    .bar { fill: #171a24; }
+    .red { fill: #ff5f57; }
+    .yellow { fill: #ffbd2e; }
+    .green { fill: #28c840; }
+    .text { fill: #e8ecf3; font: 22px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .muted { fill: #9aa4b2; font: 20px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .cmd { fill: #7dd3fc; font: 22px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .ok { fill: #86efac; font: 22px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .warn { fill: #fbbf24; font: 22px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .panel {
+      opacity: 0;
+      animation-duration: 12s;
+      animation-iteration-count: infinite;
+      animation-timing-function: ease-in-out;
+    }
+    .p1 { animation-name: panel1; }
+    .p2 { animation-name: panel2; }
+    .p3 { animation-name: panel3; }
+    @keyframes panel1 {
+      0%, 27% { opacity: 1; }
+      33%, 100% { opacity: 0; }
+    }
+    @keyframes panel2 {
+      0%, 30% { opacity: 0; }
+      36%, 60% { opacity: 1; }
+      66%, 100% { opacity: 0; }
+    }
+    @keyframes panel3 {
+      0%, 63% { opacity: 0; }
+      69%, 94% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .cursor {
+      animation: blink 1s steps(2, start) infinite;
+    }
+    @keyframes blink {
+      0%, 45% { opacity: 1; }
+      46%, 100% { opacity: 0; }
+    }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="1200" height="680" rx="18" />
+  <rect class="bar" x="0" y="0" width="1200" height="54" rx="18" />
+  <circle class="red" cx="32" cy="27" r="9" />
+  <circle class="yellow" cx="62" cy="27" r="9" />
+  <circle class="green" cx="92" cy="27" r="9" />
+  <text class="muted" x="130" y="35">AgentFlight local flight recorder</text>
+
+  <g class="panel p1">
+    <text class="cmd" x="44" y="96">$ npx agentflight@latest start --task "Add password reset flow"</text>
+    <text class="text" x="44" y="146">AgentFlight started</text>
+    <text class="muted" x="44" y="196">Task:</text>
+    <text class="text" x="160" y="196">Add password reset flow</text>
+    <text class="muted" x="44" y="246">Session:</text>
+    <text class="text" x="160" y="246">af-20260613-add-password-reset-flow</text>
+    <text class="muted" x="44" y="296">Detected:</text>
+    <text class="text" x="70" y="342">Git branch: main</text>
+    <text class="text" x="70" y="386">Package manager: npm</text>
+    <text class="ok" x="70" y="430">ProjScan: available</text>
+    <text class="ok" x="70" y="474">AgentLoopKit: available</text>
+    <text class="warn" x="44" y="542">Suggested proof: npm test</text>
+    <text class="muted" x="44" y="600">Now run Codex, Claude Code, Cursor, or your coding agent normally.</text>
+  </g>
+
+  <g class="panel p2">
+    <text class="cmd" x="44" y="96">$ npx agentflight@latest verify -- npm test</text>
+    <text class="text" x="44" y="146">Verification recorded</text>
+    <text class="muted" x="44" y="196">Command:</text>
+    <text class="text" x="160" y="196">npm test</text>
+    <text class="muted" x="44" y="246">Status:</text>
+    <text class="ok" x="160" y="246">passed</text>
+    <text class="muted" x="44" y="296">Evidence:</text>
+    <text class="text" x="70" y="342">stdout: .agentflight/evidence/.../verification-1.stdout.txt</text>
+    <text class="text" x="70" y="386">stderr: .agentflight/evidence/.../verification-1.stderr.txt</text>
+    <text class="cmd" x="44" y="474">$ npx agentflight@latest snapshot --note "Initial implementation verified"</text>
+    <text class="text" x="44" y="524">Snapshot recorded</text>
+    <text class="text" x="70" y="570">Changed files: 3    Risk: medium    Verification: 1 passed, 0 failed</text>
+  </g>
+
+  <g class="panel p3">
+    <text class="cmd" x="44" y="96">$ npx agentflight@latest status</text>
+    <text class="text" x="44" y="146">AgentFlight status</text>
+    <text class="muted" x="44" y="196">Task:</text>
+    <text class="text" x="160" y="196">Add password reset flow</text>
+    <text class="muted" x="44" y="246">Changed files:</text>
+    <text class="text" x="230" y="246">3</text>
+    <text class="muted" x="44" y="296">Changed areas:</text>
+    <text class="text" x="70" y="342">docs: docs/password-reset.md</text>
+    <text class="text" x="70" y="386">tests: tests/password-reset.test.js</text>
+    <text class="text" x="70" y="430">unknown: src/password-reset.ts</text>
+    <text class="warn" x="44" y="498">Risk: medium</text>
+    <text class="ok" x="44" y="548">Verification Evidence: 1 passed, 0 failed</text>
+    <text class="ok" x="44" y="598">Review readiness: Ready for review</text>
+    <text class="cmd cursor" x="44" y="642">Next action: agentflight report</text>
+  </g>
+</svg>

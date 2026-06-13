@@ -677,3 +677,59 @@ npm audit --audit-level=moderate
 npx projscan@latest preflight --mode before_commit --format json
 npx agentloopkit@latest verify
 ```
+
+### README CLI Animation Pass
+
+Goal:
+
+- Make the README demo area more useful by showing an animated CLI workflow and the generated replay artifact.
+- Keep the pass limited to docs and package metadata.
+
+Changes:
+
+- Added `docs/assets/agentflight-cli-demo.svg`, an animated terminal-style workflow preview.
+- Updated README to show the CLI workflow animation before the 60-second command list.
+- Added a `Watch The Flow` section that explains start, verify, snapshot, status, report, replay, and resume as one proof trail.
+- Added the animated SVG to the npm `files` list because the README references it.
+
+### Logo And Repository Metadata Pass
+
+Goal:
+
+- Use the new AgentFlight logo in public docs.
+- Set GitHub repository About metadata for description, website, and topics.
+
+Changes:
+
+- Added the AgentFlight logo to the README header from `docs/agentflight_logo/icon.svg`.
+- Added the product website link near the top of the README.
+- Added `docs/agentflight_logo/icon.svg` to the npm `files` list.
+- Updated `package.json` homepage to `https://www.baseframelabs.com/apps/agentflight`.
+- Updated GitHub About metadata:
+  - Description: `Local-first flight recorder for AI coding agents.`
+  - Website: `https://www.baseframelabs.com/apps/agentflight`
+  - Topics: AI coding agents, Codex, Claude Code, local-first, verification, developer tools.
+
+### v0.3.2 Branding Polish Release Prep
+
+Goal:
+
+- Release AgentFlight v0.3.2 as a branding, README animation, and package presentation patch.
+- Do not change CLI behavior or add product scope.
+
+Release prep:
+
+```bash
+npm version 0.3.2 --no-git-tag-version
+```
+
+Release verification:
+
+```bash
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+```

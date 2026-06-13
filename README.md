@@ -1,8 +1,16 @@
 # AgentFlight
 
+<p align="center">
+  <a href="https://www.baseframelabs.com/apps/agentflight">
+    <img src="docs/agentflight_logo/icon.svg" alt="AgentFlight logo" width="112" />
+  </a>
+</p>
+
 See what your coding agent did. Prove it works. Know what to do next.
 
 AgentFlight is a local-first flight recorder for AI coding agents from Baseframe Labs. It sits around Codex, Claude Code, Cursor, Windsurf, Gemini CLI, Aider, OpenCode, and similar tools so you can review the session instead of guessing what happened.
+
+Website: [baseframelabs.com/apps/agentflight](https://www.baseframelabs.com/apps/agentflight)
 
 AgentFlight helps you:
 
@@ -14,7 +22,7 @@ AgentFlight helps you:
 - generate a local replay timeline
 - create a resume prompt for the next agent or reviewer
 
-![AgentFlight replay timeline](docs/assets/agentflight-replay-timeline.png)
+![Animated AgentFlight CLI workflow](docs/assets/agentflight-cli-demo.svg)
 
 ## 60-Second Workflow
 
@@ -42,6 +50,20 @@ What you get:
 - `report` writes a Markdown proof report for review.
 - `replay` writes a local HTML timeline you can open in a browser.
 - `resume` writes a Codex/Claude-ready prompt for the next safe step.
+
+## Watch The Flow
+
+AgentFlight turns a loose AI-agent session into a local proof trail:
+
+1. Start a session before you ask the coding agent to work.
+2. Capture real verification output with `agentflight verify`.
+3. Snapshot meaningful checkpoints.
+4. Read `status` to see changed files, risk, proof, gaps, and next action.
+5. Generate `report`, `replay`, and `resume` when the work is ready to review or hand off.
+
+The replay artifact is a self-contained local HTML file:
+
+![AgentFlight replay timeline](docs/assets/agentflight-replay-timeline.png)
 
 ## Why This Exists
 

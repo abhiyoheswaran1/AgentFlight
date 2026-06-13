@@ -8,6 +8,7 @@ AgentFlight is a local-first flight recorder for AI coding agents.
 
 ## Demo Assets
 
+- Logo: `docs/agentflight_logo/icon.svg`
 - Replay screenshot: `docs/assets/agentflight-replay-timeline.png`
 - Terminal workflow GIF: `docs/assets/agentflight-terminal-demo.gif`
 - VHS source: `docs/marketing/agentflight-terminal-demo.tape`

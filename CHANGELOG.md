@@ -2,6 +2,31 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.3.2] - 2026-06-13
+
+### Changed
+
+- Added the official AgentFlight logo to the README.
+- Added the Baseframe Labs AgentFlight website link near the top of the README.
+- Added an animated CLI workflow preview before the 60-second workflow.
+- Added a "Watch The Flow" section explaining start -> verify -> snapshot -> status -> report/replay/resume.
+- Updated package homepage to the AgentFlight website page.
+- Expanded packaged assets so npm README logo and animation references resolve.
+
+### Documentation
+
+- Updated launch notes with the AgentFlight logo reference.
+- Updated development log with branding and README animation verification.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- ProjScan preflight passed.
+- AgentLoopKit verification passed.
+
 ## [0.3.1] - 2026-06-13
 
 ### Changed

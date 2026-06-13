@@ -1,6 +1,6 @@
 {
   "name": "agentflight",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Local-first flight recorder for AI coding agents.",
   "type": "module",
   "main": "./dist/cli.js",
@@ -12,6 +12,8 @@
     "dist",
     "README.md",
     "CHANGELOG.md",
+    "docs/agentflight_logo/icon.svg",
+    "docs/assets/agentflight-cli-demo.svg",
     "docs/assets/agentflight-replay-timeline.png",
     "docs/development/dogfooding.md",
     "docs/development/release.md",
@@ -58,7 +60,7 @@
   "bugs": {
     "url": "https://github.com/abhiyoheswaran1/AgentFlight/issues"
   },
-  "homepage": "https://github.com/abhiyoheswaran1/AgentFlight#readme",
+  "homepage": "https://www.baseframelabs.com/apps/agentflight",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.3",

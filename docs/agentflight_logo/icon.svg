@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="AgentFlight logo">
+  <title>AgentFlight logo</title>
+  <defs>
+    <linearGradient id="af-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1B2042"/>
+      <stop offset="1" stop-color="#0C0F22"/>
+    </linearGradient>
+    <linearGradient id="af-rec" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8E8DF8"/>
+      <stop offset="1" stop-color="#5B5BEF"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="114" ry="114" fill="url(#af-bg)"/>
+  <!-- Flight recorder body: a rounded "black box" module -->
+  <rect x="108" y="156" width="296" height="200" rx="50" ry="50"
+        fill="none" stroke="url(#af-rec)" stroke-width="26"/>
+  <!-- Recorded session timeline that lifts into a proof check -->
+  <path d="M 156 286 H 270 L 292 312 L 360 232"
+        fill="none" stroke="#FFFFFF" stroke-width="24"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Event markers along the timeline -->
+  <circle cx="180" cy="286" r="14" fill="#8E8DF8"/>
+  <circle cx="216" cy="286" r="14" fill="#7A79F4"/>
+  <circle cx="252" cy="286" r="14" fill="#5B5BEF"/>
+</svg>
