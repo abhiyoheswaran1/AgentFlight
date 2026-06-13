@@ -619,3 +619,61 @@ Results:
 - ProjScan preflight verdict `proceed`; health `100/100`; required checks passed.
 - AgentLoopKit verification status `pass`; report written to `.agentloop/reports/2026-06-13-18-32-verification-report.md`.
 - Audit task was marked `done`.
+
+### Public Demo Visibility Pass After v0.3.0
+
+Goal:
+
+- Make AgentFlight easier to understand in under 60 seconds after the v0.3.0 release.
+- Keep the pass limited to README, demo docs, package metadata, and launch-note drafts.
+- Do not add CLI features, cloud, login, billing, GitHub App, paid gating, database, or v0.4.0 scope.
+
+Demo artifact generation:
+
+```bash
+node dist/cli.js init
+node dist/cli.js start --task "Add password reset flow"
+node dist/cli.js verify -- npm test
+node dist/cli.js snapshot --note "Password reset implementation verified"
+node dist/cli.js status
+node dist/cli.js report
+node dist/cli.js replay
+npx playwright screenshot --viewport-size=1440,1200 "file://<demo-replay-path>" output/playwright/agentflight-replay-timeline.png
+```
+
+Results:
+
+- Generated a fictional password-reset demo session in a temporary git repo.
+- Captured a real AgentFlight HTML replay screenshot with Playwright.
+- Added `docs/assets/agentflight-replay-timeline.png` for README/demo use.
+- Rendered a small terminal workflow GIF with VHS from `docs/marketing/agentflight-terminal-demo.tape`.
+- Updated README with a 60-second workflow, concise sample outputs, current capabilities, local/privacy notes, and explicit non-goals.
+- Added `docs/examples/basic-agentflight-session.md`.
+- Added `docs/marketing/launch-notes-v0.3.0.md`.
+- Expanded package keywords for npm discovery.
+- Added `CHANGELOG.md`, the replay screenshot, and README-linked docs to the npm `files` list so public README links and image assets are present in the packed package without shipping marketing drafts.
+- Added `output/` to `.gitignore` so Playwright scratch artifacts are not committed.
+
+### v0.3.1 Documentation Polish Release Prep
+
+Goal:
+
+- Release AgentFlight v0.3.1 as a patch release for README, package metadata, and demo asset polish.
+- Do not change CLI behavior or add product scope.
+
+Release prep:
+
+```bash
+npm version 0.3.1 --no-git-tag-version
+```
+
+Planned release verification:
+
+```bash
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+```

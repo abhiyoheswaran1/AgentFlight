@@ -2,6 +2,31 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.3.1] - 2026-06-13
+
+### Changed
+
+- Reworked the README around a clearer 60-second AgentFlight workflow.
+- Added sample CLI output for status, report, replay, and resume.
+- Added a replay timeline screenshot to make the v0.3.0 experience easier to understand.
+- Added a basic example session walkthrough and v0.3.0 launch-note drafts.
+- Improved npm keywords and package metadata.
+- Narrowed packaged files to include useful README-linked docs/assets without shipping marketing drafts.
+
+### Documentation
+
+- Added launch notes draft for v0.3.0 public/demo positioning.
+- Updated development log with post-v0.3.0 polish verification.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- ProjScan preflight passed.
+- AgentLoopKit verification passed.
+
 ## [0.3.0] - 2026-06-13
 
 AgentFlight now records session events and snapshots so reports and replays show how a coding session evolved.

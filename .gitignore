@@ -3,6 +3,7 @@ node_modules/
 dist/
 coverage/
 *.tgz
+output/
 
 .agentflight/sessions/
 .agentflight/reports/

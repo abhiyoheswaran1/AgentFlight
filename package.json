@@ -1,6 +1,6 @@
 {
   "name": "agentflight",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local-first flight recorder for AI coding agents.",
   "type": "module",
   "main": "./dist/cli.js",
@@ -11,6 +11,12 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
+    "docs/assets/agentflight-replay-timeline.png",
+    "docs/development/dogfooding.md",
+    "docs/development/release.md",
+    "docs/examples/basic-agentflight-session.md",
+    "docs/roadmap.md",
     "LICENSE"
   ],
   "scripts": {
@@ -34,8 +40,13 @@
   "keywords": [
     "ai",
     "coding-agents",
+    "codex",
+    "claude-code",
     "cli",
     "developer-tools",
+    "agentic-coding",
+    "verification",
+    "code-review",
     "local-first",
     "observability"
   ],

@@ -2,23 +2,163 @@
 
 See what your coding agent did. Prove it works. Know what to do next.
 
-AgentFlight is a local-first flight recorder for AI coding agents from Baseframe Labs. It records AI-assisted coding sessions, explains what changed, highlights risk, captures proof gaps, generates replay artifacts, and produces a clean handoff for the next agent or human reviewer.
+AgentFlight is a local-first flight recorder for AI coding agents from Baseframe Labs. It sits around Codex, Claude Code, Cursor, Windsurf, Gemini CLI, Aider, OpenCode, and similar tools so you can review the session instead of guessing what happened.
 
-AgentFlight is not another coding agent. It is the trust, observability, replay, and proof layer around tools like Codex, Claude Code, Cursor, Windsurf, Gemini CLI, Aider, OpenCode, and similar coding agents.
+AgentFlight helps you:
 
-## Why AgentFlight Exists
+- start an AI coding session
+- capture verification evidence
+- see changed files and risk
+- create snapshots during the session
+- generate a proof report
+- generate a local replay timeline
+- create a resume prompt for the next agent or reviewer
 
-AI coding agents can move quickly, but developers still need to answer practical review questions:
+![AgentFlight replay timeline](docs/assets/agentflight-replay-timeline.png)
 
-- What changed?
-- Which files are risky?
-- What proof exists?
-- What proof is missing?
-- What should the next agent or reviewer do?
+## 60-Second Workflow
 
-AgentFlight makes those answers local, inspectable, and repeatable without uploading source code or adding cloud infrastructure.
+```bash
+npx agentflight@latest init
+npx agentflight@latest start --task "Add password reset flow"
 
-## How It Works
+# Run Codex, Claude Code, Cursor, or your coding agent normally
+
+npx agentflight@latest verify -- npm test
+npx agentflight@latest snapshot --note "Initial implementation verified"
+npx agentflight@latest status
+npx agentflight@latest report
+npx agentflight@latest replay
+npx agentflight@latest resume
+```
+
+What you get:
+
+- `init` creates local `.agentflight/` project files.
+- `start` records the task, git branch, commit, dirty state, package manager, and tool availability.
+- `verify -- npm test` runs the command and stores stdout, stderr, exit code, timing, and pass/fail status.
+- `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.
+- `status` answers what changed, how risky it is, what proof exists, what proof is missing, and what to do next.
+- `report` writes a Markdown proof report for review.
+- `replay` writes a local HTML timeline you can open in a browser.
+- `resume` writes a Codex/Claude-ready prompt for the next safe step.
+
+## Why This Exists
+
+AI coding agents move fast. After a few prompts, you can lose track of:
+
+- what changed
+- whether the agent drifted from the task
+- what was verified
+- what failed
+- what is safe to review
+- how to resume the work later
+
+AgentFlight gives you a local control room for that work. It records the session, captures proof, shows risk, and creates handoff artifacts without uploading source code.
+
+## Sample Outputs
+
+`agentflight status`:
+
+```text
+AgentFlight status
+
+Task:
+Add password reset flow
+
+Changed files:
+3
+
+Risk: medium
+- Dependency, backend, or unknown files changed.
+
+Verification Evidence:
+1 passed, 0 failed
+
+Latest snapshot:
+- Note: Initial implementation verified
+- Risk: medium
+- Changed files: 3
+
+Review readiness: Ready for review
+
+Next action:
+Generate a proof report with agentflight report
+```
+
+`agentflight report`:
+
+```text
+# AgentFlight Proof Report
+
+## Recommendation
+Ready for review
+
+## Verification Evidence
+- passed: npm test
+- stdout: .agentflight/evidence/.../verification-1.stdout.txt
+- stderr: .agentflight/evidence/.../verification-1.stderr.txt
+```
+
+`agentflight replay`:
+
+```text
+Replay saved:
+.agentflight/reports/af-...-replay.html
+
+Timeline:
+session_started -> verification_passed -> snapshot_created -> replay_generated
+```
+
+`agentflight resume`:
+
+```text
+Continue the AgentFlight session for: Add password reset flow
+
+Latest snapshot:
+Initial implementation verified
+
+Verification state:
+1 passed, 0 failed
+
+Guardrails:
+- Stay scoped to the current task.
+- Do not claim completion without proof.
+- Run relevant verification before declaring success.
+```
+
+## Current Capabilities
+
+The current AgentFlight release supports:
+
+- local session setup
+- active session tracking
+- git branch, commit, dirty state, and changed file detection
+- changed file risk categorisation
+- verification evidence capture with `agentflight verify`
+- session events
+- snapshots with `agentflight snapshot --note "..."`
+- Markdown proof reports
+- self-contained HTML replay timelines
+- resume prompts for Codex, Claude Code, or a human reviewer
+- doctor checks for local setup
+- defensive ProjScan and AgentLoopKit adapters
+- no telemetry, cloud sync, or source upload
+
+## What AgentFlight Is Not
+
+AgentFlight is:
+
+- not a coding agent
+- not a cloud service
+- not a replacement for tests
+- not a security scanner
+- not a CI platform
+- not a code review replacement
+
+Use your coding agent to make changes. Use AgentFlight to understand, verify, replay, and hand off the work.
+
+## How It Works Locally
 
 AgentFlight creates a local `.agentflight/` directory in your repo:
 
@@ -28,64 +168,31 @@ AgentFlight creates a local `.agentflight/` directory in your repo:
 - `reports/` stores Markdown proof reports and HTML replays.
 - `evidence/` stores stdout and stderr from captured verification runs.
 
-Sessions also store an `events` timeline with meaningful moments such as session start, verification attempts, snapshots, and generated artifacts. Reports include filenames and summaries by default, not full source diffs. AgentFlight does not collect telemetry and does not upload source code.
+Sessions store an `events` timeline with meaningful moments such as session start, verification attempts, snapshots, and generated artifacts. Reports include filenames and summaries by default, not full source diffs.
 
-## Quick Start
+Runtime session data is ignored by git by default in this repo:
 
-```bash
-npm install
-npm run build
-npx agentflight init
-npx agentflight start --task "Add example feature"
-npx agentflight status
-npx agentflight verify -- npm test
-npx agentflight snapshot --note "Tests passing locally"
-npx agentflight report
-npx agentflight replay
-npx agentflight resume
-npx agentflight doctor
-```
+- `.agentflight/sessions/`
+- `.agentflight/reports/`
+- `.agentflight/evidence/`
+- `.agentflight/current/`
 
-During local development of this repo, use:
-
-```bash
-npm run agentflight -- init
-npm run agentflight -- start --task "Add example feature"
-```
+`.agentflight/config.json` is intentionally not ignored, so a project can commit its local AgentFlight defaults when useful.
 
 ## Commands
 
 - `agentflight init` initializes `.agentflight/` with safe writes.
 - `agentflight start --task "..."` starts a session and writes the current handoff.
-- `agentflight status` summarizes changed files, risk, verification status, and next action.
+- `agentflight status` summarizes changed files, risk, verification status, snapshots, and next action.
 - `agentflight verify -- <command>` runs a proof command and records stdout/stderr evidence.
 - `agentflight verify` runs commands from `.agentflight/config.json`.
 - `agentflight snapshot --note "..."` records current git, risk, and verification state as a timeline event.
 - `agentflight report` generates a Markdown proof report.
 - `agentflight replay` generates a local self-contained HTML replay.
-- `agentflight resume` prints and saves a Codex/Claude-ready continuation prompt.
+- `agentflight resume` prints and saves a continuation prompt.
 - `agentflight doctor` checks local setup, scripts, tools, config, and current session state.
 
 Future placeholders exist for `upgrade`, `license`, and `login`; AgentFlight Pro/Team is not available yet.
-
-## Example Workflow With Codex Or Claude Code
-
-```bash
-agentflight init
-agentflight start --task "Add password reset flow"
-
-# Run Codex, Claude Code, Cursor, or another coding agent normally.
-
-agentflight status
-agentflight verify -- npm run typecheck
-agentflight verify -- npm test
-agentflight snapshot --note "Implementation and proof complete"
-agentflight report
-agentflight replay
-agentflight resume
-```
-
-Use `agentflight verify -- <command>` when you want AgentFlight to capture proof. The command records exit code, timing, stdout path, and stderr path in the current session, then prints the evidence paths. Use `agentflight snapshot --note "..."` at meaningful milestones so replay and report artifacts show the session timeline. Use the generated report for review and the resume prompt when handing the work to another agent or human.
 
 ## Powered By ProjScan And AgentLoopKit
 
@@ -94,7 +201,7 @@ AgentFlight is powered by two open engines from Baseframe Labs:
 - ProjScan provides repo intelligence, risk analysis, codebase understanding, and preflight signals.
 - AgentLoopKit provides task discipline, verification evidence, policies, and handoffs.
 
-This repository dogfoods both tools from day one. See [docs/development/dogfooding.md](docs/development/dogfooding.md).
+This repository dogfoods both tools. See [docs/development/dogfooding.md](docs/development/dogfooding.md).
 
 Strategic architecture:
 
@@ -102,50 +209,22 @@ Strategic architecture:
 - AgentLoopKit: agent workflow discipline engine
 - AgentFlight: commercial and user-facing experience layer
 
-## Local-First And Privacy
+## Example Session
 
-AgentFlight runs locally. It does not add telemetry, login, billing, cloud sync, or source upload. The MVP reads git status and package metadata, writes human-readable local artifacts, and calls local or `npx` ProjScan/AgentLoopKit commands with graceful fallbacks.
-
-Runtime session data is ignored by git by default:
-
-- `.agentflight/sessions/`
-- `.agentflight/reports/`
-- `.agentflight/evidence/`
-- `.agentflight/current/`
-
-`.agentflight/config.json` is intentionally not ignored, so a project can commit its local AgentFlight defaults if that is useful.
-
-## Current Status
-
-AgentFlight current package version is `0.3.0`, centered on local session timelines, snapshots, and verification evidence.
-
-Implemented:
-
-- TypeScript ESM npm CLI package
-- Safe local initialization
-- Session start and current handoff
-- Status risk summary
-- Markdown proof reports
-- Self-contained HTML replay
-- Resume prompt generation
-- Doctor checks
-- Verification evidence capture with `agentflight verify`
-- Session events and snapshots with `agentflight snapshot`
-- Defensive ProjScan and AgentLoopKit adapters
-- Vitest coverage for core behavior, renderers, adapters, and command workflow
-
-Not implemented:
-
-- Cloud sync
-- Login
-- Billing
-- GitHub App
-- Team dashboards
-- Paid feature gates
+Read [docs/examples/basic-agentflight-session.md](docs/examples/basic-agentflight-session.md) for a short password-reset walkthrough with status, report, replay, and resume artifacts.
 
 ## Roadmap
 
 See [docs/roadmap.md](docs/roadmap.md).
+
+Not built yet:
+
+- cloud sync
+- login
+- billing
+- GitHub App
+- Team dashboards
+- paid feature gates
 
 ## Releases
 
