@@ -137,6 +137,12 @@ Not implemented:
 
 See [docs/roadmap.md](docs/roadmap.md).
 
+## Releases
+
+AgentFlight uses npm Trusted Publishing from GitHub Actions for tagged releases. Pushes and pull requests run verification; npm publishes happen from `v*.*.*` tags.
+
+See [docs/development/release.md](docs/development/release.md) and [CHANGELOG.md](CHANGELOG.md).
+
 ## Contributing
 
 Use the local verification loop before opening changes:

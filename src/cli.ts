@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
@@ -100,7 +101,16 @@ async function printResult(promise: Promise<{ output: string }>): Promise<void> 
 
 export function isDirectCliInvocation(metaUrl: string, argvPath: string | undefined): boolean {
   if (!argvPath) return false;
-  return fileURLToPath(metaUrl) === resolve(argvPath);
+  return normalizeCliPath(fileURLToPath(metaUrl)) === normalizeCliPath(argvPath);
+}
+
+function normalizeCliPath(path: string): string {
+  const resolved = resolve(path);
+  try {
+    return realpathSync(resolved);
+  } catch {
+    return resolved;
+  }
 }
 
 if (isDirectCliInvocation(import.meta.url, process.argv[1])) {
