@@ -1,0 +1,104 @@
+import type { VerificationEvidence } from "../types/index.js";
+
+export interface ReplayTimelineItem {
+  label: string;
+  timestamp: string;
+}
+
+export interface HtmlReplayInput {
+  task: string;
+  sessionId: string;
+  startedAt: string;
+  timeline: ReplayTimelineItem[];
+  changedFiles: string[];
+  riskBadges: string[];
+  verificationEvidence: VerificationEvidence[];
+  recommendation: string;
+}
+
+export function renderHtmlReplay(input: HtmlReplayInput): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentFlight Replay ${escapeHtml(input.sessionId)}</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f7f8fa; color: #1b1f24; }
+    main { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
+    header { border-bottom: 1px solid #d8dee4; padding-bottom: 24px; margin-bottom: 28px; }
+    h1 { font-size: 32px; line-height: 1.1; margin: 0 0 12px; letter-spacing: 0; }
+    h2 { font-size: 18px; margin: 28px 0 12px; }
+    .meta { color: #57606a; font-size: 14px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .badge { border: 1px solid #d0d7de; border-radius: 999px; padding: 4px 10px; background: #ffffff; font-size: 13px; }
+    .panel { background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; padding: 18px; margin: 16px 0; }
+    ul { margin: 0; padding-left: 22px; }
+    li { margin: 6px 0; }
+    code { background: #f0f3f6; border-radius: 4px; padding: 2px 5px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="meta">AgentFlight replay · ${escapeHtml(input.sessionId)}</div>
+      <h1>${escapeHtml(input.task)}</h1>
+      <div class="meta">Started ${escapeHtml(input.startedAt)}</div>
+      <div class="badges">${input.riskBadges.map((badge) => `<span class="badge">${escapeHtml(badge)}</span>`).join("")}</div>
+    </header>
+
+    <section class="panel">
+      <h2>Timeline</h2>
+      ${renderTimeline(input.timeline)}
+    </section>
+
+    <section class="panel">
+      <h2>Changed Files</h2>
+      ${renderFileList(input.changedFiles)}
+    </section>
+
+    <section class="panel">
+      <h2>Verification Evidence</h2>
+      ${renderVerification(input.verificationEvidence)}
+    </section>
+
+    <section class="panel">
+      <h2>Recommendation</h2>
+      <p>${escapeHtml(input.recommendation)}</p>
+    </section>
+  </main>
+</body>
+</html>
+`;
+}
+
+function renderTimeline(items: ReplayTimelineItem[]): string {
+  if (items.length === 0) return "<p>No timeline events recorded.</p>";
+  return `<ul>${items
+    .map(
+      (item) => `<li><strong>${escapeHtml(item.timestamp)}</strong> ${escapeHtml(item.label)}</li>`
+    )
+    .join("")}</ul>`;
+}
+
+function renderFileList(files: string[]): string {
+  if (files.length === 0) return "<p>No changed files detected.</p>";
+  return `<ul>${files.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("")}</ul>`;
+}
+
+function renderVerification(evidence: VerificationEvidence[]): string {
+  if (evidence.length === 0) return "<p>No verification evidence recorded.</p>";
+  return `<ul>${evidence
+    .map((item) => `<li><code>${escapeHtml(item.command)}</code>: ${escapeHtml(item.status)}</li>`)
+    .join("")}</ul>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}

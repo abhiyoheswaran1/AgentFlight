@@ -1,0 +1,66 @@
+{
+  "name": "agentflight",
+  "version": "0.1.0",
+  "description": "Local-first flight recorder for AI coding agents.",
+  "type": "module",
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "bin": {
+    "agentflight": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "dev": "tsx src/cli.ts",
+    "agentflight": "tsx src/cli.ts",
+    "projscan": "projscan start --intent \"Build AgentFlight, a local-first flight recorder for AI coding agents\"",
+    "agentloopkit:doctor": "agentloopkit doctor",
+    "verify": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhiyoheswaran1/AgentFlight.git"
+  },
+  "keywords": [
+    "ai",
+    "coding-agents",
+    "cli",
+    "developer-tools",
+    "local-first",
+    "observability"
+  ],
+  "author": "Baseframe Labs",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "bugs": {
+    "url": "https://github.com/abhiyoheswaran1/AgentFlight/issues"
+  },
+  "homepage": "https://github.com/abhiyoheswaran1/AgentFlight#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.9.3",
+    "agentloopkit": "^0.28.7",
+    "eslint": "^10.5.0",
+    "prettier": "^3.8.4",
+    "projscan": "^4.3.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0",
+    "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "commander": "^15.0.0"
+  }
+}

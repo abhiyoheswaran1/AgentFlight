@@ -1,0 +1,9 @@
+dist
+coverage
+node_modules
+.agentflight/sessions
+.agentflight/reports
+.agentflight/current
+.projscan-cache
+.projscan-memory
+package-lock.json

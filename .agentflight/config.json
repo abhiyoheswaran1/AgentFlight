@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "projectName": "AgentFlight",
+  "createdAt": "2026-06-13T12:38:59.503Z",
+  "engines": {
+    "projscan": {
+      "enabled": true,
+      "mode": "npx"
+    },
+    "agentloopkit": {
+      "enabled": true,
+      "mode": "npx"
+    }
+  },
+  "verification": {
+    "commands": []
+  },
+  "privacy": {
+    "localOnly": true,
+    "telemetry": false
+  }
+}

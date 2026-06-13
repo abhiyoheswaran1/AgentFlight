@@ -1,0 +1,120 @@
+import { createAgentLoopTask, inspectAgentLoopKit } from "../adapters/agentloopkit.js";
+import { inspectProjScan, runProjScanBaseline } from "../adapters/projscan.js";
+import { initAgentFlight } from "../core/config.js";
+import { pathExists } from "../core/fs-safe.js";
+import { getGitInfo } from "../core/git.js";
+import { formatToolAvailability } from "../core/output.js";
+import { detectPackageManager, readPackageJson } from "../core/project.js";
+import { resolveAgentFlightPaths } from "../core/paths.js";
+import { startSession } from "../core/session.js";
+import { detectVerificationCommands } from "../core/verification.js";
+import type { GitInfo, ToolAdapterResult } from "../types/index.js";
+
+export interface StartCommandOptions {
+  repoRoot: string;
+  task: string;
+  yes?: boolean | undefined;
+  now?: Date | undefined;
+  git?: GitInfo | undefined;
+  packageManager?: string | null | undefined;
+  tools?:
+    | {
+        projscan: ToolAdapterResult;
+        agentloopkit: ToolAdapterResult;
+      }
+    | undefined;
+}
+
+export interface StartCommandResult {
+  output: string;
+  sessionId: string;
+  handoffPath: string;
+}
+
+export async function runStartCommand(options: StartCommandOptions): Promise<StartCommandResult> {
+  const paths = resolveAgentFlightPaths(options.repoRoot);
+  if (!(await pathExists(paths.config))) {
+    if (options.yes === true) {
+      await initAgentFlight({ repoRoot: options.repoRoot, now: options.now });
+    } else {
+      throw new Error("AgentFlight is not initialized. Run agentflight init first, or pass --yes.");
+    }
+  }
+
+  const packageJson = await readPackageJson(options.repoRoot);
+  const verificationCommands = detectVerificationCommands(packageJson);
+  const git = options.git ?? (await getGitInfo(options.repoRoot));
+  const packageManager = options.packageManager ?? (await detectPackageManager(options.repoRoot));
+  const tools = options.tools ?? (await inspectTools(options.repoRoot, options.task));
+
+  const result = await startSession({
+    repoRoot: options.repoRoot,
+    task: options.task,
+    now: options.now,
+    git,
+    packageManager,
+    verificationCommands,
+    tools
+  });
+
+  return {
+    output: `AgentFlight started
+
+Task:
+${options.task}
+
+Session:
+${result.session.id}
+
+Detected:
+Git branch: ${git.branch ?? "unknown"}
+Package manager: ${packageManager ?? "unknown"}
+${formatToolAvailability("ProjScan", tools.projscan.available)}
+${formatToolAvailability("AgentLoopKit", tools.agentloopkit.available)}
+
+Suggested proof:
+${verificationCommands.length ? verificationCommands.join("\n") : "No proof commands detected yet."}
+
+Handoff saved:
+${result.handoffPath}
+
+Now run your coding agent normally.
+`,
+    sessionId: result.session.id,
+    handoffPath: result.handoffPath
+  };
+}
+
+async function inspectTools(
+  repoRoot: string,
+  task: string
+): Promise<{ projscan: ToolAdapterResult; agentloopkit: ToolAdapterResult }> {
+  const [projscanInspection, agentLoopInspection] = await Promise.all([
+    inspectProjScan({ cwd: repoRoot }),
+    inspectAgentLoopKit({ cwd: repoRoot })
+  ]);
+
+  const [projscanBaseline, agentLoopTask] = await Promise.all([
+    projscanInspection.available
+      ? runProjScanBaseline(repoRoot)
+      : Promise.resolve(projscanInspection),
+    agentLoopInspection.available
+      ? createAgentLoopTask(repoRoot, task)
+      : Promise.resolve(agentLoopInspection)
+  ]);
+
+  return {
+    projscan: mergeToolResults(projscanInspection, projscanBaseline),
+    agentloopkit: mergeToolResults(agentLoopInspection, agentLoopTask)
+  };
+}
+
+function mergeToolResults(base: ToolAdapterResult, extra: ToolAdapterResult): ToolAdapterResult {
+  return {
+    available: base.available && extra.available,
+    ...(base.version ? { version: base.version } : {}),
+    ...((extra.summary ?? base.summary) ? { summary: extra.summary ?? base.summary } : {}),
+    ...(extra.taskLinked !== undefined ? { taskLinked: extra.taskLinked } : {}),
+    warnings: [...base.warnings, ...extra.warnings]
+  };
+}
