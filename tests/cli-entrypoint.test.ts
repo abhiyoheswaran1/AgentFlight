@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { isDirectCliInvocation } from "../src/cli.js";
-import { mkdir, symlink, writeFile } from "node:fs/promises";
+import { createCli, isDirectCliInvocation } from "../src/cli.js";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createTempRepo } from "./helpers/temp.js";
 
 describe("CLI entrypoint detection", () => {
+  it("reports the package version", async () => {
+    const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+
+    expect(createCli().version()).toBe(packageJson.version);
+  });
+
   it("treats encoded file URLs and argv paths with spaces as the same entrypoint", () => {
     expect(
       isDirectCliInvocation(

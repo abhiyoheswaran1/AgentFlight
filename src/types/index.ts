@@ -28,6 +28,7 @@ export interface AgentFlightPaths {
   config: string;
   sessions: string;
   reports: string;
+  evidence: string;
   current: string;
   currentSession: string;
   currentHandoff: string;
@@ -52,6 +53,7 @@ export interface AgentFlightSession {
   packageManager: string | null;
   repoSummary?: string;
   verificationCommands: string[];
+  verificationRuns?: VerificationRun[];
   tools: {
     projscan: ToolAdapterResult;
     agentloopkit: ToolAdapterResult;
@@ -92,6 +94,17 @@ export interface ToolAdapterResult {
   warnings: string[];
   rawOutputPath?: string;
   taskLinked?: boolean;
+}
+
+export interface VerificationRun {
+  command: string;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  exitCode: number | null;
+  status: "passed" | "failed";
+  stdoutPath: string;
+  stderrPath: string;
 }
 
 export interface VerificationEvidence {

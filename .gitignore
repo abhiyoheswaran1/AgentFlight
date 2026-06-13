@@ -6,6 +6,7 @@ coverage/
 
 .agentflight/sessions/
 .agentflight/reports/
+.agentflight/evidence/
 .agentflight/current/
 
 .projscan-cache/

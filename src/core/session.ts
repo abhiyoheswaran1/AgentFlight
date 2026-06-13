@@ -1,7 +1,12 @@
 import { basename } from "node:path";
 import { writeJsonFileSafe, writeTextFileSafe } from "./fs-safe.js";
 import { resolveAgentFlightPaths } from "./paths.js";
-import type { AgentFlightSession, GitInfo, ToolAdapterResult } from "../types/index.js";
+import type {
+  AgentFlightSession,
+  GitInfo,
+  ToolAdapterResult,
+  VerificationRun
+} from "../types/index.js";
 
 export interface BuildSessionRecordOptions {
   repoRoot: string;
@@ -45,6 +50,7 @@ export function buildSessionRecord(options: BuildSessionRecordOptions): AgentFli
     git: options.git,
     packageManager: options.packageManager,
     verificationCommands: options.verificationCommands ?? [],
+    verificationRuns: [],
     tools: options.tools ?? {
       projscan: unavailableTool,
       agentloopkit: unavailableTool
@@ -73,6 +79,31 @@ export async function startSession(options: StartSessionOptions): Promise<StartS
     currentSessionPath: paths.currentSession,
     handoffPath: paths.currentHandoff
   };
+}
+
+export function getVerificationRuns(session: AgentFlightSession): VerificationRun[] {
+  return session.verificationRuns ?? [];
+}
+
+export async function saveSession(repoRoot: string, session: AgentFlightSession): Promise<void> {
+  const paths = resolveAgentFlightPaths(repoRoot);
+
+  await writeJsonFileSafe(`${paths.sessions}/${session.id}.json`, session, { overwrite: true });
+  await writeJsonFileSafe(paths.currentSession, session, { overwrite: true });
+}
+
+export async function appendVerificationRun(
+  repoRoot: string,
+  session: AgentFlightSession,
+  run: VerificationRun
+): Promise<AgentFlightSession> {
+  const updatedSession: AgentFlightSession = {
+    ...session,
+    verificationRuns: [...getVerificationRuns(session), run]
+  };
+
+  await saveSession(repoRoot, updatedSession);
+  return updatedSession;
 }
 
 export function createSessionId(now: Date, task: string): string {

@@ -176,3 +176,214 @@ Results:
 - `projscan preflight --mode before_commit --format json`: verdict `proceed`; required checks passed.
 - `agentloopkit doctor`: status `warn` because the working tree is dirty and generated runtime risk files exist; configured test, lint, typecheck, and build commands all passed detection.
 - `agentloopkit verify --task .agentloop/tasks/2026-06-13-build-agentflight-mvp.md`: overall status `pass`; generated local report `.agentloop/reports/2026-06-13-14-44-verification-report.md`.
+
+### v0.2.0 Verification Evidence Work
+
+Task discipline:
+
+```bash
+npx agentloopkit@latest create-task --title "Prepare AgentFlight v0.2.0 verification evidence" --type feature --problem "AgentFlight needs real verification evidence capture so reports, replay, status, and resume prompts prove what ran." --outcome "agentflight verify records command evidence locally and downstream commands use that evidence honestly." --constraint "Do not publish or cut a version in this task." --constraint "Local-first only; no telemetry, cloud, auth, billing, GitHub App, or database." --constraint "Use safe child_process execution without shell interpolation." --acceptance "agentflight verify -- <command> records passing and failing command results." --acceptance "agentflight verify with no args runs configured commands." --acceptance "status, report, replay, and resume reflect captured verification evidence." --acceptance "npm run verify and npm run format:check pass." --verify-command "npm run verify" --verify-command "npm run format:check"
+```
+
+ProjScan before-edit command:
+
+```bash
+npx projscan@latest start --mode before_edit --intent "Prepare AgentFlight v0.2.0 verification evidence capture"
+```
+
+Result:
+
+- ProjScan reported health `100/100`.
+- Proceeded with a dirty worktree because the active task was already in progress.
+
+TDD evidence:
+
+```bash
+npm test -- tests/core/session.test.ts tests/core/verification.test.ts tests/commands/verify.test.ts
+npm test -- tests/commands/evidence-output.test.ts
+npm test -- tests/core/fs-safe.test.ts
+```
+
+Results:
+
+- The first run failed because `verificationRuns`, `getVerificationRuns`, `runVerificationCommand`, `parseCommandLine`, and `runVerifyCommand` did not exist.
+- The evidence-output run failed because status, report, replay, and resume still ignored recorded verification runs.
+- The safe-write run failed because `isPathWritable` did not exist, exposing the doctor writable-check bug.
+
+Implementation checkpoint:
+
+```bash
+npm test -- tests/core/session.test.ts tests/core/verification.test.ts tests/commands/verify.test.ts
+npm test -- tests/commands/evidence-output.test.ts
+npm test -- tests/core/fs-safe.test.ts
+npm test -- tests/core/session.test.ts tests/core/verification.test.ts tests/commands/verify.test.ts tests/commands/evidence-output.test.ts tests/commands/workflow.test.ts tests/renderers/markdown-report.test.ts tests/renderers/html-replay.test.ts tests/renderers/resume-prompt.test.ts
+npm run typecheck
+```
+
+Results:
+
+- Verification core and command tests passed: `3` files, `11` tests.
+- Evidence-aware output tests passed: `1` file, `4` tests.
+- Writable-check test passed: `1` file, `3` tests.
+- Targeted integration and renderer tests passed: `8` files, `19` tests.
+- `npm run typecheck` passed.
+
+AgentFlight v0.2 self-dogfooding commands:
+
+```bash
+npm run build
+node dist/cli.js start --task "Dogfood AgentFlight v0.2.0 verification evidence"
+node dist/cli.js verify -- npm run typecheck
+node dist/cli.js verify -- npm run lint
+node dist/cli.js verify -- npm test
+node dist/cli.js verify -- npm run build
+node dist/cli.js status
+node dist/cli.js report
+node dist/cli.js replay
+node dist/cli.js resume
+node dist/cli.js doctor
+```
+
+Results:
+
+- `npm run build`: passed before the built CLI dogfood run.
+- `start` created session `af-20260613-132334-dogfood-agentflight-v0-2-0-verification-evidence`.
+- `verify -- npm run typecheck`: passed and recorded stdout/stderr evidence.
+- `verify -- npm run lint`: passed and recorded stdout/stderr evidence.
+- `verify -- npm test`: passed with `16` test files and `49` tests, and recorded stdout/stderr evidence.
+- `verify -- npm run build`: passed and recorded stdout/stderr evidence.
+- `status` reported `33` changed files, `medium` risk, `4 passed, 0 failed`, no configured verification gaps, and `Ready for review`.
+- `report` generated `.agentflight/reports/af-20260613-132334-dogfood-agentflight-v0-2-0-verification-evidence-proof.md`.
+- `replay` generated `.agentflight/reports/af-20260613-132334-dogfood-agentflight-v0-2-0-verification-evidence-replay.html`.
+- `resume` generated a continuation prompt with no configured verification gaps and scoped-work guardrails.
+- `doctor` reported overall `OK`.
+- No version was cut and no npm publish was run for this v0.2.0 preparation pass.
+
+ProjScan and AgentLoopKit follow-up:
+
+```bash
+npx projscan@latest start --mode after_edit --intent "Review AgentFlight v0.2.0 verification evidence implementation"
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest status
+npx projscan@latest start --mode hardening --intent "Review AgentFlight v0.2.0 verification evidence implementation"
+npx agentloopkit@latest verify
+```
+
+Results:
+
+- `projscan start --mode after_edit`: failed because ProjScan `4.3.1` does not support `after_edit`; supported modes are `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
+- `projscan preflight --mode before_commit --format json`: verdict `proceed`, health `100/100`, required checks passed, and `33` changed files detected.
+- `agentloopkit status`: reported dirty worktree with `33` changed files, configured commands present, and next action `agentloop verify`.
+- `projscan start --mode hardening`: health `100/100` with `needs_attention` because of the active dirty worktree and hotspot review suggestions.
+- `agentloopkit verify`: overall status `pass`; report written to `.agentloop/reports/2026-06-13-15-25-verification-report.md`.
+
+Additional bug-pass fix:
+
+```bash
+npm test -- tests/cli-entrypoint.test.ts
+node dist/cli.js --version
+```
+
+Result:
+
+- The new version assertion first failed because `agentflight --version` still reported `0.1.0` while `package.json` was `0.1.1`.
+- The CLI now reads the version from package metadata, and the focused entrypoint test passes.
+- The built CLI reports `0.1.1`.
+
+Final local verification commands for this pass:
+
+```bash
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+git status --short
+```
+
+Results:
+
+- `npm run verify`: passed. It ran typecheck, lint, tests, and build. Vitest reported `16` test files and `50` tests passed.
+- `npm run format:check`: passed after formatting the changed files.
+- `npm pack --dry-run`: passed. The tarball includes `dist/commands/verify.js`, `dist/core/verification.js`, and the updated renderers.
+- `npm audit --audit-level=moderate`: found `0 vulnerabilities`.
+- `git status --short`: worktree remains dirty with the expected v0.2 implementation, tests, docs, AgentLoop task files, and no release tag or publish changes.
+
+### v0.2.0 Release Preparation
+
+Release metadata commands:
+
+```bash
+git status --short
+git diff --stat
+git status --short -- .agentflight .agentflight/sessions .agentflight/reports .agentflight/current .agentflight/evidence
+npm version 0.2.0 --no-git-tag-version
+npm install --package-lock-only
+npm run build
+node dist/cli.js --version
+```
+
+Results:
+
+- Dirty worktree contained expected v0.2.0 source, tests, docs, `.gitignore`, package metadata, and AgentLoop task files.
+- No `.agentflight/sessions/`, `.agentflight/reports/`, `.agentflight/current/`, or `.agentflight/evidence/` runtime files were visible in git status.
+- `package.json`, `package-lock.json`, and the package-lock root package version were updated to `0.2.0`.
+- `npm install --package-lock-only` completed with `0 vulnerabilities`; npm repeated allow-scripts review warnings for optional/native packages.
+- `npm run build` passed.
+- `node dist/cli.js --version` reported `0.2.0`.
+
+Release verification commands:
+
+```bash
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+```
+
+Results:
+
+- `npm run verify`: passed. It ran typecheck, lint, tests, and build. Vitest reported `16` test files and `50` tests passed.
+- `npm run format:check`: passed.
+- `npm pack --dry-run`: passed for `agentflight@0.2.0`; package contents included `dist/commands/verify.js`.
+- `npm audit --audit-level=moderate`: found `0 vulnerabilities`.
+
+Packed-package smoke test:
+
+```bash
+npm pack --pack-destination /tmp/agentflight-pack-XcRBjU
+cd /tmp/agentflight-smoke-70ZcRU
+npm init -y
+npm install /tmp/agentflight-pack-XcRBjU/agentflight-0.2.0.tgz
+npx agentflight --version
+npx agentflight --help
+npx agentflight init
+npx agentflight start --task "Release smoke test"
+npx agentflight verify -- node -e "console.log('release smoke ok')"
+npx agentflight status
+npx agentflight report
+npx agentflight replay
+npx agentflight resume
+npx agentflight doctor
+```
+
+Results:
+
+- `npx agentflight --version`: reported `0.2.0`.
+- `init`, `start`, `verify`, `status`, `report`, `replay`, `resume`, and `doctor` all ran from the installed tarball.
+- `verify` captured `node -e "console.log('release smoke ok')"` as a passed run.
+- `status` reported `1 passed, 0 failed`.
+- `doctor` returned warnings only because the smoke project was not a git repository and did not define build/typecheck/lint scripts.
+
+Release tool checks:
+
+```bash
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+npx agentloopkit@latest status
+```
+
+Results:
+
+- ProjScan preflight verdict: `proceed`; health `100/100`; required checks passed; `36` changed files detected.
+- AgentLoopKit verification: overall status `pass`; report written to `.agentloop/reports/2026-06-13-16-00-verification-report.md`.
+- AgentLoopKit status reported dirty worktree with `36` changed files and all configured commands present.

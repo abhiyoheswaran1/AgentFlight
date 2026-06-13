@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
-import { buildSessionRecord, startSession } from "../../src/core/session.js";
+import { buildSessionRecord, getVerificationRuns, startSession } from "../../src/core/session.js";
 
 describe("session records", () => {
   it("builds deterministic human-readable session metadata", () => {
@@ -27,6 +27,25 @@ describe("session records", () => {
     expect(session.git.dirty).toBe(true);
     expect(session.packageManager).toBe("npm");
     expect(session.repoSummary).toBe("TypeScript CLI");
+    expect(session.verificationRuns).toEqual([]);
+  });
+
+  it("treats v0.1 sessions without verificationRuns as having no runs", () => {
+    expect(
+      getVerificationRuns({
+        id: "af-old",
+        task: { title: "Old session" },
+        startedAt: "2026-06-13T12:00:00.000Z",
+        repoRoot: "/workspace/agentflight",
+        git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
+        packageManager: "npm",
+        verificationCommands: ["npm test"],
+        tools: {
+          projscan: { available: false, warnings: [] },
+          agentloopkit: { available: false, warnings: [] }
+        }
+      })
+    ).toEqual([]);
   });
 
   it("writes session, current pointer, and handoff files", async () => {

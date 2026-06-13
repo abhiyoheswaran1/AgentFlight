@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, realpathSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { getRepositoryRoot } from "./core/git.js";
@@ -11,6 +11,7 @@ import { runReportCommand } from "./commands/report.js";
 import { runResumeCommand } from "./commands/resume.js";
 import { runStartCommand } from "./commands/start.js";
 import { runStatusCommand } from "./commands/status.js";
+import { runVerifyCommand } from "./commands/verify.js";
 
 export function createCli(): Command {
   const program = new Command();
@@ -18,7 +19,7 @@ export function createCli(): Command {
   program
     .name("agentflight")
     .description("Local-first flight recorder for AI coding agents.")
-    .version("0.1.0");
+    .version(readPackageVersion());
 
   program
     .command("init")
@@ -47,6 +48,21 @@ export function createCli(): Command {
     .description("Show what changed since the session started.")
     .action(async () => {
       await printResult(runStatusCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
+    });
+
+  program
+    .command("verify")
+    .description("Run verification and capture local evidence for the current session.")
+    .allowUnknownOption(true)
+    .allowExcessArguments(true)
+    .argument("[command...]", "verification command to run after --")
+    .action(async (commandArgs: string[]) => {
+      await printResult(
+        runVerifyCommand({
+          repoRoot: await getRepositoryRoot(process.cwd()),
+          commandArgs
+        })
+      );
     });
 
   program
@@ -89,10 +105,13 @@ export function createCli(): Command {
   return program;
 }
 
-async function printResult(promise: Promise<{ output: string }>): Promise<void> {
+async function printResult(promise: Promise<{ output: string; exitCode?: number }>): Promise<void> {
   try {
     const result = await promise;
     console.log(result.output.trimEnd());
+    if (result.exitCode !== undefined) {
+      process.exitCode = result.exitCode;
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
@@ -110,6 +129,17 @@ function normalizeCliPath(path: string): string {
     return realpathSync(resolved);
   } catch {
     return resolved;
+  }
+}
+
+function readPackageVersion(): string {
+  const packagePath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+
+  try {
+    const packageJson = JSON.parse(readFileSync(packagePath, "utf8")) as { version?: unknown };
+    return typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
+  } catch {
+    return "0.0.0";
   }
 }
 

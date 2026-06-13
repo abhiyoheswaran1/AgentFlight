@@ -1,4 +1,5 @@
-import type { RiskAnalysis, ToolAdapterResult, VerificationEvidence } from "../types/index.js";
+import type { RiskAnalysis, ToolAdapterResult, VerificationRun } from "../types/index.js";
+import type { ReviewReadiness } from "../core/verification.js";
 
 export interface MarkdownReportInput {
   task: string;
@@ -7,7 +8,10 @@ export interface MarkdownReportInput {
   changedFiles: string[];
   risk: RiskAnalysis;
   verificationCommands: string[];
-  verificationEvidence: VerificationEvidence[];
+  verificationEvidence: VerificationRun[];
+  verificationGaps?: string[] | undefined;
+  recommendation?: ReviewReadiness | undefined;
+  nextAction?: string | undefined;
   tooling: {
     projscan: ToolAdapterResult;
     agentloopkit: ToolAdapterResult;
@@ -39,7 +43,7 @@ ${renderVerification(input)}
 ${renderReviewFocus(input.risk)}
 
 ## Recommendation
-${renderRecommendation(input.risk, input.verificationEvidence)}
+${renderRecommendation(input)}
 
 ## Next Action
 ${renderNextAction(input)}
@@ -61,12 +65,23 @@ function renderVerification(input: MarkdownReportInput): string {
     const commands = input.verificationCommands.length
       ? `\n\nSuggested commands:\n${renderList(input.verificationCommands)}`
       : "";
-    return `No verification evidence recorded.${commands}`;
+    const gaps = input.verificationGaps?.length
+      ? `\n\nGaps:\n${renderList(input.verificationGaps)}`
+      : "";
+    return `No verification evidence recorded.${gaps}${commands}`;
   }
 
-  return input.verificationEvidence
-    .map((evidence) => `- ${evidence.command}: ${evidence.status}`)
+  const evidence = input.verificationEvidence
+    .map(
+      (run) =>
+        `- ${run.command}: ${run.status} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)\n  - stdout: ${run.stdoutPath}\n  - stderr: ${run.stderrPath}`
+    )
     .join("\n");
+  const gaps = input.verificationGaps?.length
+    ? `\n\nGaps:\n${renderList(input.verificationGaps)}`
+    : "";
+
+  return `${evidence}${gaps}`;
 }
 
 function renderReviewFocus(risk: RiskAnalysis): string {
@@ -77,17 +92,21 @@ function renderReviewFocus(risk: RiskAnalysis): string {
     : "- Confirm the session has meaningful changes before review.";
 }
 
-function renderRecommendation(risk: RiskAnalysis, evidence: VerificationEvidence[]): string {
-  if (evidence.length === 0) {
+function renderRecommendation(input: MarkdownReportInput): string {
+  if (input.recommendation) {
+    return `${input.recommendation}.`;
+  }
+  if (input.verificationEvidence.length === 0) {
     return "Do not claim completion yet. Run the suggested verification commands and regenerate the report.";
   }
-  if (risk.level === "high") {
+  if (input.risk.level === "high") {
     return "Request careful human review focused on the high-risk file categories before merging.";
   }
   return "Review the changed files and verification evidence before handoff.";
 }
 
 function renderNextAction(input: MarkdownReportInput): string {
+  if (input.nextAction) return input.nextAction;
   if (input.verificationEvidence.length === 0 && input.verificationCommands.length > 0) {
     return `Run ${input.verificationCommands[0]} and capture the result.`;
   }

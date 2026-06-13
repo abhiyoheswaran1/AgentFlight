@@ -26,6 +26,7 @@ AgentFlight creates a local `.agentflight/` directory in your repo:
 - `sessions/` stores session metadata.
 - `current/` stores the active session, handoff, and resume prompt.
 - `reports/` stores Markdown proof reports and HTML replays.
+- `evidence/` stores stdout and stderr from captured verification runs.
 
 Reports include filenames and summaries by default, not full source diffs. AgentFlight does not collect telemetry and does not upload source code.
 
@@ -37,6 +38,7 @@ npm run build
 npx agentflight init
 npx agentflight start --task "Add example feature"
 npx agentflight status
+npx agentflight verify -- npm test
 npx agentflight report
 npx agentflight replay
 npx agentflight resume
@@ -55,6 +57,8 @@ npm run agentflight -- start --task "Add example feature"
 - `agentflight init` initializes `.agentflight/` with safe writes.
 - `agentflight start --task "..."` starts a session and writes the current handoff.
 - `agentflight status` summarizes changed files, risk, verification status, and next action.
+- `agentflight verify -- <command>` runs a proof command and records stdout/stderr evidence.
+- `agentflight verify` runs commands from `.agentflight/config.json`.
 - `agentflight report` generates a Markdown proof report.
 - `agentflight replay` generates a local self-contained HTML replay.
 - `agentflight resume` prints and saves a Codex/Claude-ready continuation prompt.
@@ -71,14 +75,14 @@ agentflight start --task "Add password reset flow"
 # Run Codex, Claude Code, Cursor, or another coding agent normally.
 
 agentflight status
-npm run typecheck
-npm test
+agentflight verify -- npm run typecheck
+agentflight verify -- npm test
 agentflight report
 agentflight replay
 agentflight resume
 ```
 
-Use the generated report for review and the resume prompt when handing the work to another agent or human.
+Use `agentflight verify -- <command>` when you want AgentFlight to capture proof. The command records exit code, timing, stdout path, and stderr path in the current session. Use the generated report for review and the resume prompt when handing the work to another agent or human.
 
 ## Powered By ProjScan And AgentLoopKit
 
@@ -103,13 +107,14 @@ Runtime session data is ignored by git by default:
 
 - `.agentflight/sessions/`
 - `.agentflight/reports/`
+- `.agentflight/evidence/`
 - `.agentflight/current/`
 
 `.agentflight/config.json` is intentionally not ignored, so a project can commit its local AgentFlight defaults if that is useful.
 
 ## Current Status
 
-AgentFlight is in MVP development at `0.1.0`.
+AgentFlight current release is `0.2.0`, centered on real verification evidence capture.
 
 Implemented:
 
@@ -121,6 +126,7 @@ Implemented:
 - Self-contained HTML replay
 - Resume prompt generation
 - Doctor checks
+- Verification evidence capture with `agentflight verify`
 - Defensive ProjScan and AgentLoopKit adapters
 - Vitest coverage for core behavior, renderers, adapters, and command workflow
 

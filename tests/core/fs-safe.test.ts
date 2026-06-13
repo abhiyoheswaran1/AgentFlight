@@ -1,8 +1,13 @@
-import { readFile } from "node:fs/promises";
+import { chmod, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
-import { writeJsonFileSafe, writeTextFileSafe } from "../../src/core/fs-safe.js";
+import {
+  ensureDir,
+  isPathWritable,
+  writeJsonFileSafe,
+  writeTextFileSafe
+} from "../../src/core/fs-safe.js";
 
 describe("safe file writes", () => {
   it("does not overwrite JSON files unless explicitly allowed", async () => {
@@ -35,5 +40,18 @@ describe("safe file writes", () => {
     });
 
     expect(await readFile(target, "utf8")).toBe("hello");
+  });
+
+  it("checks write permission instead of only existence", async () => {
+    const repoRoot = await createTempRepo();
+    const target = join(repoRoot, ".agentflight");
+    await ensureDir(target);
+    await chmod(target, 0o555);
+
+    try {
+      await expect(isPathWritable(target)).resolves.toBe(false);
+    } finally {
+      await chmod(target, 0o755);
+    }
   });
 });

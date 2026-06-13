@@ -18,6 +18,7 @@ describe("resume prompt", () => {
     expect(prompt).toContain("Add password reset flow");
     expect(prompt).toContain("src/auth/reset.ts");
     expect(prompt).toContain("Do not start unrelated work.");
-    expect(prompt).toContain("Do not claim completion without running proof.");
+    expect(prompt).toContain("Do not claim completion without proof.");
+    expect(prompt).toContain("Run relevant verification before declaring success.");
   });
 });

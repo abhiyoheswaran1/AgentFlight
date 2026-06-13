@@ -2,6 +2,7 @@ import { writeTextFileSafe } from "../core/fs-safe.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
+import { buildVerificationSummary } from "../core/verification.js";
 import { renderResumePrompt } from "../renderers/resume-prompt.js";
 import { readCurrentSession } from "./status.js";
 
@@ -21,12 +22,10 @@ export async function runResumeCommand(
   const session = await readCurrentSession(options.repoRoot);
   const changedFiles = options.changedFiles ?? (await listChangedFiles(options.repoRoot));
   const risk = analyzeRisk(changedFiles);
-  const verificationGaps =
-    session.verificationCommands.length > 0
-      ? [
-          `No verification evidence recorded. Suggested first command: ${session.verificationCommands[0]}`
-        ]
-      : ["No verification commands detected."];
+  const verification = buildVerificationSummary(session, {
+    changedFilesCount: changedFiles.length,
+    riskLevel: risk.level
+  });
   const prompt = renderResumePrompt({
     task: session.task.title,
     sessionId: session.id,
@@ -34,10 +33,8 @@ export async function runResumeCommand(
     changedFiles,
     riskLevel: risk.level,
     riskReasons: risk.reasons,
-    verificationGaps,
-    nextAction:
-      session.verificationCommands[0] ??
-      "Add or run an appropriate verification command before claiming completion."
+    verificationGaps: verification.gaps,
+    nextAction: verification.nextAction
   });
   const resumePath = resolveAgentFlightPaths(options.repoRoot).currentResumePrompt;
 

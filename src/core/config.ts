@@ -67,11 +67,13 @@ export async function initAgentFlight(
   await ensureDir(paths.root);
   await ensureDir(paths.sessions);
   await ensureDir(paths.reports);
+  await ensureDir(paths.evidence);
   await ensureDir(paths.current);
 
   for (const gitkeepPath of [
     `${paths.sessions}/.gitkeep`,
     `${paths.reports}/.gitkeep`,
+    `${paths.evidence}/.gitkeep`,
     `${paths.current}/.gitkeep`
   ]) {
     const result = await writeTextFileSafe(gitkeepPath, "");

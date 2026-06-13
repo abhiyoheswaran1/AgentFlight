@@ -9,6 +9,7 @@ export function resolveAgentFlightPaths(repoRoot: string): AgentFlightPaths {
     config: join(root, "config.json"),
     sessions: join(root, "sessions"),
     reports: join(root, "reports"),
+    evidence: join(root, "evidence"),
     current: join(root, "current"),
     currentSession: join(root, "current", "session.json"),
     currentHandoff: join(root, "current", "handoff.md"),

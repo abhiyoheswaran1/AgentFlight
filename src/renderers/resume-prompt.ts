@@ -35,9 +35,10 @@ ${renderList(input.verificationGaps, "No verification gaps recorded.")}
 ${input.nextAction}
 
 ## Constraints
+- Stay scoped to the current task.
 - Do not start unrelated work.
-- Do not claim completion without running proof.
-- Run relevant verification.
+- Do not claim completion without proof.
+- Run relevant verification before declaring success.
 - Keep changes scoped.
 `;
 }

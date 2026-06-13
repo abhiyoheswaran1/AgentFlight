@@ -22,6 +22,15 @@ export async function pathExists(path: string): Promise<boolean> {
   }
 }
 
+export async function isPathWritable(path: string): Promise<boolean> {
+  try {
+    await access(path, constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function ensureDir(path: string): Promise<void> {
   await mkdir(path, { recursive: true });
 }

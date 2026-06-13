@@ -1,5 +1,38 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { ensureDir, writeTextFileSafe } from "./fs-safe.js";
+import { runCommand, type CommandRunner } from "./process.js";
+import { resolveAgentFlightPaths } from "./paths.js";
+import { getVerificationRuns } from "./session.js";
+import type { AgentFlightSession, RiskLevel, VerificationRun } from "../types/index.js";
+
 export interface PackageJsonLike {
   scripts?: Record<string, string>;
+}
+
+export interface RunVerificationCommandOptions {
+  repoRoot: string;
+  session: AgentFlightSession;
+  commandArgs: string[];
+  now?: (() => Date) | undefined;
+  commandRunner?: CommandRunner | undefined;
+}
+
+export type ReviewReadiness = "Ready for review" | "Not ready for review" | "Blocked" | "Unknown";
+
+export interface VerificationSummary {
+  runs: VerificationRun[];
+  passed: number;
+  failed: number;
+  missingCommands: string[];
+  gaps: string[];
+  readiness: ReviewReadiness;
+  nextAction: string;
+}
+
+export interface BuildVerificationSummaryOptions {
+  changedFilesCount?: number | undefined;
+  riskLevel?: RiskLevel | undefined;
 }
 
 export function detectVerificationCommands(packageJson: PackageJsonLike): string[] {
@@ -12,4 +45,200 @@ export function detectVerificationCommands(packageJson: PackageJsonLike): string
   if (scripts.build) commands.push("npm run build");
 
   return commands;
+}
+
+export function parseCommandLine(command: string): string[] {
+  const args: string[] = [];
+  let current = "";
+  let quote: "'" | '"' | null = null;
+  let escaping = false;
+
+  for (const char of command) {
+    if (escaping) {
+      current += char;
+      escaping = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escaping = true;
+      continue;
+    }
+
+    if (quote) {
+      if (char === quote) {
+        quote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      if (current.length > 0) {
+        args.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (escaping) current += "\\";
+  if (current.length > 0) args.push(current);
+
+  return args;
+}
+
+export async function runVerificationCommand(
+  options: RunVerificationCommandOptions
+): Promise<VerificationRun> {
+  if (options.commandArgs.length === 0) {
+    throw new Error("Verification command is empty.");
+  }
+
+  const now = options.now ?? (() => new Date());
+  const startedAt = now();
+  const runNumber = getVerificationRuns(options.session).length + 1;
+  const runName = `verification-${runNumber}`;
+  const paths = resolveAgentFlightPaths(options.repoRoot);
+  const evidenceDir = join(paths.evidence, options.session.id);
+  const stdoutPath = `.agentflight/evidence/${options.session.id}/${runName}.stdout.txt`;
+  const stderrPath = `.agentflight/evidence/${options.session.id}/${runName}.stderr.txt`;
+  const runner = options.commandRunner ?? runCommand;
+
+  await ensureDir(evidenceDir);
+
+  const result = await runner(options.commandArgs[0]!, options.commandArgs.slice(1), {
+    cwd: options.repoRoot,
+    timeoutMs: 10 * 60_000
+  });
+  const finishedAt = now();
+
+  await writeTextFileSafe(join(options.repoRoot, stdoutPath), result.stdout, { overwrite: true });
+  await writeTextFileSafe(join(options.repoRoot, stderrPath), result.stderr, { overwrite: true });
+
+  return {
+    command: formatCommand(options.commandArgs),
+    startedAt: startedAt.toISOString(),
+    finishedAt: finishedAt.toISOString(),
+    durationMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+    exitCode: result.exitCode,
+    status: result.exitCode === 0 ? "passed" : "failed",
+    stdoutPath,
+    stderrPath
+  };
+}
+
+export async function readVerificationStdout(
+  repoRoot: string,
+  run: VerificationRun
+): Promise<string> {
+  return readFile(join(repoRoot, run.stdoutPath), "utf8");
+}
+
+export function buildVerificationSummary(
+  session: AgentFlightSession,
+  options: BuildVerificationSummaryOptions = {}
+): VerificationSummary {
+  const runs = getVerificationRuns(session);
+  const passedRuns = runs.filter((run) => run.status === "passed");
+  const failedRuns = runs.filter((run) => run.status === "failed");
+  const passedCommands = new Set(passedRuns.map((run) => normalizeCommandString(run.command)));
+  const missingCommands = session.verificationCommands.filter(
+    (command) => !passedCommands.has(normalizeCommandString(command))
+  );
+  const gaps = buildVerificationGaps(runs, missingCommands);
+  const readiness = determineReadiness({
+    runs,
+    failed: failedRuns.length,
+    missingCommands,
+    changedFilesCount: options.changedFilesCount ?? null
+  });
+
+  return {
+    runs,
+    passed: passedRuns.length,
+    failed: failedRuns.length,
+    missingCommands,
+    gaps,
+    readiness,
+    nextAction: buildNextAction(readiness, missingCommands, options.riskLevel)
+  };
+}
+
+export function normalizeCommandString(command: string): string {
+  const parsed = parseCommandLine(command);
+  return parsed.length > 0 ? formatCommand(parsed) : command.trim();
+}
+
+export function formatCommand(args: string[]): string {
+  return args.map(formatCommandArg).join(" ");
+}
+
+function formatCommandArg(arg: string): string {
+  if (/^[A-Za-z0-9_./:=@+-]+$/.test(arg)) return arg;
+  return JSON.stringify(arg);
+}
+
+function buildVerificationGaps(runs: VerificationRun[], missingCommands: string[]): string[] {
+  const gaps: string[] = [];
+
+  if (runs.some((run) => run.status === "failed")) {
+    gaps.push("A verification command failed and must be fixed or rerun successfully.");
+  }
+
+  if (missingCommands.length > 0) {
+    gaps.push(
+      ...missingCommands.map((command) => `Missing passing verification evidence for: ${command}`)
+    );
+  }
+
+  if (gaps.length > 0) return gaps;
+
+  if (runs.length === 0) {
+    return ["No verification evidence recorded."];
+  }
+
+  return ["No configured verification gaps."];
+}
+
+function determineReadiness(input: {
+  runs: VerificationRun[];
+  failed: number;
+  missingCommands: string[];
+  changedFilesCount: number | null;
+}): ReviewReadiness {
+  if (input.failed > 0) return "Blocked";
+  if (input.changedFilesCount === 0 && input.runs.length === 0) return "Unknown";
+  if (input.runs.length === 0 || input.missingCommands.length > 0) return "Not ready for review";
+  return "Ready for review";
+}
+
+function buildNextAction(
+  readiness: ReviewReadiness,
+  missingCommands: string[],
+  riskLevel: RiskLevel | undefined
+): string {
+  if (readiness === "Blocked") {
+    return "Fix the failed verification command, then rerun agentflight verify.";
+  }
+
+  if (missingCommands.length > 0) {
+    return `Run agentflight verify -- ${missingCommands[0]}`;
+  }
+
+  if (readiness === "Ready for review") {
+    return riskLevel === "high"
+      ? "Generate a report and request focused review for the high-risk areas."
+      : "Generate a report and hand off for review.";
+  }
+
+  return "Run agentflight verify -- <command> to capture proof before claiming completion.";
 }

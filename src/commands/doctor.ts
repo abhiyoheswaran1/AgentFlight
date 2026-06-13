@@ -1,9 +1,9 @@
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { inspectAgentLoopKit } from "../adapters/agentloopkit.js";
 import { inspectProjScan } from "../adapters/projscan.js";
 import { evaluateDoctorChecks } from "../core/doctor.js";
-import { pathExists } from "../core/fs-safe.js";
+import { isPathWritable, pathExists } from "../core/fs-safe.js";
 import { getRepositoryRoot } from "../core/git.js";
 import { renderStatus } from "../core/output.js";
 import { detectPackageManager, readPackageJson } from "../core/project.js";
@@ -58,7 +58,7 @@ export async function runDoctorCommand(
     repoRoot,
     agentFlightExists: await pathExists(paths.root),
     configValid: await isConfigValid(paths.config),
-    writable: await isWritable(paths.root),
+    writable: await isPathWritable(paths.root),
     currentSessionExists: await pathExists(paths.currentSession),
     projscanAvailable: projscan.available,
     agentloopkitAvailable: agentloopkit.available,
@@ -84,15 +84,6 @@ async function getNpmVersion(repoRoot: string): Promise<string | null> {
 async function isConfigValid(path: string): Promise<boolean> {
   try {
     JSON.parse(await readFile(path, "utf8"));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function isWritable(path: string): Promise<boolean> {
-  try {
-    await access(path);
     return true;
   } catch {
     return false;

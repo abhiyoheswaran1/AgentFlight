@@ -2,6 +2,7 @@ import { writeTextFileSafe } from "../core/fs-safe.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
+import { buildVerificationSummary } from "../core/verification.js";
 import { renderMarkdownReport } from "../renderers/markdown-report.js";
 import { readCurrentSession } from "./status.js";
 
@@ -21,6 +22,10 @@ export async function runReportCommand(
   const session = await readCurrentSession(options.repoRoot);
   const changedFiles = options.changedFiles ?? (await listChangedFiles(options.repoRoot));
   const risk = analyzeRisk(changedFiles);
+  const verification = buildVerificationSummary(session, {
+    changedFilesCount: changedFiles.length,
+    riskLevel: risk.level
+  });
   const report = renderMarkdownReport({
     task: session.task.title,
     sessionId: session.id,
@@ -28,7 +33,10 @@ export async function runReportCommand(
     changedFiles,
     risk,
     verificationCommands: session.verificationCommands,
-    verificationEvidence: [],
+    verificationEvidence: verification.runs,
+    verificationGaps: verification.gaps,
+    recommendation: verification.readiness,
+    nextAction: verification.nextAction,
     tooling: session.tools
   });
   const reportPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}-proof.md`;

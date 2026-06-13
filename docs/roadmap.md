@@ -16,7 +16,7 @@
 
 - Basic local session history.
 - Structured `--json` output.
-- Configurable verification commands.
+- Richer configurable verification command profiles.
 - More precise git diff stats without including full code by default.
 
 ## Future Pro
