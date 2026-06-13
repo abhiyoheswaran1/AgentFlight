@@ -8,6 +8,7 @@ describe("risk categorisation", () => {
     ["migrations/20260613_add_users.sql", "database/migrations"],
     [".env.example", "security/secrets"],
     [".github/workflows/ci.yml", "config"],
+    [".agentloop/state.json", "docs"],
     [".agentloop/policies/secrets-policy.md", "docs"],
     ["tests/session.test.ts", "tests"],
     ["docs/roadmap.md", "docs"],
@@ -21,6 +22,20 @@ describe("risk categorisation", () => {
     expect(analyzeRisk(["docs/roadmap.md", "tests/risk.test.ts"])).toMatchObject({
       level: "low",
       changedFiles: 2
+    });
+  });
+
+  it("treats AgentLoopKit workflow artifacts as low-risk dogfooding docs", () => {
+    expect(
+      analyzeRisk([
+        ".agentloop/state.json",
+        ".agentloop/tasks/2026-06-13-dogfood-agentflight-v0-2-0-core-workflow.md",
+        "docs/development/verification.md"
+      ])
+    ).toMatchObject({
+      level: "low",
+      changedFiles: 3,
+      reasons: ["Only low-risk docs, tests, or isolated UI files changed."]
     });
   });
 

@@ -54,10 +54,31 @@ export interface AgentFlightSession {
   repoSummary?: string;
   verificationCommands: string[];
   verificationRuns?: VerificationRun[];
+  events?: SessionEvent[];
   tools: {
     projscan: ToolAdapterResult;
     agentloopkit: ToolAdapterResult;
   };
+}
+
+export type SessionEventType =
+  | "session_started"
+  | "verification_started"
+  | "verification_passed"
+  | "verification_failed"
+  | "snapshot_created"
+  | "report_generated"
+  | "replay_generated"
+  | "resume_generated"
+  | "doctor_run";
+
+export interface SessionEvent {
+  id: string;
+  type: SessionEventType;
+  timestamp: string;
+  title: string;
+  message?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export type RiskCategory =

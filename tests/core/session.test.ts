@@ -3,7 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
-import { buildSessionRecord, getVerificationRuns, startSession } from "../../src/core/session.js";
+import {
+  buildSessionRecord,
+  getSessionEvents,
+  getVerificationRuns,
+  startSession
+} from "../../src/core/session.js";
 
 describe("session records", () => {
   it("builds deterministic human-readable session metadata", () => {
@@ -28,24 +33,33 @@ describe("session records", () => {
     expect(session.packageManager).toBe("npm");
     expect(session.repoSummary).toBe("TypeScript CLI");
     expect(session.verificationRuns).toEqual([]);
+    const events = session.events ?? [];
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      id: "evt-20260613-123456-session-started-001",
+      type: "session_started",
+      timestamp: "2026-06-13T12:34:56.000Z",
+      title: "Session started"
+    });
   });
 
-  it("treats v0.1 sessions without verificationRuns as having no runs", () => {
-    expect(
-      getVerificationRuns({
-        id: "af-old",
-        task: { title: "Old session" },
-        startedAt: "2026-06-13T12:00:00.000Z",
-        repoRoot: "/workspace/agentflight",
-        git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
-        packageManager: "npm",
-        verificationCommands: ["npm test"],
-        tools: {
-          projscan: { available: false, warnings: [] },
-          agentloopkit: { available: false, warnings: [] }
-        }
-      })
-    ).toEqual([]);
+  it("treats v0.1 sessions without verificationRuns or events as empty arrays", () => {
+    const oldSession = {
+      id: "af-old",
+      task: { title: "Old session" },
+      startedAt: "2026-06-13T12:00:00.000Z",
+      repoRoot: "/workspace/agentflight",
+      git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      verificationCommands: ["npm test"],
+      tools: {
+        projscan: { available: false, warnings: [] },
+        agentloopkit: { available: false, warnings: [] }
+      }
+    };
+
+    expect(getVerificationRuns(oldSession)).toEqual([]);
+    expect(getSessionEvents(oldSession)).toEqual([]);
   });
 
   it("writes session, current pointer, and handoff files", async () => {
@@ -71,7 +85,7 @@ describe("session records", () => {
     ).resolves.toContain("Dogfood AgentFlight MVP");
     await expect(
       readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
-    ).resolves.toContain(result.session.id);
+    ).resolves.toContain("session_started");
     await expect(
       readFile(join(repoRoot, ".agentflight", "current", "handoff.md"), "utf8")
     ).resolves.toContain("Suggested proof");

@@ -16,6 +16,7 @@ describe("markdown proof report", () => {
       },
       verificationCommands: ["npm test"],
       verificationEvidence: [],
+      timelineEvents: [],
       tooling: {
         projscan: { available: false, warnings: ["ProjScan unavailable"] },
         agentloopkit: { available: true, warnings: [] }
@@ -23,6 +24,8 @@ describe("markdown proof report", () => {
     });
 
     expect(markdown).toContain("# AgentFlight Proof Report");
+    expect(markdown).toContain("## Timeline");
+    expect(markdown).toContain("No timeline events recorded.");
     expect(markdown).toContain("## Verification Evidence");
     expect(markdown).toContain("No verification evidence recorded.");
     expect(markdown).not.toContain("tests passed");

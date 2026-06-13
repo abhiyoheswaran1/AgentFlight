@@ -1,4 +1,9 @@
-import type { RiskAnalysis, ToolAdapterResult, VerificationRun } from "../types/index.js";
+import type {
+  RiskAnalysis,
+  SessionEvent,
+  ToolAdapterResult,
+  VerificationRun
+} from "../types/index.js";
 import type { ReviewReadiness } from "../core/verification.js";
 
 export interface MarkdownReportInput {
@@ -6,6 +11,7 @@ export interface MarkdownReportInput {
   sessionId: string;
   startedAt: string;
   changedFiles: string[];
+  timelineEvents?: SessionEvent[] | undefined;
   risk: RiskAnalysis;
   verificationCommands: string[];
   verificationEvidence: VerificationRun[];
@@ -27,6 +33,9 @@ ${input.task}
 ## Session
 - Session ID: ${input.sessionId}
 - Started: ${input.startedAt}
+
+## Timeline
+${renderTimeline(input.timelineEvents ?? [])}
 
 ## Changed Files
 ${renderList(input.changedFiles, "No changed files detected.")}
@@ -82,6 +91,16 @@ function renderVerification(input: MarkdownReportInput): string {
     : "";
 
   return `${evidence}${gaps}`;
+}
+
+function renderTimeline(events: SessionEvent[]): string {
+  if (events.length === 0) return "No timeline events recorded.";
+  return events
+    .map((event) => {
+      const message = event.message ? ` - ${event.message}` : "";
+      return `- ${event.timestamp}: ${event.title}${message}`;
+    })
+    .join("\n");
 }
 
 function renderReviewFocus(risk: RiskAnalysis): string {

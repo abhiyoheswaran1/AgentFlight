@@ -9,6 +9,8 @@ import { renderStatus } from "../core/output.js";
 import { detectPackageManager, readPackageJson } from "../core/project.js";
 import { runCommand } from "../core/process.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
+import { appendSessionEvent } from "../core/session.js";
+import { readCurrentSession } from "./status.js";
 import type { DoctorResult } from "../types/index.js";
 
 export interface DoctorCommandOptions {
@@ -19,6 +21,7 @@ export interface DoctorCommandOptions {
   packageManager?: string | null | undefined;
   projscanAvailable?: boolean | undefined;
   agentloopkitAvailable?: boolean | undefined;
+  now?: Date | undefined;
 }
 
 export interface DoctorCommandResult {
@@ -70,10 +73,30 @@ export async function runDoctorCommand(
     }
   });
 
+  await recordDoctorEvent(options.repoRoot, result.status, options.now ?? new Date());
+
   return {
     output: renderDoctor(result),
     result
   };
+}
+
+async function recordDoctorEvent(
+  repoRoot: string,
+  status: DoctorResult["status"],
+  now: Date
+): Promise<void> {
+  try {
+    const session = await readCurrentSession(repoRoot);
+    await appendSessionEvent(repoRoot, session, {
+      type: "doctor_run",
+      timestamp: now,
+      title: "Doctor run",
+      metadata: { status }
+    });
+  } catch {
+    // Doctor should still report configuration issues when no session is active or writable.
+  }
 }
 
 async function getNpmVersion(repoRoot: string): Promise<string | null> {

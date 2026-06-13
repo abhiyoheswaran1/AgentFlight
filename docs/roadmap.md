@@ -11,6 +11,8 @@
 - Resume prompt.
 - Doctor checks.
 - Defensive ProjScan and AgentLoopKit adapters.
+- Verification evidence capture.
+- Session events and snapshots.
 
 ## Future Free/Open-Core
 
@@ -18,6 +20,7 @@
 - Structured `--json` output.
 - Richer configurable verification command profiles.
 - More precise git diff stats without including full code by default.
+- Timeline filtering and richer local replay navigation.
 
 ## Future Pro
 

@@ -18,6 +18,10 @@ describe("verify command", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.output).toContain("passed");
+    expect(result.output).toContain("Evidence saved:");
+    expect(result.output).toContain(".agentflight/evidence/");
+    expect(result.output).toContain("verification-1.stdout.txt");
+    expect(result.output).toContain("verification-1.stderr.txt");
 
     const current = JSON.parse(
       await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
@@ -27,6 +31,11 @@ describe("verify command", () => {
       status: "passed",
       exitCode: 0
     });
+    expect(current.events.map((event: { type: string }) => event.type)).toEqual([
+      "session_started",
+      "verification_started",
+      "verification_passed"
+    ]);
   });
 
   it("records a failing explicit command and returns non-zero after persistence", async () => {
@@ -40,6 +49,9 @@ describe("verify command", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain("failed");
+    expect(result.output).toContain("Evidence saved:");
+    expect(result.output).toContain("Next action:");
+    expect(result.output).toContain("agentflight verify --");
 
     const current = JSON.parse(
       await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
@@ -48,6 +60,11 @@ describe("verify command", () => {
       status: "failed",
       exitCode: 4
     });
+    expect(current.events.map((event: { type: string }) => event.type)).toEqual([
+      "session_started",
+      "verification_started",
+      "verification_failed"
+    ]);
   });
 
   it("runs configured verification commands when no explicit command is provided", async () => {

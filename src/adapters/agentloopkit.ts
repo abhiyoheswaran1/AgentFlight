@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { CommandRunner } from "../core/process.js";
 import { runCommand } from "../core/process.js";
 import type { ToolAdapterResult } from "../types/index.js";
@@ -38,7 +39,7 @@ export async function inspectAgentLoopKit(
   );
   const result: ToolAdapterResult = {
     available: true,
-    version: version.stdout.trim(),
+    version: normalizeVersion(version.stdout),
     summary: doctor.stdout.trim() || "AgentLoopKit available for task discipline.",
     warnings: []
   };
@@ -104,15 +105,34 @@ async function runWithFallback(
   cwd?: string,
   timeoutMs = 10_000
 ) {
-  const local = await run(localCommand, args, { cwd, timeoutMs });
-  if (local.exitCode === 0) return local;
+  const localFailures: Array<{ stdout: string; stderr: string }> = [];
+  for (const candidate of repoLocalCommandCandidates(localCommand, cwd)) {
+    const local = await run(candidate, args, { cwd, timeoutMs });
+    if (local.exitCode === 0) return local;
+    localFailures.push(local);
+  }
 
   const fallback = await run("npx", ["--yes", packageName, ...args], { cwd, timeoutMs });
   if (fallback.exitCode === 0) return fallback;
 
+  const pathCommand = await run(localCommand, args, { cwd, timeoutMs });
+  if (pathCommand.exitCode === 0) return pathCommand;
+
   return {
-    exitCode: fallback.exitCode,
-    stdout: fallback.stdout,
-    stderr: `${summarizeFailure(local)}; npx fallback failed: ${summarizeFailure(fallback)}`
+    exitCode: pathCommand.exitCode,
+    stdout: pathCommand.stdout,
+    stderr: `${localFailures.map(summarizeFailure).join("; ")}; npx fallback failed: ${summarizeFailure(fallback)}; PATH command failed: ${summarizeFailure(pathCommand)}`
   };
+}
+
+function repoLocalCommandCandidates(command: string, cwd?: string): string[] {
+  if (!cwd || command.includes("/") || command.includes("\\")) return [];
+  const executable = process.platform === "win32" ? `${command}.cmd` : command;
+  return [join(cwd, "node_modules", ".bin", executable)];
+}
+
+function normalizeVersion(output: string): string {
+  const trimmed = output.trim();
+  const match = trimmed.match(/\bv?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\b/);
+  return match?.[1] ?? trimmed;
 }

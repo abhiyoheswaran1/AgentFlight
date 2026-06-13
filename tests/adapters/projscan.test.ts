@@ -29,6 +29,66 @@ describe("ProjScan adapter", () => {
     });
   });
 
+  it("prefers the repo-local binary before an older PATH binary", async () => {
+    const commands: string[] = [];
+    const run: CommandRunner = async (command, args) => {
+      commands.push(command);
+      if (command.includes("node_modules/.bin/projscan")) {
+        if (args.includes("--version")) return { exitCode: 0, stdout: "4.3.1\n", stderr: "" };
+        return { exitCode: 0, stdout: "Usage: projscan [options]\n", stderr: "" };
+      }
+      if (command === "projscan") {
+        return { exitCode: 0, stdout: "0.9.2\n", stderr: "" };
+      }
+      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
+    };
+
+    await expect(inspectProjScan({ cwd: "/repo", run })).resolves.toMatchObject({
+      available: true,
+      version: "4.3.1"
+    });
+    expect(commands[0]).toContain("node_modules/.bin/projscan");
+    expect(commands).not.toContain("projscan");
+  });
+
+  it("uses npx latest before a stale PATH binary when the repo-local binary is unavailable", async () => {
+    const commands: string[] = [];
+    const run: CommandRunner = async (command, args) => {
+      commands.push(command);
+      if (command.includes("node_modules/.bin/projscan")) {
+        return { exitCode: 127, stdout: "", stderr: "missing local binary" };
+      }
+      if (command === "npx" && args.includes("projscan@latest")) {
+        if (args.includes("--version")) return { exitCode: 0, stdout: "4.3.1\n", stderr: "" };
+        return { exitCode: 0, stdout: "Usage: projscan [options]\n", stderr: "" };
+      }
+      if (command === "projscan") {
+        return { exitCode: 0, stdout: "0.9.2\n", stderr: "" };
+      }
+      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
+    };
+
+    await expect(inspectProjScan({ cwd: "/repo", run })).resolves.toMatchObject({
+      available: true,
+      version: "4.3.1"
+    });
+    expect(commands).toContain("npx");
+    expect(commands).not.toContain("projscan");
+  });
+
+  it("normalizes decorated version output", async () => {
+    const run: CommandRunner = async (_command, args) => {
+      if (args.includes("--version"))
+        return { exitCode: 0, stdout: "projscan v4.3.1\n", stderr: "" };
+      return { exitCode: 0, stdout: "Usage: projscan [options]\n", stderr: "" };
+    };
+
+    await expect(inspectProjScan({ run })).resolves.toMatchObject({
+      available: true,
+      version: "4.3.1"
+    });
+  });
+
   it("falls back to npx when a local projscan binary is unavailable", async () => {
     const run: CommandRunner = async (command, args) => {
       if (command === "projscan") {

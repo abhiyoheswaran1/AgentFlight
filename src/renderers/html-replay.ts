@@ -1,9 +1,9 @@
-import type { VerificationRun } from "../types/index.js";
+import type { RiskCategorySummary, SessionEvent, VerificationRun } from "../types/index.js";
 
-export interface ReplayTimelineItem {
-  label: string;
-  timestamp: string;
-}
+export type ReplayTimelineItem = Pick<
+  SessionEvent,
+  "type" | "timestamp" | "title" | "message" | "metadata"
+>;
 
 export interface HtmlReplayInput {
   task: string;
@@ -11,8 +11,10 @@ export interface HtmlReplayInput {
   startedAt: string;
   timeline: ReplayTimelineItem[];
   changedFiles: string[];
+  changedFileGroups?: RiskCategorySummary[] | undefined;
   riskBadges: string[];
   verificationEvidence: VerificationRun[];
+  reviewReadiness?: string | undefined;
   recommendation: string;
 }
 
@@ -33,7 +35,14 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
     .meta { color: #57606a; font-size: 14px; }
     .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
     .badge { border: 1px solid #d0d7de; border-radius: 999px; padding: 4px 10px; background: #ffffff; font-size: 13px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 28px; }
+    .summary-card { background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; padding: 14px; min-width: 0; }
+    .summary-card span { color: #57606a; display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .summary-card strong { display: block; font-size: 18px; margin-top: 4px; overflow-wrap: anywhere; }
     .panel { background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; padding: 18px; margin: 16px 0; }
+    .timeline { border-left: 3px solid #d0d7de; padding-left: 16px; }
+    .timeline-item { margin: 0 0 14px; }
+    .timeline-item strong { display: block; }
     .verification-grid { display: grid; gap: 12px; }
     .verification-card { border: 1px solid #d0d7de; border-radius: 8px; padding: 14px; background: #fbfcfe; }
     .verification-card.passed { border-color: #2da44e; }
@@ -43,6 +52,7 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
     ul { margin: 0; padding-left: 22px; }
     li { margin: 6px 0; }
     code { background: #f0f3f6; border-radius: 4px; padding: 2px 5px; }
+    @media (max-width: 760px) { .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   </style>
 </head>
 <body>
@@ -54,12 +64,16 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
       <div class="badges">${input.riskBadges.map((badge) => `<span class="badge">${escapeHtml(badge)}</span>`).join("")}</div>
     </header>
 
+    ${renderSummary(input)}
+
     <section class="panel">
       <h2>Timeline</h2>
       ${renderTimeline(input.timeline)}
     </section>
 
     <section class="panel">
+      <h2>Changed File Groups</h2>
+      ${renderFileGroups(input.changedFileGroups ?? [])}
       <h2>Changed Files</h2>
       ${renderFileList(input.changedFiles)}
     </section>
@@ -81,11 +95,43 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 `;
 }
 
+function renderSummary(input: HtmlReplayInput): string {
+  const passed = input.verificationEvidence.filter((item) => item.status === "passed").length;
+  const failed = input.verificationEvidence.filter((item) => item.status === "failed").length;
+  const risk = input.riskBadges[0] ?? "unknown";
+  const readiness = input.reviewReadiness ?? "Unknown";
+
+  return `<section class="summary-grid" aria-label="Session summary">
+      ${renderSummaryCard("Risk", risk)}
+      ${renderSummaryCard("Changed Files", String(input.changedFiles.length))}
+      ${renderSummaryCard("Proof", `${passed} passed / ${failed} failed`)}
+      ${renderSummaryCard("Readiness", readiness)}
+    </section>`;
+}
+
+function renderSummaryCard(label: string, value: string): string {
+  return `<div class="summary-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
 function renderTimeline(items: ReplayTimelineItem[]): string {
   if (items.length === 0) return "<p>No timeline events recorded.</p>";
-  return `<ul>${items
+  return `<div class="timeline">${items
     .map(
-      (item) => `<li><strong>${escapeHtml(item.timestamp)}</strong> ${escapeHtml(item.label)}</li>`
+      (item) => `<div class="timeline-item">
+        <strong>${escapeHtml(item.title)}</strong>
+        <div class="meta">${escapeHtml(item.timestamp)} · ${escapeHtml(item.type)}</div>
+        ${item.message ? `<div>${escapeHtml(item.message)}</div>` : ""}
+      </div>`
+    )
+    .join("")}</div>`;
+}
+
+function renderFileGroups(groups: RiskCategorySummary[]): string {
+  if (groups.length === 0) return "<p>No changed file groups detected.</p>";
+  return `<ul>${groups
+    .map(
+      (group) =>
+        `<li><strong>${escapeHtml(group.category)}</strong>: ${group.files.map((file) => `<code>${escapeHtml(file)}</code>`).join(", ")}</li>`
     )
     .join("")}</ul>`;
 }

@@ -227,7 +227,9 @@ function buildNextAction(
   riskLevel: RiskLevel | undefined
 ): string {
   if (readiness === "Blocked") {
-    return "Fix the failed verification command, then rerun agentflight verify.";
+    return missingCommands.length > 0
+      ? `Fix the failed command, then rerun agentflight verify -- ${missingCommands[0]}`
+      : "Fix the failed verification command, then rerun agentflight verify.";
   }
 
   if (missingCommands.length > 0) {

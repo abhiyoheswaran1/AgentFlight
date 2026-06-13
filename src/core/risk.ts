@@ -16,6 +16,9 @@ export function categorizeFile(file: string): RiskCategory {
   if (/(^|\/)\.env($|\.)/.test(normalized)) {
     return "security/secrets";
   }
+  if (/^\.agentloop\//.test(normalized)) {
+    return "docs";
+  }
   if (/(^|\/)(test|tests|__tests__|spec)(\/|$)|\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) {
     return "tests";
   }

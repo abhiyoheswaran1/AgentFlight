@@ -387,3 +387,235 @@ Results:
 - ProjScan preflight verdict: `proceed`; health `100/100`; required checks passed; `36` changed files detected.
 - AgentLoopKit verification: overall status `pass`; report written to `.agentloop/reports/2026-06-13-16-00-verification-report.md`.
 - AgentLoopKit status reported dirty worktree with `36` changed files and all configured commands present.
+
+### v0.2.1 Dogfood Friction Patch Preparation
+
+Task discipline:
+
+```bash
+npx agentloopkit@latest create-task --title "Prepare AgentFlight v0.2.1 dogfood friction patch" --type bugfix --problem "AgentFlight v0.2.0 dogfooding found small workflow friction in verification output, risk clarity, replay readability, and ProjScan version detection." --outcome "Patch-level fixes are implemented locally without new product scope, and verification passes." --constraint "No new commands, cloud, login, billing, database, GitHub App, Pro gating, snapshot, JSON output, or v0.3.0 scope." --acceptance "agentflight verify prints evidence paths after recording results." --acceptance "AgentLoopKit dogfood files do not falsely raise docs-only sessions to medium risk." --acceptance "Reports, replays, and resume prompts have clearer next actions after proof exists." --verify-command "npm run verify" --verify-command "npm run format:check"
+npx agentloopkit@latest task status .agentloop/tasks/2026-06-13-prepare-agentflight-v0-2-1-dogfood-friction-patch.md in-progress
+```
+
+ProjScan before-edit check:
+
+```bash
+npx projscan@latest preflight --mode before_edit --format json
+```
+
+Result:
+
+- ProjScan verdict `proceed`; health `100/100`; no blocking or cautionary signals.
+
+Bug reproduction:
+
+```bash
+projscan --version
+which projscan
+./node_modules/.bin/projscan --version
+npx --yes projscan@latest --version
+node -e "console.log(require('./node_modules/projscan/package.json').version)"
+npm ls projscan
+```
+
+Results:
+
+- PATH-global `projscan` was `/opt/homebrew/bin/projscan` and reported `0.9.2`.
+- Repo-local `./node_modules/.bin/projscan`, `npx projscan@latest`, installed package metadata, and `npm ls projscan` all reported `4.3.1`.
+- The adapter now prefers repo-local binaries before PATH-global commands.
+
+TDD checkpoint:
+
+```bash
+npm test -- tests/adapters/projscan.test.ts tests/adapters/agentloopkit.test.ts tests/core/risk.test.ts tests/commands/verify.test.ts tests/commands/evidence-output.test.ts tests/renderers/html-replay.test.ts
+```
+
+Results:
+
+- The first targeted run failed with expected red tests for stale PATH binary preference, decorated version output, `.agentloop/` risk classification, missing `Evidence saved:` output, stale report/replay/resume next actions, and missing replay summary.
+- After the patch, the same targeted suite passed: `6` test files and `34` tests.
+
+Patch scope:
+
+- `verify` prints stdout/stderr evidence paths and clearer failed-command next actions.
+- `.agentloop/` workflow artifacts are categorized as low-risk docs.
+- ProjScan and AgentLoopKit adapters prefer repo-local binaries and normalize version output.
+- Report, replay, and resume use context-aware post-proof next actions.
+- Replay includes a compact summary strip.
+- Vitest has an explicit `10s` test timeout because full-suite runs can spawn several real Node verification commands concurrently.
+- No new product features, cloud, login, billing, database, GitHub App, Pro gating, snapshot, JSON output, tag, or publish was added.
+
+Release-candidate verification:
+
+```bash
+npm version 0.2.1 --no-git-tag-version
+npm test -- tests/adapters/projscan.test.ts tests/adapters/agentloopkit.test.ts tests/core/risk.test.ts tests/commands/verify.test.ts tests/commands/evidence-output.test.ts tests/renderers/html-replay.test.ts
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+node dist/cli.js --version
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+npm run projscan
+npm run agentloopkit:doctor
+npx agentloopkit@latest task done .agentloop/tasks/2026-06-13-prepare-agentflight-v0-2-1-dogfood-friction-patch.md
+```
+
+Results:
+
+- Package metadata was updated locally to `0.2.1` without creating a tag or publishing.
+- Targeted regression suite passed: `6` test files and `34` tests.
+- `npm run verify` initially hit transient full-suite Vitest timeouts around tests that spawn real Node verification commands; focused tests passed. The test timeout is now explicit at `10s`.
+- Final `npm run verify` passed. It ran typecheck, lint, tests, and build. Vitest reported `16` test files and `58` tests passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.2.1`; package contents include `dist/commands/verify.js`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `node dist/cli.js --version` reported `0.2.1`.
+- ProjScan preflight verdict `proceed`; health `100/100`; required checks passed with `26` changed files detected.
+- AgentLoopKit verification status `pass`; report written to `.agentloop/reports/2026-06-13-17-52-verification-report.md`.
+- `npm run projscan` used ProjScan `4.3.1`; it exited successfully with health `100/100` and `needs_attention` because the worktree is intentionally dirty during patch prep.
+- `npm run agentloopkit:doctor` exited successfully with `warn` due to the expected dirty worktree and risk-file scan warnings.
+- The v0.2.1 AgentLoopKit task was marked `done`.
+
+### v0.3.0 Session Events And Snapshots
+
+Task discipline:
+
+```bash
+npx agentloopkit@latest create-task --title "Prepare AgentFlight v0.3.0 session events and snapshots" --type feature --problem "AgentFlight needs timeline events and snapshots so sessions feel like real AI coding flight recordings, not only final-state reports." --outcome "AgentFlight records session events, supports agentflight snapshot, and status/report/replay/resume use the timeline while preserving v0.1/v0.2 compatibility." --constraint "Local-first only; no telemetry, cloud, login, billing, GitHub App, database, paid gating, full diff capture, destructive commands, tag, or publish." --acceptance "agentflight snapshot records current git/risk/verification state as a session event." --acceptance "start, verify, report, replay, resume, and doctor append meaningful events." --acceptance "replay/report/status/resume show timeline or latest snapshot context." --acceptance "npm run verify and npm run format:check pass." --verify-command "npm run verify" --verify-command "npm run format:check"
+npx agentloopkit@latest task status .agentloop/tasks/2026-06-13-prepare-agentflight-v0-3-0-session-events-and-snapshots.md in-progress
+```
+
+ProjScan before-edit check:
+
+```bash
+npx projscan@latest preflight --mode before_edit --format json
+```
+
+Result:
+
+- ProjScan verdict `proceed`; health `100/100`; no blocking or cautionary signals.
+
+TDD checkpoint:
+
+```bash
+npm test -- tests/core/session.test.ts tests/commands/snapshot.test.ts tests/commands/verify.test.ts tests/commands/evidence-output.test.ts tests/renderers/markdown-report.test.ts tests/renderers/html-replay.test.ts tests/renderers/resume-prompt.test.ts
+```
+
+Results:
+
+- The first targeted run failed as expected because `snapshot`, session `events`, timeline rendering, and verification events did not exist yet.
+- After implementation, the targeted suite passed: `7` test files and `17` tests.
+
+Implementation summary:
+
+- Added `SessionEvent` and `SessionEventType` to the session model.
+- Added backward-compatible event helpers that treat missing `events` arrays as empty.
+- Added synthetic timeline fallback for older sessions where useful.
+- Added `agentflight snapshot --note "..."`.
+- Added event recording for start, verify, report, replay, resume, and doctor.
+- Added timeline sections to report and replay.
+- Added latest snapshot and verification state to status/resume surfaces.
+- Added docs for snapshots and timelines.
+- Updated local package metadata to `0.3.0` without tagging or publishing.
+
+Release-candidate verification:
+
+```bash
+npm version 0.3.0 --no-git-tag-version
+npm run verify
+npm run format:check
+node dist/cli.js --version
+node dist/cli.js --help
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+```
+
+Results:
+
+- `npm run verify`: passed. It ran typecheck, lint, tests, and build. Vitest reported `17` test files and `61` tests passed.
+- `npm run format:check`: passed after formatting.
+- `node dist/cli.js --version`: reported `0.3.0`.
+- `node dist/cli.js --help`: listed `snapshot [options]`.
+- `npm pack --dry-run`: passed for `agentflight@0.3.0`; package contents include `dist/commands/snapshot.js`.
+- `npm audit --audit-level=moderate`: found `0 vulnerabilities`.
+- ProjScan before-commit preflight verdict `proceed`; health `100/100`; required checks passed with `41` changed files detected.
+- AgentLoopKit verification status `pass`; report written to `.agentloop/reports/2026-06-13-18-20-verification-report.md`.
+- No release tag, npm publish, cloud, login, billing, database, GitHub App, or paid gating was added.
+
+### v0.3.0 Completion Audit
+
+Task discipline:
+
+```bash
+npx agentloopkit@latest create-task --title "Audit AgentFlight v0.3.0 release readiness" --type docs --problem "AgentFlight needs a strict v0.1.0 through v0.3.0 completion audit before any v0.3.0 release." --outcome "A documented completion audit confirms command behavior, compatibility, packaging, privacy, tests, and release readiness, with only real audit bugs fixed." --constraint "Do not tag, push, publish, or add product scope." --acceptance "docs/development/v0.3.0-completion-audit.md records results and fixes." --acceptance "npm run verify, format:check, package dry run, audit, ProjScan, and AgentLoopKit checks pass." --verify-command "npm run verify" --verify-command "npm run format:check"
+npx agentloopkit@latest task status .agentloop/tasks/2026-06-13-audit-agentflight-v0-3-0-release-readiness.md in-progress
+```
+
+Audit commands:
+
+```bash
+node dist/cli.js --help
+node dist/cli.js --version
+node dist/cli.js init
+node dist/cli.js start --task "Audit AgentFlight v0.3.0"
+node dist/cli.js verify -- npm run typecheck
+node dist/cli.js verify -- npm run lint
+node dist/cli.js verify -- npm test
+node dist/cli.js verify -- npm run build
+node dist/cli.js snapshot --note "Audit checkpoint after verification"
+node dist/cli.js status
+node dist/cli.js report
+node dist/cli.js replay
+node dist/cli.js resume
+node dist/cli.js doctor
+node dist/cli.js upgrade
+node dist/cli.js license
+node dist/cli.js login
+```
+
+Results:
+
+- Built CLI reported `0.3.0` and help listed `snapshot [options]`.
+- Command matrix completed without unexpected crashes.
+- Placeholder commands printed `AgentFlight Pro/Team is not available yet.`
+- Audit session `af-20260613-162443-audit-agentflight-v0-3-0` recorded four passed verification runs, evidence files, a snapshot, report, replay, resume, and doctor event.
+- Report, replay, status, and resume all reflected the snapshot and timeline data.
+- Simulated v0.1 and v0.2 sessions without `events` completed `status`, `report`, `replay`, and `resume` without crashing.
+- Failed verification was tested in a temp session and recorded as `failed` with exit code `7`, stderr evidence, and `verification_failed`.
+- Packaging audit confirmed `dist/commands/snapshot.js` and all existing command files are present, and runtime `.agentflight` data is not tracked or packed.
+
+Bug found and fixed:
+
+- Commands requiring an active session printed a raw `ENOENT` path when no current session existed.
+- `readCurrentSession` now throws `No active AgentFlight session. Run agentflight start --task "Describe the task" first.`
+- Added regression coverage in `tests/commands/workflow.test.ts`.
+
+Audit report:
+
+- Created `docs/development/v0.3.0-completion-audit.md`.
+
+Final audit verification:
+
+```bash
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+npx agentloopkit@latest task done .agentloop/tasks/2026-06-13-audit-agentflight-v0-3-0-release-readiness.md
+```
+
+Results:
+
+- `npm run verify`: passed. Vitest reported `17` test files and `62` tests.
+- `npm run format:check`: passed after formatting generated AgentLoop task docs.
+- `npm pack --dry-run`: passed for `agentflight@0.3.0`.
+- `npm audit --audit-level=moderate`: found `0 vulnerabilities`.
+- ProjScan preflight verdict `proceed`; health `100/100`; required checks passed.
+- AgentLoopKit verification status `pass`; report written to `.agentloop/reports/2026-06-13-18-32-verification-report.md`.
+- Audit task was marked `done`.

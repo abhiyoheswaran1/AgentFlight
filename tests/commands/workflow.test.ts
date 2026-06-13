@@ -7,6 +7,7 @@ import { runInitCommand } from "../../src/commands/init.js";
 import { runReplayCommand } from "../../src/commands/replay.js";
 import { runReportCommand } from "../../src/commands/report.js";
 import { runResumeCommand } from "../../src/commands/resume.js";
+import { runSnapshotCommand } from "../../src/commands/snapshot.js";
 import { runStartCommand } from "../../src/commands/start.js";
 import { runStatusCommand } from "../../src/commands/status.js";
 
@@ -98,5 +99,20 @@ describe("AgentFlight command workflow", () => {
     });
     expect(doctor.output).toContain("AgentFlight Doctor");
     expect(doctor.output).toContain("OK");
+  });
+
+  it("uses a helpful error when a command requires an active session", async () => {
+    const repoRoot = await createTempRepo();
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    await expect(runStatusCommand({ repoRoot })).rejects.toThrow(
+      "No active AgentFlight session. Run agentflight start --task"
+    );
+    await expect(runSnapshotCommand({ repoRoot })).rejects.toThrow(
+      "No active AgentFlight session. Run agentflight start --task"
+    );
   });
 });

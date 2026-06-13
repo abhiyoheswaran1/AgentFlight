@@ -2,6 +2,62 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.3.0] - 2026-06-13
+
+AgentFlight now records session events and snapshots so reports and replays show how a coding session evolved.
+
+### Added
+
+- Added `agentflight snapshot --note "..."` to record a local checkpoint for the active session.
+- Added session-level `events` with backward compatibility for older sessions.
+- Added event recording for session start, verification attempts, snapshots, report generation, replay generation, resume prompt generation, and doctor runs.
+- Added timeline sections to Markdown reports and HTML replays.
+- Added latest snapshot context to status and resume prompts.
+- Added changed-file groups to replay output.
+- Added tests for session events, snapshot creation, missing active sessions, timeline rendering, older session compatibility, and verification events.
+
+### Changed
+
+- Replays now feel more like flight recorder timelines instead of final-state summaries.
+- Reports now include a concise event timeline before changed files and proof evidence.
+- Resume prompts now include latest snapshot notes and current verification state.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.3.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- ProjScan preflight passed with health `100/100`.
+- AgentLoopKit verification passed.
+
+## [0.2.1] - 2026-06-13
+
+Patch release candidate focused on friction found while dogfooding the v0.2.0 core workflow.
+
+### Changed
+
+- `agentflight verify` now prints the stdout and stderr evidence paths immediately after each recorded run.
+- Failed verification output and downstream next actions now include the exact command to rerun.
+- `agentflight report`, `agentflight replay`, and `agentflight resume` now avoid stale "generate a report" next actions once proof is ready.
+- HTML replays now include a compact summary strip for risk, changed files, proof counts, and review readiness.
+- AgentLoopKit workflow files under `.agentloop/` are treated as low-risk dogfooding artifacts instead of unknown code changes.
+
+### Fixed
+
+- ProjScan and AgentLoopKit adapters now prefer repo-local `node_modules/.bin` binaries before PATH-global commands, preventing stale global versions from appearing in reports.
+- Tool adapter version output is normalized when CLIs include decorated version text.
+
+### Verification
+
+- Targeted v0.2.1 regression tests passed.
+- `npm run verify` passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.2.1`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- ProjScan preflight passed with health `100/100`.
+- AgentLoopKit verification passed.
+
 ## [0.2.0] - 2026-06-13
 
 AgentFlight now captures real verification evidence and uses it across status, report, replay, and resume.

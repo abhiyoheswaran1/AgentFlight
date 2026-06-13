@@ -1,9 +1,15 @@
 import { listChangedFiles } from "../core/git.js";
-import { readJsonFile } from "../core/fs-safe.js";
+import { pathExists, readJsonFile } from "../core/fs-safe.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
+import { getLatestSessionEvent } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
-import type { AgentFlightSession, RiskCategorySummary, VerificationRun } from "../types/index.js";
+import type {
+  AgentFlightSession,
+  RiskCategorySummary,
+  SessionEvent,
+  VerificationRun
+} from "../types/index.js";
 
 export interface StatusCommandOptions {
   repoRoot: string;
@@ -26,6 +32,7 @@ export async function runStatusCommand(
     changedFilesCount: changedFiles.length,
     riskLevel: risk.level
   });
+  const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
 
   return {
     output: `AgentFlight status
@@ -52,6 +59,9 @@ ${formatVerificationRuns(verification.runs)}
 Proof missing:
 ${verification.gaps.map((gap) => `- ${gap}`).join("\n")}
 
+Latest snapshot:
+${formatLatestSnapshot(latestSnapshot)}
+
 Review readiness: ${verification.readiness}
 
 Next action:
@@ -60,8 +70,36 @@ ${verification.nextAction}
   };
 }
 
+function formatLatestSnapshot(event: SessionEvent | null): string {
+  if (!event) return "- No snapshots recorded.";
+
+  const risk = readMetadataObject(event, "risk");
+  const changedFiles = typeof risk.changedFiles === "number" ? risk.changedFiles : "unknown";
+  const riskLevel = typeof risk.level === "string" ? risk.level : "unknown";
+  const note = event.message ? `\n- Note: ${event.message}` : "";
+
+  return `- ${event.timestamp}${note}
+- Risk: ${riskLevel}
+- Changed files: ${changedFiles}`;
+}
+
+function readMetadataObject(event: SessionEvent, key: string): Record<string, unknown> {
+  const value = event.metadata?.[key];
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
 export async function readCurrentSession(repoRoot: string): Promise<AgentFlightSession> {
-  return readJsonFile<AgentFlightSession>(resolveAgentFlightPaths(repoRoot).currentSession);
+  const currentSessionPath = resolveAgentFlightPaths(repoRoot).currentSession;
+
+  if (!(await pathExists(currentSessionPath))) {
+    throw new Error(
+      'No active AgentFlight session. Run agentflight start --task "Describe the task" first.'
+    );
+  }
+
+  return readJsonFile<AgentFlightSession>(currentSessionPath);
 }
 
 function formatDuration(startedAt: string, now: Date): string {

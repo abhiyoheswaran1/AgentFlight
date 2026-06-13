@@ -4,6 +4,8 @@ import { resolveAgentFlightPaths } from "./paths.js";
 import type {
   AgentFlightSession,
   GitInfo,
+  SessionEvent,
+  SessionEventType,
   ToolAdapterResult,
   VerificationRun
 } from "../types/index.js";
@@ -33,6 +35,14 @@ export interface StartSessionResult {
   handoffPath: string;
 }
 
+export interface SessionEventInput {
+  type: SessionEventType;
+  timestamp?: Date | string | undefined;
+  title: string;
+  message?: string | undefined;
+  metadata?: Record<string, unknown> | undefined;
+}
+
 const unavailableTool: ToolAdapterResult = {
   available: false,
   warnings: ["Not inspected for this session."]
@@ -51,6 +61,20 @@ export function buildSessionRecord(options: BuildSessionRecordOptions): AgentFli
     packageManager: options.packageManager,
     verificationCommands: options.verificationCommands ?? [],
     verificationRuns: [],
+    events: [
+      buildSessionEvent(
+        {
+          type: "session_started",
+          timestamp: now,
+          title: "Session started",
+          metadata: {
+            git: options.git,
+            packageManager: options.packageManager
+          }
+        },
+        1
+      )
+    ],
     tools: options.tools ?? {
       projscan: unavailableTool,
       agentloopkit: unavailableTool
@@ -85,11 +109,100 @@ export function getVerificationRuns(session: AgentFlightSession): VerificationRu
   return session.verificationRuns ?? [];
 }
 
+export function getSessionEvents(session: AgentFlightSession): SessionEvent[] {
+  return session.events ?? [];
+}
+
+export function getSessionTimelineEvents(session: AgentFlightSession): SessionEvent[] {
+  const events = getSessionEvents(session);
+  if (events.length > 0) return events;
+
+  const synthesizedEvents = [
+    buildSessionEvent(
+      {
+        type: "session_started",
+        timestamp: session.startedAt,
+        title: "Session started"
+      },
+      1
+    )
+  ];
+
+  for (const run of getVerificationRuns(session)) {
+    synthesizedEvents.push(
+      buildSessionEvent(
+        {
+          type: run.status === "passed" ? "verification_passed" : "verification_failed",
+          timestamp: run.finishedAt,
+          title: run.status === "passed" ? "Verification passed" : "Verification failed",
+          metadata: {
+            command: run.command,
+            exitCode: run.exitCode,
+            stdoutPath: run.stdoutPath,
+            stderrPath: run.stderrPath
+          }
+        },
+        synthesizedEvents.length + 1
+      )
+    );
+  }
+
+  return synthesizedEvents;
+}
+
+export function getLatestSessionEvent(
+  session: AgentFlightSession,
+  type: SessionEventType
+): SessionEvent | null {
+  return (
+    getSessionEvents(session)
+      .filter((event) => event.type === type)
+      .at(-1) ?? null
+  );
+}
+
+export function buildSessionEvent(input: SessionEventInput, ordinal: number): SessionEvent {
+  const timestamp = normalizeEventTimestamp(input.timestamp);
+  const event: SessionEvent = {
+    id: `evt-${formatDateForId(new Date(timestamp))}-${slugify(input.type)}-${String(ordinal).padStart(3, "0")}`,
+    type: input.type,
+    timestamp,
+    title: input.title
+  };
+
+  if (input.message !== undefined) event.message = input.message;
+  if (input.metadata !== undefined) event.metadata = input.metadata;
+
+  return event;
+}
+
+export function addSessionEvent(
+  session: AgentFlightSession,
+  input: SessionEventInput
+): AgentFlightSession {
+  const events = getSessionEvents(session);
+  return {
+    ...session,
+    events: [...events, buildSessionEvent(input, events.length + 1)]
+  };
+}
+
 export async function saveSession(repoRoot: string, session: AgentFlightSession): Promise<void> {
   const paths = resolveAgentFlightPaths(repoRoot);
 
   await writeJsonFileSafe(`${paths.sessions}/${session.id}.json`, session, { overwrite: true });
   await writeJsonFileSafe(paths.currentSession, session, { overwrite: true });
+}
+
+export async function appendSessionEvent(
+  repoRoot: string,
+  session: AgentFlightSession,
+  input: SessionEventInput
+): Promise<AgentFlightSession> {
+  const updatedSession = addSessionEvent(session, input);
+
+  await saveSession(repoRoot, updatedSession);
+  return updatedSession;
 }
 
 export async function appendVerificationRun(
@@ -123,6 +236,12 @@ export function slugify(value: string): string {
 function formatDateForId(now: Date): string {
   const iso = now.toISOString();
   return `${iso.slice(0, 10).replaceAll("-", "")}-${iso.slice(11, 19).replaceAll(":", "")}`;
+}
+
+function normalizeEventTimestamp(timestamp: Date | string | undefined): string {
+  if (timestamp instanceof Date) return timestamp.toISOString();
+  if (typeof timestamp === "string") return timestamp;
+  return new Date().toISOString();
 }
 
 function renderInitialHandoff(session: AgentFlightSession): string {

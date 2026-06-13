@@ -4,7 +4,7 @@ AgentFlight uses local verification only. Do not claim completion unless the com
 
 ## Capturing AgentFlight Evidence
 
-Use `agentflight verify` to record proof in the current session.
+Use `agentflight verify` to record proof in the current session, including the command result and local output files.
 
 Run one command explicitly:
 
@@ -39,6 +39,16 @@ Each verification run records:
 - stderr path
 
 Raw command output is stored locally under `.agentflight/evidence/`. It is ignored by git by default.
+
+`agentflight verify` prints an `Evidence saved:` block for each run so the local stdout and stderr files are visible immediately. If a command fails, AgentFlight records the failure, prints the evidence paths, and suggests rerunning the exact command after fixing the issue.
+
+Verification commands also write session events:
+
+- `verification_started`
+- `verification_passed`
+- `verification_failed`
+
+These events appear in reports and replays next to snapshots and generated artifacts.
 
 ## Primary Commands
 

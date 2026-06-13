@@ -2,6 +2,7 @@ import { writeTextFileSafe } from "../core/fs-safe.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
+import { addSessionEvent, getLatestSessionEvent, saveSession } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderResumePrompt } from "../renderers/resume-prompt.js";
 import { readCurrentSession } from "./status.js";
@@ -9,6 +10,7 @@ import { readCurrentSession } from "./status.js";
 export interface ResumeCommandOptions {
   repoRoot: string;
   changedFiles?: string[] | undefined;
+  now?: Date | undefined;
 }
 
 export interface ResumeCommandResult {
@@ -26,6 +28,15 @@ export async function runResumeCommand(
     changedFilesCount: changedFiles.length,
     riskLevel: risk.level
   });
+  const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
+  const updatedSession = addSessionEvent(session, {
+    type: "resume_generated",
+    timestamp: options.now ?? new Date(),
+    title: "Resume prompt generated",
+    metadata: {
+      path: ".agentflight/current/resume-prompt.md"
+    }
+  });
   const prompt = renderResumePrompt({
     task: session.task.title,
     sessionId: session.id,
@@ -34,14 +45,24 @@ export async function runResumeCommand(
     riskLevel: risk.level,
     riskReasons: risk.reasons,
     verificationGaps: verification.gaps,
-    nextAction: verification.nextAction
+    latestSnapshotNote: latestSnapshot?.message,
+    verificationState: `${verification.passed} passed, ${verification.failed} failed`,
+    nextAction: buildResumeNextAction(verification.readiness, verification.nextAction)
   });
   const resumePath = resolveAgentFlightPaths(options.repoRoot).currentResumePrompt;
 
   await writeTextFileSafe(resumePath, prompt, { overwrite: true });
+  await saveSession(options.repoRoot, updatedSession);
 
   return {
     output: prompt,
     resumePath
   };
+}
+
+function buildResumeNextAction(readiness: string, fallback: string): string {
+  if (readiness === "Ready for review") {
+    return "Use the generated report or replay if available, then hand off for review or continue only scoped follow-up work.";
+  }
+  return fallback;
 }

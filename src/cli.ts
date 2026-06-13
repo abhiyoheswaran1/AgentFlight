@@ -9,6 +9,7 @@ import { runInitCommand } from "./commands/init.js";
 import { runReplayCommand } from "./commands/replay.js";
 import { runReportCommand } from "./commands/report.js";
 import { runResumeCommand } from "./commands/resume.js";
+import { runSnapshotCommand } from "./commands/snapshot.js";
 import { runStartCommand } from "./commands/start.js";
 import { runStatusCommand } from "./commands/status.js";
 import { runVerifyCommand } from "./commands/verify.js";
@@ -61,6 +62,19 @@ export function createCli(): Command {
         runVerifyCommand({
           repoRoot: await getRepositoryRoot(process.cwd()),
           commandArgs
+        })
+      );
+    });
+
+  program
+    .command("snapshot")
+    .description("Record a timeline snapshot for the current session.")
+    .option("--note <note>", "short snapshot note")
+    .action(async (options: { note?: string }) => {
+      await printResult(
+        runSnapshotCommand({
+          repoRoot: await getRepositoryRoot(process.cwd()),
+          note: options.note
         })
       );
     });

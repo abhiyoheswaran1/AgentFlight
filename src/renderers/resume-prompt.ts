@@ -8,6 +8,8 @@ export interface ResumePromptInput {
   riskLevel: RiskLevel;
   riskReasons: string[];
   verificationGaps: string[];
+  latestSnapshotNote?: string | undefined;
+  verificationState?: string | undefined;
   nextAction: string;
 }
 
@@ -27,6 +29,12 @@ ${renderList(input.changedFiles, "No changed files detected.")}
 
 ## Risks
 ${renderList(input.riskReasons, "No specific risks detected yet.")}
+
+## Latest Snapshot
+${input.latestSnapshotNote ?? "No snapshot recorded."}
+
+## Verification State
+${input.verificationState ?? "No verification state recorded."}
 
 ## Verification Gaps
 ${renderList(input.verificationGaps, "No verification gaps recorded.")}

@@ -28,7 +28,7 @@ AgentFlight creates a local `.agentflight/` directory in your repo:
 - `reports/` stores Markdown proof reports and HTML replays.
 - `evidence/` stores stdout and stderr from captured verification runs.
 
-Reports include filenames and summaries by default, not full source diffs. AgentFlight does not collect telemetry and does not upload source code.
+Sessions also store an `events` timeline with meaningful moments such as session start, verification attempts, snapshots, and generated artifacts. Reports include filenames and summaries by default, not full source diffs. AgentFlight does not collect telemetry and does not upload source code.
 
 ## Quick Start
 
@@ -39,6 +39,7 @@ npx agentflight init
 npx agentflight start --task "Add example feature"
 npx agentflight status
 npx agentflight verify -- npm test
+npx agentflight snapshot --note "Tests passing locally"
 npx agentflight report
 npx agentflight replay
 npx agentflight resume
@@ -59,6 +60,7 @@ npm run agentflight -- start --task "Add example feature"
 - `agentflight status` summarizes changed files, risk, verification status, and next action.
 - `agentflight verify -- <command>` runs a proof command and records stdout/stderr evidence.
 - `agentflight verify` runs commands from `.agentflight/config.json`.
+- `agentflight snapshot --note "..."` records current git, risk, and verification state as a timeline event.
 - `agentflight report` generates a Markdown proof report.
 - `agentflight replay` generates a local self-contained HTML replay.
 - `agentflight resume` prints and saves a Codex/Claude-ready continuation prompt.
@@ -77,12 +79,13 @@ agentflight start --task "Add password reset flow"
 agentflight status
 agentflight verify -- npm run typecheck
 agentflight verify -- npm test
+agentflight snapshot --note "Implementation and proof complete"
 agentflight report
 agentflight replay
 agentflight resume
 ```
 
-Use `agentflight verify -- <command>` when you want AgentFlight to capture proof. The command records exit code, timing, stdout path, and stderr path in the current session. Use the generated report for review and the resume prompt when handing the work to another agent or human.
+Use `agentflight verify -- <command>` when you want AgentFlight to capture proof. The command records exit code, timing, stdout path, and stderr path in the current session, then prints the evidence paths. Use `agentflight snapshot --note "..."` at meaningful milestones so replay and report artifacts show the session timeline. Use the generated report for review and the resume prompt when handing the work to another agent or human.
 
 ## Powered By ProjScan And AgentLoopKit
 
@@ -114,7 +117,7 @@ Runtime session data is ignored by git by default:
 
 ## Current Status
 
-AgentFlight current release is `0.2.0`, centered on real verification evidence capture.
+AgentFlight current package version is `0.3.0`, centered on local session timelines, snapshots, and verification evidence.
 
 Implemented:
 
@@ -127,6 +130,7 @@ Implemented:
 - Resume prompt generation
 - Doctor checks
 - Verification evidence capture with `agentflight verify`
+- Session events and snapshots with `agentflight snapshot`
 - Defensive ProjScan and AgentLoopKit adapters
 - Vitest coverage for core behavior, renderers, adapters, and command workflow
 
