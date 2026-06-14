@@ -1,10 +1,10 @@
 import type {
+  ReviewIntelligence,
   RiskAnalysis,
   SessionEvent,
   ToolAdapterResult,
   VerificationRun
 } from "../types/index.js";
-import type { ReviewReadiness } from "../core/verification.js";
 
 export interface MarkdownReportInput {
   task: string;
@@ -16,8 +16,9 @@ export interface MarkdownReportInput {
   verificationCommands: string[];
   verificationEvidence: VerificationRun[];
   verificationGaps?: string[] | undefined;
-  recommendation?: ReviewReadiness | undefined;
+  recommendation?: string | undefined;
   nextAction?: string | undefined;
+  review?: ReviewIntelligence | undefined;
   tooling: {
     projscan: ToolAdapterResult;
     agentloopkit: ToolAdapterResult;
@@ -48,8 +49,14 @@ ${renderList(input.risk.reasons)}
 ## Verification Evidence
 ${renderVerification(input)}
 
-## Review Focus
-${renderReviewFocus(input.risk)}
+## Review First
+${renderReviewFirst(input)}
+
+## Proof Gaps
+${renderProofGaps(input)}
+
+## Review Readiness
+${renderReviewReadiness(input)}
 
 ## Recommendation
 ${renderRecommendation(input)}
@@ -103,12 +110,45 @@ function renderTimeline(events: SessionEvent[]): string {
     .join("\n");
 }
 
-function renderReviewFocus(risk: RiskAnalysis): string {
-  return risk.categories.length
-    ? risk.categories
+function renderReviewFirst(input: MarkdownReportInput): string {
+  const focus = input.review?.focus;
+  if (focus && focus.length > 0) {
+    return focus
+      .map(
+        (item) =>
+          `${item.rank}. ${item.file}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${item.suggestedCommand}` : ""}`
+      )
+      .join("\n");
+  }
+
+  return input.risk.categories.length
+    ? input.risk.categories
         .map((summary) => `- ${summary.category}: ${summary.files.join(", ")}`)
         .join("\n")
     : "- Confirm the session has meaningful changes before review.";
+}
+
+function renderProofGaps(input: MarkdownReportInput): string {
+  if (input.review) {
+    return input.review.proofGaps.length
+      ? input.review.proofGaps
+          .map(
+            (gap) =>
+              `- ${gap.severity}: ${gap.message}${gap.suggestedCommand ? `\n  - Suggested proof: agentflight verify -- ${gap.suggestedCommand}` : ""}`
+          )
+          .join("\n")
+      : "- none";
+  }
+
+  return input.verificationGaps?.length ? renderList(input.verificationGaps) : "- none";
+}
+
+function renderReviewReadiness(input: MarkdownReportInput): string {
+  if (!input.review) return input.recommendation ?? "Unknown";
+  return `${input.review.readiness.label}
+
+Reason: ${input.review.readiness.reason}
+Next action: ${input.review.readiness.nextAction}`;
 }
 
 function renderRecommendation(input: MarkdownReportInput): string {

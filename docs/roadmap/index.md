@@ -13,12 +13,17 @@
 - Defensive ProjScan and AgentLoopKit adapters.
 - Verification evidence capture.
 - Session events and snapshots.
+- Review focus ranking.
+- Proof gap detection.
+- Review readiness recommendations.
+- Config-driven generated/internal changed-file filters.
 
 ## Future Free/Open-Core
 
 - Basic local session history.
 - Structured `--json` output.
 - Richer configurable verification command profiles.
+- Deeper ProjScan-enriched review hints once stable structured output exists.
 - More precise git diff stats without including full code by default.
 - Timeline filtering and richer local replay navigation.
 

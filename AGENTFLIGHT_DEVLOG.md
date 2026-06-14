@@ -860,3 +860,167 @@ npm audit --audit-level=moderate
 npx projscan@latest preflight --mode before_commit --format json
 npx agentloopkit@latest verify
 ```
+
+### v0.4.0 Review Intelligence Implementation
+
+Timestamp: `2026-06-14T12:47:56Z`
+
+Goal:
+
+- Implement the planned v0.4.0 Review Intelligence scope without version bump, commit, tag, push, or publish.
+- Keep AgentFlight local-first and deterministic.
+- Do not implement PR comments, JSON/CI, ProjScan-enriched ranking, cloud, login, billing, GitHub App, or Pro/Team gating.
+
+Implemented locally:
+
+- Added `src/core/review-intelligence.ts` for deterministic review focus ranking, proof gap detection, and readiness decisions.
+- Added review intelligence types in `src/types/index.ts`.
+- Added config-driven changed-file filtering through `changedFileFilters.ignore`.
+- Kept AgentFlight runtime filters always on while leaving `.agentflight/config.json` visible.
+- Integrated review intelligence into:
+  - `agentflight status`
+  - `agentflight report`
+  - `agentflight replay`
+  - `agentflight resume`
+  - `agentflight snapshot` metadata summary
+- Added `docs/development/changed-file-filters.md`.
+- Updated README, CHANGELOG, roadmap, and verification docs.
+
+Red/green evidence:
+
+```bash
+npm test -- tests/core/review-intelligence.test.ts tests/core/changed-files.test.ts
+```
+
+Initial result:
+
+- Failed because `src/core/review-intelligence.ts` and `filterChangedFiles` did not exist.
+
+Green result after implementation:
+
+- Passed: 2 files / 11 tests.
+
+Additional focused verification:
+
+```bash
+npm test -- tests/core/config.test.ts tests/core/review-intelligence.test.ts tests/core/changed-files.test.ts
+npm test -- tests/commands/evidence-output.test.ts tests/renderers/markdown-report.test.ts tests/renderers/html-replay.test.ts tests/renderers/resume-prompt.test.ts
+npm test
+npm run typecheck
+```
+
+Results:
+
+- Config/review/filter focused tests passed: 3 files / 14 tests.
+- Command and renderer integration tests passed: 4 files / 11 tests.
+- Full Vitest suite passed: 19 files / 79 tests.
+- TypeScript typecheck passed.
+
+Final v0.4.0 verification:
+
+```bash
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+```
+
+Results:
+
+- `npm run verify` passed: typecheck, lint, 19 test files / 79 tests, build.
+- `npm run format:check` passed after formatting edited tests/types.
+- `npm pack --dry-run` passed and included:
+  - `dist/core/review-intelligence.js`
+  - `docs/development/changed-file-filters.md`
+  - `docs/roadmap/v0.4.0-review-intelligence-plan.md`
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx agentloopkit@latest verify` passed.
+- `npx projscan@latest doctor --format json` passed with health `100/100` after removing a false-positive string pattern from `src/core/review-intelligence.ts`.
+- `npx projscan@latest preflight --mode before_commit --format json` completed with verdict `caution`, not `proceed`.
+  - Health: pass, `100/100`.
+  - Supply chain: pass.
+  - Review: warning for scale/complexity, maximum changed-file risk score `125.3`.
+  - Interpretation: no health, taint, dataflow, plugin, or supply-chain blocker remains, but the v0.4.0 implementation should receive manual audit/release sign-off because it touches command output, renderers, config, and review logic.
+
+### v0.4.0 Completion Audit
+
+Timestamp: `2026-06-14T14:05:00Z`
+
+Goal:
+
+- Audit the unreleased v0.4.0 Review Intelligence implementation before any release work.
+- Do not bump version, commit, push, tag, or publish.
+- Explicitly handle the ProjScan caution instead of treating it as a normal proceed.
+
+Audit fixes made:
+
+- Added package/config proof-gap regression coverage.
+- Added command-path backward compatibility coverage for v0.1/v0.2/v0.3 session shapes.
+- Hardened malformed `changedFileFilters.ignore` handling so non-array values do not crash changed-file analysis.
+- Corrected the historical v0.4.0 plan to document the implemented empty default `changedFileFilters.ignore` list.
+- Replaced `docs/assets/agentflight-replay-timeline.png` with a fresh screenshot generated from the current replay renderer. The screenshot now shows review focus, proof gaps, readiness, and timeline in the calmer developer-review UI.
+- Created `docs/development/v0.4.0-completion-audit.md`.
+
+Commands run during audit:
+
+```bash
+npm test -- tests/core/review-intelligence.test.ts tests/core/changed-files.test.ts
+npm run build
+node dist/cli.js --version
+node dist/cli.js --help
+node dist/cli.js init
+node dist/cli.js start --task "Audit AgentFlight v0.4.0 review intelligence"
+node dist/cli.js verify -- npm run typecheck
+node dist/cli.js verify -- npm run lint
+node dist/cli.js verify -- npm test
+node dist/cli.js verify -- npm run build
+node dist/cli.js snapshot --note "Audit checkpoint after review intelligence verification"
+node dist/cli.js status
+node dist/cli.js report
+node dist/cli.js replay
+node dist/cli.js resume
+node dist/cli.js doctor
+npx projscan@latest preflight --mode before_commit --format json
+npx playwright screenshot --viewport-size "1440,1350" --wait-for-selector "text=Timeline" <local-replay-demo-url> docs/assets/agentflight-replay-timeline.png
+npm test -- tests/commands/evidence-output.test.ts tests/core/review-intelligence.test.ts tests/core/changed-files.test.ts
+```
+
+Observed results:
+
+- Built CLI reported `0.3.3`, expected because no v0.4.0 version bump has been made.
+- Command matrix completed successfully.
+- AgentFlight captured four passed verification runs: typecheck, lint, test, and build.
+- Latest audit snapshot recorded `27` filtered changed files, `medium` risk, and `4 passed, 0 failed`.
+- `status`, `report`, `replay`, and `resume` all surfaced review focus, proof gaps, readiness, and next action.
+- Targeted tests passed: 3 files / 22 tests.
+- ProjScan preflight still returned `caution` due scale/complexity, with health `100/100`, supply chain pass, and no concrete blockers.
+
+Final audit verification:
+
+```bash
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx agentloopkit@latest verify
+npx projscan@latest doctor --format json
+npx projscan@latest preflight --mode before_commit --format json
+```
+
+Results:
+
+- `npm run verify` passed: typecheck, lint, 19 test files / 82 tests, build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.3.3` and included `dist/core/review-intelligence.js`, `dist/core/changed-files.js`, `docs/development/changed-file-filters.md`, `docs/roadmap/v0.4.0-review-intelligence-plan.md`, and `docs/assets/agentflight-replay-timeline.png`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx agentloopkit@latest verify` passed.
+- `npx projscan@latest doctor --format json` passed with health `100/100`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned `caution`, not `proceed`.
+  - Changed files: `30`.
+  - Review signal: maximum changed-file risk score `125.3`.
+  - Health: pass.
+  - Supply chain: pass.
+  - Concrete blockers: none reported.
+  - Manual sign-off recommendation: acceptable for v0.4.0 release prep after human review of review-intelligence logic, changed-file filtering, and renderer/command consistency.

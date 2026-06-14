@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
-import { createDefaultConfig, initAgentFlight } from "../../src/core/config.js";
+import { createDefaultConfig, initAgentFlight, loadConfig } from "../../src/core/config.js";
 
 describe("AgentFlight config", () => {
   it("creates the default local-first config shape", () => {
@@ -20,7 +20,39 @@ describe("AgentFlight config", () => {
         agentloopkit: { enabled: true, mode: "npx" }
       },
       verification: { commands: [] },
+      changedFileFilters: { ignore: [] },
       privacy: { localOnly: true, telemetry: false }
+    });
+  });
+
+  it("loads older configs without changed-file filter settings", async () => {
+    const repoRoot = await createTempRepo();
+    const root = join(repoRoot, ".agentflight");
+    const configPath = join(root, "config.json");
+    await mkdir(root, { recursive: true });
+    await writeFile(
+      configPath,
+      JSON.stringify(
+        {
+          version: 1,
+          projectName: "old",
+          createdAt: "2026-06-13T12:00:00.000Z",
+          engines: {
+            projscan: { enabled: true, mode: "npx" },
+            agentloopkit: { enabled: true, mode: "npx" }
+          },
+          verification: { commands: [] },
+          privacy: { localOnly: true, telemetry: false }
+        },
+        null,
+        2
+      )
+    );
+
+    await expect(loadConfig(repoRoot)).resolves.toMatchObject({
+      version: 1,
+      projectName: "old",
+      verification: { commands: [] }
     });
   });
 

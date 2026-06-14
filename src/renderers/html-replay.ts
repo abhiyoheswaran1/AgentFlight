@@ -1,4 +1,11 @@
-import type { RiskCategorySummary, SessionEvent, VerificationRun } from "../types/index.js";
+import type {
+  ProofGap,
+  ReviewFocusItem,
+  ReviewIntelligence,
+  RiskCategorySummary,
+  SessionEvent,
+  VerificationRun
+} from "../types/index.js";
 
 export type ReplayTimelineItem = Pick<
   SessionEvent,
@@ -15,6 +22,7 @@ export interface HtmlReplayInput {
   riskBadges: string[];
   verificationEvidence: VerificationRun[];
   reviewReadiness?: string | undefined;
+  review?: ReviewIntelligence | undefined;
   recommendation: string;
 }
 
@@ -132,6 +140,8 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
     ${renderSummary(input)}
 
+    ${renderReview(input.review)}
+
     <section class="section">
       <div class="section-header">
         <h2>Timeline</h2>
@@ -208,6 +218,47 @@ function renderTimeline(items: ReplayTimelineItem[]): string {
       </div>`
     )
     .join("")}</div>`;
+}
+
+function renderReview(review: ReviewIntelligence | undefined): string {
+  if (!review) return "";
+  return `<section class="section">
+      <div class="section-header">
+        <h2>Review Focus</h2>
+        <div class="meta">${escapeHtml(String(review.focus.length))} files</div>
+      </div>
+      ${renderReviewFocus(review.focus)}
+      <div class="section-header" style="margin-top: 22px;">
+        <h2>Proof Gaps</h2>
+        <div class="meta">${escapeHtml(String(review.proofGaps.length))} gaps</div>
+      </div>
+      ${renderProofGaps(review.proofGaps)}
+      <div class="recommendation" style="margin-top: 16px;">
+        <strong>${escapeHtml(review.readiness.label)}</strong><br>
+        ${escapeHtml(review.readiness.reason)}<br>
+        Next: ${escapeHtml(review.readiness.nextAction)}
+      </div>
+    </section>`;
+}
+
+function renderReviewFocus(items: ReviewFocusItem[]): string {
+  if (items.length === 0) return "<p>No changed files to review.</p>";
+  return `<div class="file-groups">${items
+    .map(
+      (item) =>
+        `<div class="file-group"><div class="file-category">#${escapeHtml(String(item.rank))} ${escapeHtml(item.category)}</div><div><code>${escapeHtml(item.file)}</code><div class="meta">${escapeHtml(item.reasons.join("; "))}</div><div class="meta">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="meta">Suggested proof: <code>${escapeHtml(item.suggestedCommand)}</code></div>` : ""}</div></div>`
+    )
+    .join("")}</div>`;
+}
+
+function renderProofGaps(gaps: ProofGap[]): string {
+  if (gaps.length === 0) return "<p>No proof gaps detected.</p>";
+  return `<ul>${gaps
+    .map(
+      (gap) =>
+        `<li><strong>${escapeHtml(gap.severity)}</strong>: ${escapeHtml(gap.message)}${gap.suggestedCommand ? ` <code>agentflight verify -- ${escapeHtml(gap.suggestedCommand)}</code>` : ""}</li>`
+    )
+    .join("")}</ul>`;
 }
 
 function renderFileGroups(groups: RiskCategorySummary[]): string {

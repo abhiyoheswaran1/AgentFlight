@@ -1,8 +1,10 @@
 import { writeTextFileSafe } from "../core/fs-safe.js";
-import { filterAgentFlightRuntimePaths } from "../core/changed-files.js";
+import { filterChangedFiles } from "../core/changed-files.js";
+import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
+import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { addSessionEvent, getSessionTimelineEvents, saveSession } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderHtmlReplay } from "../renderers/html-replay.js";
@@ -23,14 +25,17 @@ export async function runReplayCommand(
   options: ReplayCommandOptions
 ): Promise<ReplayCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
-  const changedFiles = filterAgentFlightRuntimePaths(
-    options.changedFiles ?? (await listChangedFiles(options.repoRoot))
+  const config = await loadConfig(options.repoRoot);
+  const changedFiles = filterChangedFiles(
+    options.changedFiles ?? (await listChangedFiles(options.repoRoot)),
+    { ignore: config?.changedFileFilters?.ignore }
   );
   const risk = analyzeRisk(changedFiles);
   const verification = buildVerificationSummary(session, {
     changedFilesCount: changedFiles.length,
     riskLevel: risk.level
   });
+  const review = buildReviewIntelligence({ changedFiles, risk, session });
   const replayPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}-replay.html`;
   const updatedSession = addSessionEvent(session, {
     type: "replay_generated",
@@ -49,8 +54,9 @@ export async function runReplayCommand(
     changedFileGroups: risk.categories,
     riskBadges: [risk.level, ...risk.categories.map((summary) => summary.category)],
     verificationEvidence: verification.runs,
-    reviewReadiness: verification.readiness,
-    recommendation: `${verification.readiness}. ${buildReplayNextAction(verification.readiness, verification.nextAction)}`
+    reviewReadiness: review.readiness.label,
+    review,
+    recommendation: `${review.readiness.label}. ${buildReplayNextAction(review.readiness.label, review.readiness.nextAction)}`
   });
 
   await writeTextFileSafe(replayPath, html, { overwrite: true });

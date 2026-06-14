@@ -82,3 +82,17 @@ These commands should provide guidance and evidence, but the core `verify` scrip
 AgentFlight reports must not say tests passed unless they have evidence from an actual command run. Missing proof should remain visible as a gap.
 
 `agentflight status`, `agentflight report`, `agentflight replay`, and `agentflight resume` read captured verification runs. A failed verification run blocks review readiness until the command is fixed or rerun successfully.
+
+## Proof Gap Detection
+
+AgentFlight v0.4.0 uses deterministic local rules to connect changed files to missing proof. It does not call an LLM and does not upload source code.
+
+Examples:
+
+- Auth, security, billing, or database files changed without passing test evidence.
+- Backend/API files changed without passing test or build evidence.
+- Dependency files changed without install, build, typecheck, or test evidence.
+- Config or CI files changed without lint, typecheck, or build evidence.
+- Docs-only changes do not require proof by default.
+
+When AgentFlight can infer a matching configured command, it suggests the exact `agentflight verify -- <command>` next action. If it cannot infer a command, it reports the gap without inventing proof.

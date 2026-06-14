@@ -1,4 +1,9 @@
-import type { RiskLevel } from "../types/index.js";
+import type {
+  ProofGap,
+  ReviewFocusItem,
+  ReviewReadinessDecision,
+  RiskLevel
+} from "../types/index.js";
 
 export interface ResumePromptInput {
   task: string;
@@ -8,6 +13,9 @@ export interface ResumePromptInput {
   riskLevel: RiskLevel;
   riskReasons: string[];
   verificationGaps: string[];
+  reviewFocus?: ReviewFocusItem[] | undefined;
+  proofGaps?: ProofGap[] | undefined;
+  readiness?: ReviewReadinessDecision | undefined;
   latestSnapshotNote?: string | undefined;
   verificationState?: string | undefined;
   nextAction: string;
@@ -36,8 +44,14 @@ ${input.latestSnapshotNote ?? "No snapshot recorded."}
 ## Verification State
 ${input.verificationState ?? "No verification state recorded."}
 
-## Verification Gaps
-${renderList(input.verificationGaps, "No verification gaps recorded.")}
+## Review Focus
+${renderReviewFocus(input.reviewFocus ?? [])}
+
+## Proof Gaps
+${renderProofGaps(input)}
+
+## Review Readiness
+${renderReadiness(input.readiness)}
 
 ## Next Recommended Action
 ${input.nextAction}
@@ -53,4 +67,36 @@ ${input.nextAction}
 
 function renderList(items: string[], empty: string): string {
   return items.length ? items.map((item) => `- ${item}`).join("\n") : empty;
+}
+
+function renderReviewFocus(items: ReviewFocusItem[]): string {
+  if (items.length === 0) return "No review focus recorded.";
+  return items
+    .map(
+      (item) =>
+        `${item.rank}. ${item.file}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${item.suggestedCommand}` : ""}`
+    )
+    .join("\n");
+}
+
+function renderProofGaps(input: ResumePromptInput): string {
+  if (input.proofGaps) {
+    return input.proofGaps.length
+      ? input.proofGaps
+          .map(
+            (gap) =>
+              `- ${gap.severity}: ${gap.message}${gap.suggestedCommand ? `\n  Suggested proof: agentflight verify -- ${gap.suggestedCommand}` : ""}`
+          )
+          .join("\n")
+      : "No proof gaps recorded.";
+  }
+
+  return renderList(input.verificationGaps, "No verification gaps recorded.");
+}
+
+function renderReadiness(readiness: ReviewReadinessDecision | undefined): string {
+  if (!readiness) return "No review readiness recorded.";
+  return `${readiness.label}
+- Reason: ${readiness.reason}
+- Next action: ${readiness.nextAction}`;
 }

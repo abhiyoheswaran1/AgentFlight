@@ -30,6 +30,41 @@ describe("HTML replay", () => {
         }
       ],
       reviewReadiness: "Not ready for review",
+      review: {
+        focus: [
+          {
+            rank: 1,
+            file: "src/auth/reset.ts",
+            category: "auth",
+            riskLevel: "high",
+            score: 130,
+            reasons: ["identity/session path", "no passing test evidence"],
+            suggestedReviewerFocus: "Check session, permission, and identity boundaries first.",
+            proofStatus: "missing",
+            suggestedCommand: "npm test",
+            relatedProofGapIds: ["missing-auth-test-proof"]
+          }
+        ],
+        proofGaps: [
+          {
+            id: "missing-auth-test-proof",
+            severity: "blocking",
+            message:
+              "Sensitive auth, payment, or security files changed without passing test evidence.",
+            suggestedCommand: "npm test",
+            relatedFiles: ["src/auth/reset.ts"]
+          }
+        ],
+        readiness: {
+          state: "needs_verification",
+          label: "Needs verification",
+          reason:
+            "Sensitive auth, payment, or security files changed without passing test evidence.",
+          nextAction: "Run agentflight verify -- npm test",
+          suggestedCommand: "npm test",
+          proofGaps: []
+        }
+      },
       recommendation: "Run npm test."
     });
 
@@ -40,6 +75,10 @@ describe("HTML replay", () => {
     expect(html).toContain("1");
     expect(html).toContain("1 passed / 0 failed");
     expect(html).toContain("Not ready for review");
+    expect(html).toContain("Review Focus");
+    expect(html).toContain("identity/session path");
+    expect(html).toContain("Proof Gaps");
+    expect(html).toContain("Sensitive auth, payment, or security files changed");
     expect(html).toContain("Evidence files");
     expect(html).toContain(".agentflight/evidence/verification-1.stdout.txt");
     expect(html).not.toMatch(/https?:\/\//);

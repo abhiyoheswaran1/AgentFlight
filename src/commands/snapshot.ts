@@ -1,6 +1,8 @@
-import { filterAgentFlightRuntimePaths } from "../core/changed-files.js";
+import { filterChangedFiles } from "../core/changed-files.js";
+import { loadConfig } from "../core/config.js";
 import { getGitInfo } from "../core/git.js";
 import { analyzeRisk } from "../core/risk.js";
+import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { appendSessionEvent } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { readCurrentSession } from "./status.js";
@@ -22,8 +24,11 @@ export async function runSnapshotCommand(
   options: SnapshotCommandOptions
 ): Promise<SnapshotCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
+  const config = await loadConfig(options.repoRoot);
   const rawGit = options.git ?? (await getGitInfo(options.repoRoot));
-  const changedFiles = filterAgentFlightRuntimePaths(rawGit.changedFiles);
+  const changedFiles = filterChangedFiles(rawGit.changedFiles, {
+    ignore: config?.changedFileFilters?.ignore
+  });
   const git = {
     ...rawGit,
     dirty: changedFiles.length > 0,
@@ -34,6 +39,7 @@ export async function runSnapshotCommand(
     changedFilesCount: git.changedFiles.length,
     riskLevel: risk.level
   });
+  const review = buildReviewIntelligence({ changedFiles: git.changedFiles, risk, session });
 
   const updatedSession = await appendSessionEvent(options.repoRoot, session, {
     type: "snapshot_created",
@@ -49,6 +55,11 @@ export async function runSnapshotCommand(
         readiness: verification.readiness,
         gaps: verification.gaps,
         missingCommands: verification.missingCommands
+      },
+      review: {
+        readiness: review.readiness.state,
+        topFocusFiles: review.focus.slice(0, 3).map((item) => item.file),
+        proofGapCount: review.proofGaps.length
       }
     }
   });

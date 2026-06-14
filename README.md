@@ -97,15 +97,25 @@ Risk: medium
 Verification Evidence:
 1 passed, 0 failed
 
+Review first:
+1. src/auth/reset.ts
+   Why: identity/session path; no passing test evidence
+   Focus: Check session, permission, and identity boundaries first.
+   Suggested proof: npm test
+
+Proof gaps:
+- blocking: Sensitive auth, payment, or security files changed without passing test evidence.
+
 Latest snapshot:
 - Note: Initial implementation verified
 - Risk: medium
 - Changed files: 3
 
-Review readiness: Ready for review
+Readiness: Needs verification
+Reason: Sensitive auth, payment, or security files changed without passing test evidence.
 
 Next action:
-Generate a proof report with agentflight report
+Run agentflight verify -- npm test
 ```
 
 `agentflight report`:
@@ -113,13 +123,17 @@ Generate a proof report with agentflight report
 ```text
 # AgentFlight Proof Report
 
-## Recommendation
-Ready for review
+## Review First
+1. src/auth/reset.ts
+   - Why: identity/session path; no passing test evidence
 
 ## Verification Evidence
 - passed: npm test
 - stdout: .agentflight/evidence/.../verification-1.stdout.txt
 - stderr: .agentflight/evidence/.../verification-1.stderr.txt
+
+## Review Readiness
+Needs verification
 ```
 
 `agentflight replay`:
@@ -143,6 +157,9 @@ Initial implementation verified
 Verification state:
 1 passed, 0 failed
 
+Review focus:
+src/auth/reset.ts - identity/session path
+
 Guardrails:
 - Stay scoped to the current task.
 - Do not claim completion without proof.
@@ -157,6 +174,9 @@ The current AgentFlight release supports:
 - active session tracking
 - git branch, commit, dirty state, and changed file detection
 - changed file risk categorisation
+- review focus ranking for changed files
+- proof gap detection and review readiness recommendations
+- configurable generated/internal changed-file filters
 - verification evidence capture with `agentflight verify`
 - session events
 - snapshots with `agentflight snapshot --note "..."`
@@ -201,17 +221,29 @@ Runtime session data is ignored by git by default in this repo:
 
 `.agentflight/config.json` is intentionally not ignored, so a project can commit its local AgentFlight defaults when useful.
 
+AgentFlight always excludes its own runtime session/report/current/evidence files from changed-file analysis. Additional generated or internal files can be ignored locally:
+
+```json
+{
+  "changedFileFilters": {
+    "ignore": [".projscan-memory/**"]
+  }
+}
+```
+
+See [docs/development/changed-file-filters.md](docs/development/changed-file-filters.md).
+
 ## Commands
 
 - `agentflight init` initializes `.agentflight/` with safe writes.
 - `agentflight start --task "..."` starts a session and writes the current handoff.
-- `agentflight status` summarizes changed files, risk, verification status, snapshots, and next action.
+- `agentflight status` summarizes changed files, risk, verification status, review focus, proof gaps, readiness, snapshots, and next action.
 - `agentflight verify -- <command>` runs a proof command and records stdout/stderr evidence.
 - `agentflight verify` runs commands from `.agentflight/config.json`.
 - `agentflight snapshot --note "..."` records current git, risk, and verification state as a timeline event.
-- `agentflight report` generates a Markdown proof report.
-- `agentflight replay` generates a local self-contained HTML replay.
-- `agentflight resume` prints and saves a continuation prompt.
+- `agentflight report` generates a Markdown proof report with review focus and readiness.
+- `agentflight replay` generates a local self-contained HTML replay with review focus and proof gaps.
+- `agentflight resume` prints and saves a continuation prompt with the next safest action.
 - `agentflight doctor` checks local setup, scripts, tools, config, and current session state.
 
 Future placeholders exist for `upgrade`, `license`, and `login`; AgentFlight Pro/Team is not available yet.

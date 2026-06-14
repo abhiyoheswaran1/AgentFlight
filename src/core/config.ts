@@ -50,6 +50,9 @@ export function createDefaultConfig(options: CreateDefaultConfigOptions): AgentF
     verification: {
       commands: []
     },
+    changedFileFilters: {
+      ignore: []
+    },
     privacy: {
       localOnly: true,
       telemetry: false

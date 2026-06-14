@@ -1,8 +1,10 @@
 import { writeTextFileSafe } from "../core/fs-safe.js";
-import { filterAgentFlightRuntimePaths } from "../core/changed-files.js";
+import { filterChangedFiles } from "../core/changed-files.js";
+import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
+import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { addSessionEvent, getLatestSessionEvent, saveSession } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderResumePrompt } from "../renderers/resume-prompt.js";
@@ -23,14 +25,17 @@ export async function runResumeCommand(
   options: ResumeCommandOptions
 ): Promise<ResumeCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
-  const changedFiles = filterAgentFlightRuntimePaths(
-    options.changedFiles ?? (await listChangedFiles(options.repoRoot))
+  const config = await loadConfig(options.repoRoot);
+  const changedFiles = filterChangedFiles(
+    options.changedFiles ?? (await listChangedFiles(options.repoRoot)),
+    { ignore: config?.changedFileFilters?.ignore }
   );
   const risk = analyzeRisk(changedFiles);
   const verification = buildVerificationSummary(session, {
     changedFilesCount: changedFiles.length,
     riskLevel: risk.level
   });
+  const review = buildReviewIntelligence({ changedFiles, risk, session });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
   const updatedSession = addSessionEvent(session, {
     type: "resume_generated",
@@ -48,9 +53,12 @@ export async function runResumeCommand(
     riskLevel: risk.level,
     riskReasons: risk.reasons,
     verificationGaps: verification.gaps,
+    reviewFocus: review.focus.slice(0, 5),
+    proofGaps: review.proofGaps,
+    readiness: review.readiness,
     latestSnapshotNote: latestSnapshot?.message,
     verificationState: `${verification.passed} passed, ${verification.failed} failed`,
-    nextAction: buildResumeNextAction(verification.readiness, verification.nextAction)
+    nextAction: buildResumeNextAction(review.readiness.label, review.readiness.nextAction)
   });
   const resumePath = resolveAgentFlightPaths(options.repoRoot).currentResumePrompt;
 

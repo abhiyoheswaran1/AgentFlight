@@ -2,6 +2,45 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.4.0] - 2026-06-14
+
+### Added
+
+- Added deterministic Review Intelligence for AI coding sessions.
+- Added review focus ranking to highlight the files developers should inspect first.
+- Added proof gap detection for missing or failed verification evidence.
+- Added clearer readiness states and next-best-action guidance.
+- Added config-driven generated/internal changed-file filters via `changedFileFilters.ignore`.
+- Added documentation for generated/internal file filters.
+- Added completion audit for v0.4.0.
+
+### Changed
+
+- `status`, `report`, `replay`, `resume`, and `snapshot` now include review intelligence where appropriate.
+- Updated replay UI screenshot to show review focus, proof gaps, readiness, and timeline.
+- Hardened malformed `changedFileFilters.ignore` handling.
+- Kept `.agentflight/config.json` visible while runtime `.agentflight/` artifacts remain filtered.
+
+### Deferred
+
+- PR comments.
+- JSON/CI integration.
+- ProjScan-enriched ranking.
+- Heartbeat/progress output for long verification.
+- Interrupted verification cleanup.
+- Tool availability messaging alignment.
+- Cloud/login/billing/Pro/Team/GitHub App.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- AgentLoopKit verification passed.
+- ProjScan doctor passed with health `100/100`.
+- ProjScan preflight returned a documented scale/complexity caution that was manually reviewed and accepted.
+
 ## [0.3.3] - 2026-06-14
 
 Patch candidate focused on dogfood findings from published `agentflight@latest` v0.3.2.

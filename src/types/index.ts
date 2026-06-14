@@ -17,6 +17,9 @@ export interface AgentFlightConfig {
   verification: {
     commands: string[];
   };
+  changedFileFilters?: {
+    ignore: string[];
+  };
   privacy: {
     localOnly: true;
     telemetry: false;
@@ -126,6 +129,54 @@ export interface VerificationRun {
   status: "passed" | "failed";
   stdoutPath: string;
   stderrPath: string;
+}
+
+export type VerificationProofKind = "test" | "build" | "typecheck" | "lint" | "install" | "unknown";
+
+export type ReviewReadinessState =
+  | "ready_for_review"
+  | "not_ready_for_review"
+  | "needs_verification"
+  | "blocked_by_failed_verification"
+  | "unknown";
+
+export type ReviewProofStatus = "covered" | "missing" | "failed" | "not_required" | "unknown";
+
+export interface ReviewFocusItem {
+  rank: number;
+  file: string;
+  category: RiskCategory;
+  riskLevel: RiskLevel;
+  score: number;
+  reasons: string[];
+  suggestedReviewerFocus: string;
+  proofStatus: ReviewProofStatus;
+  suggestedCommand?: string;
+  relatedProofGapIds: string[];
+}
+
+export interface ProofGap {
+  id: string;
+  severity: "info" | "warning" | "blocking";
+  message: string;
+  suggestedCommand?: string;
+  relatedFiles: string[];
+}
+
+export interface ReviewReadinessDecision {
+  state: ReviewReadinessState;
+  label: string;
+  reason: string;
+  nextAction: string;
+  suggestedCommand?: string;
+  proofGaps: ProofGap[];
+  failedVerificationSummary?: string;
+}
+
+export interface ReviewIntelligence {
+  focus: ReviewFocusItem[];
+  proofGaps: ProofGap[];
+  readiness: ReviewReadinessDecision;
 }
 
 export interface VerificationEvidence {

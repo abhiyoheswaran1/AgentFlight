@@ -1,12 +1,16 @@
 import { listChangedFiles } from "../core/git.js";
-import { filterAgentFlightRuntimePaths } from "../core/changed-files.js";
+import { filterChangedFiles } from "../core/changed-files.js";
+import { loadConfig } from "../core/config.js";
 import { pathExists, readJsonFile } from "../core/fs-safe.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
+import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { getLatestSessionEvent } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import type {
   AgentFlightSession,
+  ProofGap,
+  ReviewFocusItem,
   RiskCategorySummary,
   SessionEvent,
   VerificationRun
@@ -26,8 +30,10 @@ export async function runStatusCommand(
   options: StatusCommandOptions
 ): Promise<StatusCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
-  const changedFiles = filterAgentFlightRuntimePaths(
-    options.changedFiles ?? (await listChangedFiles(options.repoRoot))
+  const config = await loadConfig(options.repoRoot);
+  const changedFiles = filterChangedFiles(
+    options.changedFiles ?? (await listChangedFiles(options.repoRoot)),
+    { ignore: config?.changedFileFilters?.ignore }
   );
   const risk = analyzeRisk(changedFiles);
   const duration = formatDuration(session.startedAt, options.now ?? new Date());
@@ -35,6 +41,7 @@ export async function runStatusCommand(
     changedFilesCount: changedFiles.length,
     riskLevel: risk.level
   });
+  const review = buildReviewIntelligence({ changedFiles, risk, session });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
 
   return {
@@ -59,16 +66,20 @@ Verification Evidence:
 ${verification.passed} passed, ${verification.failed} failed
 ${formatVerificationRuns(verification.runs)}
 
-Proof missing:
-${verification.gaps.map((gap) => `- ${gap}`).join("\n")}
+Review first:
+${formatReviewFocus(review.focus.slice(0, 5))}
+
+Proof gaps:
+${formatProofGaps(review.proofGaps)}
 
 Latest snapshot:
 ${formatLatestSnapshot(latestSnapshot)}
 
-Review readiness: ${verification.readiness}
+Readiness: ${review.readiness.label}
+Reason: ${review.readiness.reason}
 
 Next action:
-${verification.nextAction}
+${review.readiness.nextAction}
 `
   };
 }
@@ -126,6 +137,26 @@ function formatVerificationRuns(runs: VerificationRun[] | undefined): string {
     .map(
       (run) =>
         `- ${run.status}: ${run.command} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)`
+    )
+    .join("\n");
+}
+
+function formatReviewFocus(items: ReviewFocusItem[]): string {
+  if (items.length === 0) return "- No changed files to review.";
+  return items
+    .map(
+      (item) =>
+        `${item.rank}. ${item.file}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   Suggested proof: ${item.suggestedCommand}` : ""}`
+    )
+    .join("\n");
+}
+
+function formatProofGaps(gaps: ProofGap[]): string {
+  if (gaps.length === 0) return "- none";
+  return gaps
+    .map(
+      (gap) =>
+        `- ${gap.severity}: ${gap.message}${gap.suggestedCommand ? `\n  Suggested proof: agentflight verify -- ${gap.suggestedCommand}` : ""}`
     )
     .join("\n");
 }
