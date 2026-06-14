@@ -2,6 +2,30 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.3.3] - 2026-06-14
+
+Patch candidate focused on dogfood findings from published `agentflight@latest` v0.3.2.
+
+### Changed
+
+- Improved HTML replay readability with a calmer developer-review layout, clearer timeline rows, cleaner file grouping, and denser verification evidence rows.
+- Moved replay stdout/stderr evidence paths into collapsed native details so proof stays available without dominating the page.
+
+### Fixed
+
+- Excluded AgentFlight runtime artifacts from changed-file analysis by default:
+  - `.agentflight/sessions/**`
+  - `.agentflight/reports/**`
+  - `.agentflight/current/**`
+  - `.agentflight/evidence/**`
+- Kept `.agentflight/config.json` visible in changed-file analysis because it is user-controlled project configuration, not runtime evidence.
+
+### Documentation
+
+- Added `PRODUCT.md` with the confirmed product UI direction: precise, calm, trustworthy.
+- Added `docs/development/v0.3.2-dogfood-findings.md` with dogfood results from AgentFlight, ProjScan, and fifa-predictor.
+- Updated the development log with dogfood, UI polish, and patch verification evidence.
+
 ## [0.3.2] - 2026-06-13
 
 ### Changed

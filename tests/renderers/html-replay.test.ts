@@ -17,7 +17,18 @@ describe("HTML replay", () => {
       changedFiles: ["src/auth/reset.ts"],
       changedFileGroups: [{ category: "auth", files: ["src/auth/reset.ts"] }],
       riskBadges: ["high", "auth"],
-      verificationEvidence: [],
+      verificationEvidence: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-13T12:01:00.000Z",
+          finishedAt: "2026-06-13T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath: ".agentflight/evidence/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/verification-1.stderr.txt"
+        }
+      ],
       reviewReadiness: "Not ready for review",
       recommendation: "Run npm test."
     });
@@ -27,8 +38,10 @@ describe("HTML replay", () => {
     expect(html).toContain("summary-grid");
     expect(html).toContain("Changed Files");
     expect(html).toContain("1");
-    expect(html).toContain("0 passed / 0 failed");
+    expect(html).toContain("1 passed / 0 failed");
     expect(html).toContain("Not ready for review");
+    expect(html).toContain("Evidence files");
+    expect(html).toContain(".agentflight/evidence/verification-1.stdout.txt");
     expect(html).not.toMatch(/https?:\/\//);
     expect(html).not.toContain("<script");
   });

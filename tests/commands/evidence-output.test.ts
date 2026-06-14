@@ -183,6 +183,65 @@ describe("evidence-aware session outputs", () => {
     expect(resume.output).toContain("Do not claim completion without proof.");
     expect(resume.output).toContain("Run relevant verification before declaring success.");
   });
+
+  it("excludes AgentFlight runtime artifacts from status, report, replay, and resume changed files", async () => {
+    const repoRoot = await startedRepo([]);
+    const changedFiles = [
+      ".agentflight/current/session.json",
+      ".agentflight/evidence/af-test/verification-1.stdout.txt",
+      ".agentflight/reports/af-test-proof.md",
+      ".agentflight/sessions/af-test.json",
+      ".agentflight/config.json",
+      "src/auth/reset.ts"
+    ];
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles
+    });
+    expect(status.output).toContain("Changed files:\n2");
+    expect(status.output).toContain(".agentflight/config.json");
+    expect(status.output).toContain("src/auth/reset.ts");
+    expect(status.output).not.toContain(".agentflight/current/session.json");
+    expect(status.output).not.toContain(".agentflight/evidence/");
+    expect(status.output).not.toContain(".agentflight/reports/");
+    expect(status.output).not.toContain(".agentflight/sessions/");
+
+    const report = await runReportCommand({
+      repoRoot,
+      changedFiles
+    });
+    const markdown = await readFile(report.reportPath, "utf8");
+    expect(markdown).toContain(".agentflight/config.json");
+    expect(markdown).toContain("src/auth/reset.ts");
+    expect(markdown).not.toContain(".agentflight/current/session.json");
+    expect(markdown).not.toContain(".agentflight/evidence/");
+    expect(markdown).not.toContain(".agentflight/reports/");
+    expect(markdown).not.toContain(".agentflight/sessions/");
+
+    const replay = await runReplayCommand({
+      repoRoot,
+      changedFiles
+    });
+    const html = await readFile(replay.replayPath, "utf8");
+    expect(html).toContain(".agentflight/config.json");
+    expect(html).toContain("src/auth/reset.ts");
+    expect(html).not.toContain(".agentflight/current/session.json");
+    expect(html).not.toContain(".agentflight/evidence/");
+    expect(html).not.toContain(".agentflight/reports/");
+    expect(html).not.toContain(".agentflight/sessions/");
+
+    const resume = await runResumeCommand({
+      repoRoot,
+      changedFiles
+    });
+    expect(resume.output).toContain(".agentflight/config.json");
+    expect(resume.output).toContain("src/auth/reset.ts");
+    expect(resume.output).not.toContain(".agentflight/current/session.json");
+    expect(resume.output).not.toContain(".agentflight/evidence/");
+    expect(resume.output).not.toContain(".agentflight/reports/");
+    expect(resume.output).not.toContain(".agentflight/sessions/");
+  });
 });
 
 async function startedRepo(verificationCommands: string[]): Promise<string> {

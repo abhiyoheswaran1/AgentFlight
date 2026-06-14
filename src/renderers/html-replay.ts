@@ -19,6 +19,9 @@ export interface HtmlReplayInput {
 }
 
 export function renderHtmlReplay(input: HtmlReplayInput): string {
+  const risk = input.riskBadges[0] ?? "unknown";
+  const readiness = input.reviewReadiness ?? "Unknown";
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -26,66 +29,143 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AgentFlight Replay ${escapeHtml(input.sessionId)}</title>
   <style>
-    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    body { margin: 0; background: #f7f8fa; color: #1b1f24; }
-    main { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
-    header { border-bottom: 1px solid #d8dee4; padding-bottom: 24px; margin-bottom: 28px; }
-    h1 { font-size: 32px; line-height: 1.1; margin: 0 0 12px; letter-spacing: 0; }
-    h2 { font-size: 18px; margin: 28px 0 12px; }
-    .meta { color: #57606a; font-size: 14px; }
+    :root {
+      color-scheme: light;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --bg: oklch(0.982 0.006 248);
+      --paper: oklch(0.996 0.003 248);
+      --text: oklch(0.245 0.022 252);
+      --muted: oklch(0.49 0.028 252);
+      --faint: oklch(0.66 0.024 252);
+      --line: oklch(0.865 0.014 252);
+      --line-strong: oklch(0.74 0.026 252);
+      --soft: oklch(0.955 0.008 248);
+      --accent: oklch(0.47 0.105 252);
+      --success: oklch(0.49 0.13 148);
+      --success-bg: oklch(0.955 0.035 148);
+      --danger: oklch(0.52 0.165 28);
+      --danger-bg: oklch(0.955 0.032 28);
+      --warning: oklch(0.57 0.115 78);
+      --warning-bg: oklch(0.955 0.035 78);
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    main { max-width: 1120px; margin: 0 auto; padding: 40px 28px 48px; }
+    header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 24px; }
+    h1 { font-size: 30px; line-height: 1.15; margin: 8px 0 12px; letter-spacing: 0; max-width: 26ch; }
+    h2 { font-size: 17px; line-height: 1.25; margin: 0 0 14px; letter-spacing: 0; }
+    p { max-width: 72ch; }
+    .eyebrow { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .meta { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .header-status { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; max-width: 360px; }
     .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-    .badge { border: 1px solid #d0d7de; border-radius: 999px; padding: 4px 10px; background: #ffffff; font-size: 13px; }
-    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 28px; }
-    .summary-card { background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; padding: 14px; min-width: 0; }
-    .summary-card span { color: #57606a; display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; }
-    .summary-card strong { display: block; font-size: 18px; margin-top: 4px; overflow-wrap: anywhere; }
-    .panel { background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; padding: 18px; margin: 16px 0; }
-    .timeline { border-left: 3px solid #d0d7de; padding-left: 16px; }
-    .timeline-item { margin: 0 0 14px; }
-    .timeline-item strong { display: block; }
-    .verification-grid { display: grid; gap: 12px; }
-    .verification-card { border: 1px solid #d0d7de; border-radius: 8px; padding: 14px; background: #fbfcfe; }
-    .verification-card.passed { border-color: #2da44e; }
-    .verification-card.failed { border-color: #cf222e; }
-    .verification-card strong { display: inline-block; margin-bottom: 6px; }
-    footer { color: #57606a; font-size: 13px; margin-top: 28px; }
+    .badge { border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; background: var(--paper); color: var(--text); font-size: 12px; font-weight: 650; line-height: 1.35; }
+    .badge.risk-high, .badge.status-failed { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+    .badge.risk-medium { background: var(--warning-bg); border-color: var(--warning); color: oklch(0.39 0.095 78); }
+    .badge.risk-low, .badge.status-passed, .badge.ready { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+    .badge.unknown { background: var(--soft); color: var(--muted); }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--paper); margin: 0 0 28px; }
+    .summary-card { min-width: 0; padding: 15px 16px; border-right: 1px solid var(--line); }
+    .summary-card:last-child { border-right: 0; }
+    .summary-card span { color: var(--muted); display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .summary-card strong { display: block; font-size: 17px; line-height: 1.25; margin-top: 5px; overflow-wrap: anywhere; }
+    .section { border-top: 1px solid var(--line); padding: 26px 0 4px; margin-top: 24px; }
+    .section-header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+    .section-header .meta { flex: 0 0 auto; }
+    .timeline { display: grid; gap: 8px; }
+    .timeline-item { display: grid; grid-template-columns: minmax(145px, 0.34fr) 14px minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .timeline-item:last-child { border-bottom: 0; }
+    .timeline-time { color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .timeline-dot { width: 9px; height: 9px; margin-top: 5px; border-radius: 999px; background: var(--line-strong); }
+    .timeline-body strong { display: block; font-size: 14px; line-height: 1.35; }
+    .timeline-type { color: var(--muted); font-family: var(--mono); font-size: 12px; margin-top: 2px; }
+    .timeline-message { color: var(--text); margin-top: 6px; }
+    .file-groups { display: grid; gap: 8px; }
+    .file-group { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .file-group:last-child { border-bottom: 0; }
+    .file-category { color: var(--text); font-size: 13px; font-weight: 700; }
+    .file-list-inline { display: flex; flex-wrap: wrap; gap: 6px; }
+    .changed-files { columns: 2; column-gap: 28px; margin: 0; padding: 0; list-style: none; }
+    .changed-files li { break-inside: avoid; margin: 0 0 7px; }
+    .verification-grid { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--paper); }
+    .verification-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 14px; align-items: start; padding: 13px 16px; border-bottom: 1px solid var(--line); }
+    .verification-card:last-child { border-bottom: 0; }
+    .verification-status { align-self: start; justify-self: start; }
+    .verification-command { min-width: 0; }
+    details { margin-top: 8px; }
+    summary { color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 650; }
+    .verification-paths { color: var(--muted); font-size: 12px; line-height: 1.55; margin-top: 6px; overflow-wrap: anywhere; }
+    .recommendation { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+    footer { color: var(--muted); font-size: 12px; margin-top: 30px; border-top: 1px solid var(--line); padding-top: 16px; }
     ul { margin: 0; padding-left: 22px; }
     li { margin: 6px 0; }
-    code { background: #f0f3f6; border-radius: 4px; padding: 2px 5px; }
-    @media (max-width: 760px) { .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    code { background: var(--soft); border: 1px solid var(--line); border-radius: 5px; color: var(--text); font-family: var(--mono); font-size: 0.93em; padding: 2px 5px; overflow-wrap: anywhere; }
+    @media (max-width: 860px) {
+      main { padding: 28px 18px 40px; }
+      header { grid-template-columns: 1fr; }
+      .header-status { justify-content: flex-start; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary-card:nth-child(2) { border-right: 0; }
+      .summary-card:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
+      .timeline-item, .file-group, .verification-card { grid-template-columns: 1fr; gap: 6px; }
+      .timeline-dot { display: none; }
+      .changed-files { columns: 1; }
+    }
   </style>
 </head>
 <body>
   <main>
     <header>
-      <div class="meta">AgentFlight replay · ${escapeHtml(input.sessionId)}</div>
-      <h1>${escapeHtml(input.task)}</h1>
-      <div class="meta">Started ${escapeHtml(input.startedAt)}</div>
-      <div class="badges">${input.riskBadges.map((badge) => `<span class="badge">${escapeHtml(badge)}</span>`).join("")}</div>
+      <div>
+        <div class="eyebrow">AgentFlight Replay</div>
+        <h1>${escapeHtml(input.task)}</h1>
+        <div class="meta">Session ${escapeHtml(input.sessionId)} &middot; Started ${escapeHtml(input.startedAt)}</div>
+        <div class="badges">${input.riskBadges.map((badge) => renderBadge(badge, "risk")).join("")}</div>
+      </div>
+      <div class="header-status">
+        ${renderBadge(readiness, "readiness")}
+        ${renderBadge(risk, "risk")}
+      </div>
     </header>
 
     ${renderSummary(input)}
 
-    <section class="panel">
-      <h2>Timeline</h2>
+    <section class="section">
+      <div class="section-header">
+        <h2>Timeline</h2>
+        <div class="meta">${escapeHtml(String(input.timeline.length))} events</div>
+      </div>
       ${renderTimeline(input.timeline)}
     </section>
 
-    <section class="panel">
-      <h2>Changed File Groups</h2>
+    <section class="section">
+      <div class="section-header">
+        <h2>Changed File Groups</h2>
+        <div class="meta">${escapeHtml(String(input.changedFileGroups?.length ?? 0))} groups</div>
+      </div>
       ${renderFileGroups(input.changedFileGroups ?? [])}
-      <h2>Changed Files</h2>
+      <div class="section-header" style="margin-top: 22px;">
+        <h2>Changed Files</h2>
+        <div class="meta">${escapeHtml(String(input.changedFiles.length))} files</div>
+      </div>
       ${renderFileList(input.changedFiles)}
     </section>
 
-    <section class="panel">
-      <h2>Verification Evidence</h2>
+    <section class="section">
+      <div class="section-header">
+        <h2>Verification Evidence</h2>
+        <div class="meta">${escapeHtml(String(input.verificationEvidence.length))} runs</div>
+      </div>
       ${renderVerification(input.verificationEvidence)}
     </section>
 
-    <section class="panel">
-      <h2>Recommendation</h2>
-      <p>${escapeHtml(input.recommendation)}</p>
+    <section class="section">
+      <div class="section-header">
+        <h2>Recommendation</h2>
+      </div>
+      <div class="recommendation">${escapeHtml(input.recommendation)}</div>
     </section>
 
     <footer>Generated by AgentFlight</footer>
@@ -118,9 +198,13 @@ function renderTimeline(items: ReplayTimelineItem[]): string {
   return `<div class="timeline">${items
     .map(
       (item) => `<div class="timeline-item">
-        <strong>${escapeHtml(item.title)}</strong>
-        <div class="meta">${escapeHtml(item.timestamp)} · ${escapeHtml(item.type)}</div>
-        ${item.message ? `<div>${escapeHtml(item.message)}</div>` : ""}
+        <div class="timeline-time">${escapeHtml(item.timestamp)}</div>
+        <div class="timeline-dot" aria-hidden="true"></div>
+        <div class="timeline-body">
+          <strong>${escapeHtml(item.title)}</strong>
+          <div class="timeline-type">${escapeHtml(item.type)}</div>
+          ${item.message ? `<div class="timeline-message">${escapeHtml(item.message)}</div>` : ""}
+        </div>
       </div>`
     )
     .join("")}</div>`;
@@ -128,17 +212,17 @@ function renderTimeline(items: ReplayTimelineItem[]): string {
 
 function renderFileGroups(groups: RiskCategorySummary[]): string {
   if (groups.length === 0) return "<p>No changed file groups detected.</p>";
-  return `<ul>${groups
+  return `<div class="file-groups">${groups
     .map(
       (group) =>
-        `<li><strong>${escapeHtml(group.category)}</strong>: ${group.files.map((file) => `<code>${escapeHtml(file)}</code>`).join(", ")}</li>`
+        `<div class="file-group"><div class="file-category">${escapeHtml(group.category)}</div><div class="file-list-inline">${group.files.map((file) => `<code>${escapeHtml(file)}</code>`).join("")}</div></div>`
     )
-    .join("")}</ul>`;
+    .join("")}</div>`;
 }
 
 function renderFileList(files: string[]): string {
   if (files.length === 0) return "<p>No changed files detected.</p>";
-  return `<ul>${files.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("")}</ul>`;
+  return `<ul class="changed-files">${files.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("")}</ul>`;
 }
 
 function renderVerification(evidence: VerificationRun[]): string {
@@ -146,14 +230,35 @@ function renderVerification(evidence: VerificationRun[]): string {
   return `<div class="verification-grid">${evidence
     .map(
       (item) => `<div class="verification-card ${escapeHtml(item.status)}">
-        <strong>${escapeHtml(item.status)}</strong>
-        <div><code>${escapeHtml(item.command)}</code></div>
-        <div class="meta">Exit ${escapeHtml(String(item.exitCode ?? "unknown"))} · ${escapeHtml(String(item.durationMs))}ms</div>
-        <div class="meta">stdout: ${escapeHtml(item.stdoutPath)}</div>
-        <div class="meta">stderr: ${escapeHtml(item.stderrPath)}</div>
+        <div class="verification-status">${renderBadge(item.status, "status")}</div>
+        <div class="verification-command">
+          <code>${escapeHtml(item.command)}</code>
+          <div class="meta">Exit ${escapeHtml(String(item.exitCode ?? "unknown"))} &middot; ${escapeHtml(String(item.durationMs))}ms</div>
+          <details>
+            <summary>Evidence files</summary>
+            <div class="verification-paths">
+              <div>stdout: ${escapeHtml(item.stdoutPath)}</div>
+              <div>stderr: ${escapeHtml(item.stderrPath)}</div>
+            </div>
+          </details>
+        </div>
       </div>`
     )
     .join("")}</div>`;
+}
+
+function renderBadge(value: string, kind: "readiness" | "risk" | "status"): string {
+  const normalized = value.toLowerCase().replaceAll(/\s+/g, "-");
+  const className =
+    kind === "readiness"
+      ? normalized.startsWith("ready")
+        ? "ready"
+        : "unknown"
+      : kind === "status"
+        ? `status-${normalized}`
+        : `risk-${normalized}`;
+
+  return `<span class="badge ${escapeHtml(className)}">${escapeHtml(value)}</span>`;
 }
 
 function escapeHtml(value: string): string {

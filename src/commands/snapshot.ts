@@ -1,3 +1,4 @@
+import { filterAgentFlightRuntimePaths } from "../core/changed-files.js";
 import { getGitInfo } from "../core/git.js";
 import { analyzeRisk } from "../core/risk.js";
 import { appendSessionEvent } from "../core/session.js";
@@ -21,7 +22,13 @@ export async function runSnapshotCommand(
   options: SnapshotCommandOptions
 ): Promise<SnapshotCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
-  const git = options.git ?? (await getGitInfo(options.repoRoot));
+  const rawGit = options.git ?? (await getGitInfo(options.repoRoot));
+  const changedFiles = filterAgentFlightRuntimePaths(rawGit.changedFiles);
+  const git = {
+    ...rawGit,
+    dirty: changedFiles.length > 0,
+    changedFiles
+  };
   const risk = analyzeRisk(git.changedFiles);
   const verification = buildVerificationSummary(session, {
     changedFilesCount: git.changedFiles.length,

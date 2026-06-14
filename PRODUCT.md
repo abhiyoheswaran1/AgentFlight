@@ -1,0 +1,37 @@
+# Product
+
+## Register
+
+product
+
+## Users
+
+AgentFlight is used by developers, reviewers, and AI-agent operators during local software development. They are usually inside a coding session, reviewing what an AI coding agent changed, deciding whether the work is safe to continue, or handing the next action to another agent or human reviewer.
+
+## Product Purpose
+
+AgentFlight is a local-first flight recorder for AI coding agents. Its replay and report surfaces help developers understand session history, inspect changed files and risk, verify proof, identify gaps, and decide what should happen next.
+
+Success means a developer can trust the artifact quickly: what changed, what proof exists, what failed or is missing, and whether the work is ready for review.
+
+## Brand Personality
+
+Precise, calm, trustworthy.
+
+The UI should use exact labels, concrete evidence, low visual noise, honest readiness states, and visible verification details. It should never imply confidence that the recorded evidence does not support.
+
+## Anti-references
+
+AgentFlight replay and report surfaces should not look like SaaS dashboard clutter, flashy terminal cosplay, AI hype UI, marketing cards, gamified badges, dark-neon hacker screens, generic observability dashboards, over-designed analytics products, or travel/airline software despite the flight metaphor.
+
+## Design Principles
+
+- Treat evidence as the primary interface.
+- Make risk and readiness skimmable without hiding the underlying facts.
+- Keep the surface calm until the evidence says something is wrong.
+- Prefer developer-native review patterns over decorative product metaphors.
+- Optimize for screenshots, handoffs, and incident-style reconstruction.
+
+## Accessibility & Inclusion
+
+Use clear contrast, readable system typography, semantic document structure, and text-first evidence. Do not rely on color alone for verification or risk state. Keep motion optional and minimal.

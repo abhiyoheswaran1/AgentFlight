@@ -1,6 +1,6 @@
 {
   "name": "agentflight",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Local-first flight recorder for AI coding agents.",
   "type": "module",
   "main": "./dist/cli.js",

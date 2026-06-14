@@ -1,4 +1,5 @@
 import { listChangedFiles } from "../core/git.js";
+import { filterAgentFlightRuntimePaths } from "../core/changed-files.js";
 import { pathExists, readJsonFile } from "../core/fs-safe.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
@@ -25,7 +26,9 @@ export async function runStatusCommand(
   options: StatusCommandOptions
 ): Promise<StatusCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
-  const changedFiles = options.changedFiles ?? (await listChangedFiles(options.repoRoot));
+  const changedFiles = filterAgentFlightRuntimePaths(
+    options.changedFiles ?? (await listChangedFiles(options.repoRoot))
+  );
   const risk = analyzeRisk(changedFiles);
   const duration = formatDuration(session.startedAt, options.now ?? new Date());
   const verification = buildVerificationSummary(session, {

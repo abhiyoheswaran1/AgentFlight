@@ -1,6 +1,7 @@
 import type { CommandRunner } from "./process.js";
 import { runCommand } from "./process.js";
 import type { GitInfo } from "../types/index.js";
+import { filterAgentFlightRuntimePaths } from "./changed-files.js";
 
 export async function getRepositoryRoot(
   cwd: string,
@@ -20,7 +21,8 @@ export async function getGitInfo(
     run("git", ["status", "--porcelain", "-uall"], { cwd: repoRoot, timeoutMs: 10_000 })
   ]);
 
-  const changedFiles = status.exitCode === 0 ? parseGitStatusFiles(status.stdout) : [];
+  const changedFiles =
+    status.exitCode === 0 ? filterAgentFlightRuntimePaths(parseGitStatusFiles(status.stdout)) : [];
 
   return {
     branch: branch.exitCode === 0 && branch.stdout.trim() ? branch.stdout.trim() : null,
@@ -38,7 +40,9 @@ export async function listChangedFiles(
     cwd: repoRoot,
     timeoutMs: 10_000
   });
-  return result.exitCode === 0 ? parseGitStatusFiles(result.stdout) : [];
+  return result.exitCode === 0
+    ? filterAgentFlightRuntimePaths(parseGitStatusFiles(result.stdout))
+    : [];
 }
 
 export function parseGitStatusFiles(output: string): string[] {

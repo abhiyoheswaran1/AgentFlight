@@ -710,6 +710,133 @@ Changes:
   - Website: `https://www.baseframelabs.com/apps/agentflight`
   - Topics: AI coding agents, Codex, Claude Code, local-first, verification, developer tools.
 
+### v0.3.2 Dogfood And Replay UI Polish
+
+Goal:
+
+- Dogfood published `agentflight@latest` v0.3.2 across local repos before planning v0.4.0.
+- Use `$impeccable` direction to improve the developer-facing HTML replay artifact without adding product scope.
+
+Dogfood repos:
+
+- AgentFlight: full workflow completed with typecheck, lint, tests, and build captured through `agentflight verify`.
+- ProjScan: workflow completed with lint/build captured; long `npm test` was interrupted after more than four minutes of silent runtime.
+- fifa-predictor: real app workflow completed with typecheck, 61 tests, and build captured.
+- AgentLoopKit and TokenTrace were available but skipped because they had pre-existing dirty worktrees.
+
+Findings document:
+
+- `docs/development/v0.3.2-dogfood-findings.md`
+
+UI polish:
+
+- Added `PRODUCT.md` with the confirmed product UI direction: precise, calm, trustworthy.
+- Reworked `src/renderers/html-replay.ts` toward a developer review artifact: compact evidence header, summary strip, timeline rows, file groups, and collapsed evidence paths.
+- Updated `tests/renderers/html-replay.test.ts` to cover verification evidence in the replay artifact.
+- Captured Playwright screenshots:
+  - `output/playwright/agentflight-replay-ui-polish-desktop.png`
+  - `output/playwright/agentflight-replay-ui-polish-mobile.png`
+
+Verification:
+
+```bash
+npm test -- tests/renderers/html-replay.test.ts tests/commands/evidence-output.test.ts
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+```
+
+Results:
+
+- Focused replay/evidence tests passed: 2 files / 7 tests.
+- `npm run verify` passed: 17 files / 62 tests.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- ProjScan preflight passed with `proceed`, health `100/100`.
+- AgentLoopKit verification passed.
+
+### v0.3.3 Patch Candidate Runtime Filtering
+
+Goal:
+
+- Prepare a focused v0.3.3 patch candidate without version bump, tag, push, or publish.
+- Keep the completed replay UI polish and dogfood findings documentation.
+- Fix the dogfood finding where AgentFlight runtime files polluted changed-file analysis in repos that did not already ignore `.agentflight/`.
+
+Decision:
+
+- Exclude AgentFlight runtime artifacts from changed-file analysis:
+  - `.agentflight/sessions/**`
+  - `.agentflight/reports/**`
+  - `.agentflight/current/**`
+  - `.agentflight/evidence/**`
+- Keep `.agentflight/config.json` visible because it is user-controlled project configuration and may be intentionally committed.
+
+Implementation:
+
+- Added a central runtime-path filter in `src/core/changed-files.ts`.
+- Applied filtering through git utilities and command-level changed-file inputs for status, report, replay, resume, and snapshot.
+- Added regression coverage in:
+  - `tests/core/git.test.ts`
+  - `tests/commands/evidence-output.test.ts`
+  - `tests/commands/snapshot.test.ts`
+
+Red/green evidence:
+
+```bash
+npm test -- tests/core/git.test.ts tests/commands/evidence-output.test.ts tests/commands/snapshot.test.ts
+```
+
+Initial focused run failed because runtime `.agentflight/` paths were still included in changed-file counts, risk, and snapshot metadata. After the central filter was implemented, the same focused suite passed.
+
+Verification:
+
+```bash
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx projscan@latest preflight --mode before_commit --format json
+npx agentloopkit@latest verify
+```
+
+Results:
+
+- `npm run verify` passed: 17 files / 66 tests.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed and included `dist/core/changed-files.js`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- ProjScan preflight passed with `proceed`, health `100/100`.
+- AgentLoopKit verification passed.
+
+Packed smoke test:
+
+```bash
+npm pack --pack-destination "$PACK_DIR"
+npm install "$PACK_DIR/agentflight-0.3.3.tgz"
+npx agentflight --version
+npx agentflight init
+npx agentflight start --task "v0.3.3 release smoke test"
+npx agentflight verify -- npm --version
+npx agentflight snapshot --note "runtime filtering smoke test"
+npx agentflight status
+npx agentflight report
+npx agentflight replay
+npx agentflight resume
+npx agentflight doctor
+```
+
+Result:
+
+- Packed CLI reported `0.3.3`.
+- `status` showed `.agentflight/config.json` and `.projscan-memory/memory.json`.
+- `status` did not show `.agentflight/current/`, `.agentflight/evidence/`, `.agentflight/reports/`, or `.agentflight/sessions/`.
+- Report, replay, resume, and doctor completed from the packed install.
+
 ### v0.3.2 Branding Polish Release Prep
 
 Goal:

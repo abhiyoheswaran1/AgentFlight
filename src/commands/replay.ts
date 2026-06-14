@@ -1,4 +1,5 @@
 import { writeTextFileSafe } from "../core/fs-safe.js";
+import { filterAgentFlightRuntimePaths } from "../core/changed-files.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
@@ -22,7 +23,9 @@ export async function runReplayCommand(
   options: ReplayCommandOptions
 ): Promise<ReplayCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
-  const changedFiles = options.changedFiles ?? (await listChangedFiles(options.repoRoot));
+  const changedFiles = filterAgentFlightRuntimePaths(
+    options.changedFiles ?? (await listChangedFiles(options.repoRoot))
+  );
   const risk = analyzeRisk(changedFiles);
   const verification = buildVerificationSummary(session, {
     changedFilesCount: changedFiles.length,
