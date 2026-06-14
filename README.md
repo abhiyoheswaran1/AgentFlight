@@ -237,7 +237,7 @@ Read [docs/examples/basic-agentflight-session.md](docs/examples/basic-agentfligh
 
 ## Roadmap
 
-See [docs/roadmap.md](docs/roadmap.md).
+See [docs/roadmap/index.md](docs/roadmap/index.md).
 
 Not built yet:
 

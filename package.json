@@ -18,7 +18,8 @@
     "docs/development/dogfooding.md",
     "docs/development/release.md",
     "docs/examples/basic-agentflight-session.md",
-    "docs/roadmap.md",
+    "docs/roadmap/index.md",
+    "docs/roadmap/v0.4.0-review-intelligence-plan.md",
     "LICENSE"
   ],
   "scripts": {
