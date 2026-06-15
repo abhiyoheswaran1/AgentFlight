@@ -30,6 +30,7 @@ const baseScores: Record<RiskCategory, number> = {
   "backend/api": 70,
   dependencies: 65,
   unknown: 50,
+  "agentflight/config": 35,
   frontend: 35,
   tests: 20,
   docs: 10
@@ -40,6 +41,10 @@ const reviewerFocusByCategory = new Map<RiskCategory, string>([
   ["billing/payments", "Check payment state, idempotency, and webhook handling first."],
   ["security/secrets", "Check credential handling and accidental exposure first."],
   ["database/migrations", "Check data model, migration safety, and rollback assumptions first."],
+  [
+    "agentflight/config",
+    "Check AgentFlight session defaults, verification commands, and changed-file filters."
+  ],
   ["config", "Check build, CI, and runtime configuration impact first."],
   ["backend/api", "Check request handling, validation, and error paths first."],
   ["dependencies", "Check install/build impact and dependency risk first."],
@@ -62,11 +67,13 @@ export function buildReviewIntelligence(
 ): ReviewIntelligence {
   const runs = getVerificationRuns(options.session);
   const proofKinds = summarizeProofKinds(runs);
+  const incompleteVerifications = detectIncompleteVerificationAttempts(options.session);
   const proofGaps = buildProofGaps({
     changedFiles: options.changedFiles,
     verificationCommands: options.session.verificationCommands,
     proofKinds,
-    runs
+    runs,
+    incompleteVerifications
   });
   const focus = buildReviewFocus({
     changedFiles: options.changedFiles,
@@ -121,6 +128,7 @@ function buildProofGaps(input: {
   verificationCommands: string[];
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
   runs: VerificationRun[];
+  incompleteVerifications: IncompleteVerificationAttempt[];
 }): ProofGap[] {
   const gaps: ProofGap[] = [];
   const failedRuns = input.runs.filter((run) => run.status === "failed");
@@ -131,6 +139,16 @@ function buildProofGaps(input: {
       severity: "blocking",
       message: `A verification command failed and must be fixed or rerun successfully: ${failedCommand}`,
       suggestedCommand: failedCommand,
+      relatedFiles: input.changedFiles
+    });
+  }
+
+  for (const attempt of input.incompleteVerifications) {
+    gaps.push({
+      id: "incomplete-verification",
+      severity: "blocking",
+      message: `Verification was started but no completed result was recorded: ${attempt.command}`,
+      suggestedCommand: attempt.command,
       relatedFiles: input.changedFiles
     });
   }
@@ -185,6 +203,8 @@ function buildProofGaps(input: {
     proofKinds: ["test"],
     message: "Test files changed without passing test evidence."
   });
+
+  addGeneratedFileGuidance(gaps, input.changedFiles);
 
   return gaps;
 }
@@ -264,8 +284,9 @@ function determineProofStatus(input: {
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
 }): ReviewProofStatus {
   if (input.hasFailedVerification && input.category !== "docs") return "failed";
-  if (input.relatedGaps.length > 0) return "missing";
-  if (input.category === "docs") return "not_required";
+  const actionableGaps = input.relatedGaps.filter((gap) => gap.severity !== "info");
+  if (actionableGaps.length > 0) return "missing";
+  if (input.category === "docs" || input.category === "agentflight/config") return "not_required";
   if (input.proofKinds.passed.size > 0) return "covered";
   return input.category === "unknown" ? "unknown" : "not_required";
 }
@@ -298,8 +319,10 @@ function buildReadinessDecision(input: {
     });
   }
 
-  const blockingGap = input.proofGaps.find((gap) => gap.severity === "blocking");
-  const firstGap = blockingGap ?? input.proofGaps[0];
+  const actionableGaps = input.proofGaps.filter((gap) => gap.severity !== "info");
+  const incompleteGap = actionableGaps.find((gap) => gap.id === "incomplete-verification");
+  const blockingGap = actionableGaps.find((gap) => gap.severity === "blocking");
+  const firstGap = incompleteGap ?? blockingGap ?? actionableGaps[0];
   if (firstGap) {
     const state: ReviewReadinessState = blockingGap ? "needs_verification" : "needs_verification";
     const suggestedCommand = firstGap.suggestedCommand;
@@ -380,6 +403,7 @@ function categoryLabel(category: RiskCategory): string {
   if (category === "database/migrations") return "database schema or migration path";
   if (category === "backend/api") return "backend/API file";
   if (category === "dependencies") return "dependency metadata changed";
+  if (category === "agentflight/config") return "AgentFlight project config";
   if (category === "config") return "configuration or CI path";
   return `${category} file`;
 }
@@ -412,7 +436,12 @@ function riskLevelForCategory(category: RiskCategory): RiskLevel {
   ) {
     return "high";
   }
-  if (category === "backend/api" || category === "dependencies" || category === "unknown") {
+  if (
+    category === "backend/api" ||
+    category === "dependencies" ||
+    category === "unknown" ||
+    category === "agentflight/config"
+  ) {
     return "medium";
   }
   return "low";
@@ -424,4 +453,79 @@ function suggestedReviewerFocus(category: RiskCategory): string {
 
 function labelReadiness(state: ReviewReadinessState): string {
   return readinessLabels[state];
+}
+
+interface IncompleteVerificationAttempt {
+  command: string;
+  startedAt: string;
+}
+
+function detectIncompleteVerificationAttempts(
+  session: AgentFlightSession
+): IncompleteVerificationAttempt[] {
+  const events = session.events ?? [];
+  const runs = getVerificationRuns(session);
+  const startedEvents = events.filter((event) => event.type === "verification_started");
+
+  return startedEvents
+    .map((event) => ({
+      command: readEventCommand(event.metadata) ?? "unknown verification command",
+      startedAt: event.timestamp
+    }))
+    .filter((attempt) => !hasLaterCompletion(attempt, events, runs));
+}
+
+function hasLaterCompletion(
+  attempt: IncompleteVerificationAttempt,
+  events: NonNullable<AgentFlightSession["events"]>,
+  runs: VerificationRun[]
+): boolean {
+  const command = normalizeCommand(attempt.command);
+
+  return (
+    events.some((event) => {
+      if (event.type !== "verification_passed" && event.type !== "verification_failed") {
+        return false;
+      }
+      return (
+        normalizeCommand(readEventCommand(event.metadata) ?? "") === command &&
+        timestampAtOrAfter(event.timestamp, attempt.startedAt)
+      );
+    }) ||
+    runs.some(
+      (run) =>
+        normalizeCommand(run.command) === command &&
+        timestampAtOrAfter(run.finishedAt, attempt.startedAt)
+    )
+  );
+}
+
+function addGeneratedFileGuidance(gaps: ProofGap[], changedFiles: string[]): void {
+  if (!changedFiles.includes(".projscan-memory/memory.json")) return;
+
+  gaps.push({
+    id: "suggest-projscan-memory-filter",
+    severity: "info",
+    message:
+      'Generated ProjScan memory is present. If this file is not meant for review, add ".projscan-memory/**" to changedFileFilters.ignore in .agentflight/config.json.',
+    relatedFiles: [".projscan-memory/memory.json"]
+  });
+}
+
+function readEventCommand(metadata: Record<string, unknown> | undefined): string | null {
+  const command = metadata?.command;
+  return typeof command === "string" && command.trim().length > 0 ? command : null;
+}
+
+function normalizeCommand(command: string): string {
+  return command.trim().replace(/\s+/g, " ");
+}
+
+function timestampAtOrAfter(candidate: string, reference: string): boolean {
+  const candidateTime = Date.parse(candidate);
+  const referenceTime = Date.parse(reference);
+  if (Number.isNaN(candidateTime) || Number.isNaN(referenceTime)) {
+    return candidate >= reference;
+  }
+  return candidateTime >= referenceTime;
 }

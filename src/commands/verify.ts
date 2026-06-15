@@ -8,11 +8,15 @@ import {
 } from "../core/verification.js";
 import { readCurrentSession } from "./status.js";
 import type { VerificationRun } from "../types/index.js";
+import type { CommandRunner } from "../core/process.js";
 
 export interface VerifyCommandOptions {
   repoRoot: string;
   commandArgs?: string[] | undefined;
   now?: (() => Date) | undefined;
+  commandRunner?: CommandRunner | undefined;
+  heartbeatIntervalMs?: number | undefined;
+  onHeartbeat?: ((message: string) => void) | undefined;
 }
 
 export interface VerifyCommandResult {
@@ -50,12 +54,16 @@ No verification command was provided and no commands are configured in .agentfli
       metadata: { command }
     });
 
-    const run = await runVerificationCommand({
-      repoRoot: options.repoRoot,
-      session,
-      commandArgs,
-      now: options.now
-    });
+    const run = await runWithHeartbeat(
+      runVerificationCommand({
+        repoRoot: options.repoRoot,
+        session,
+        commandArgs,
+        now: options.now,
+        commandRunner: options.commandRunner
+      }),
+      options
+    );
     session = await appendVerificationRun(options.repoRoot, session, run);
     session = await appendSessionEvent(options.repoRoot, session, {
       type: run.status === "passed" ? "verification_passed" : "verification_failed",
@@ -90,6 +98,30 @@ No verification command was provided and no commands are configured in .agentfli
     exitCode: runs.every((run) => run.status === "passed") ? 0 : 1,
     runs
   };
+}
+
+async function runWithHeartbeat(
+  promise: Promise<VerificationRun>,
+  options: VerifyCommandOptions
+): Promise<VerificationRun> {
+  const onHeartbeat = options.onHeartbeat;
+  if (!onHeartbeat) return promise;
+
+  const intervalMs = options.heartbeatIntervalMs ?? 30_000;
+  if (intervalMs <= 0) return promise;
+
+  const startedAt = Date.now();
+  const timer = setInterval(() => {
+    const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    onHeartbeat(`AgentFlight verify still running after ${elapsedSeconds}s...`);
+  }, intervalMs);
+  timer.unref?.();
+
+  try {
+    return await promise;
+  } finally {
+    clearInterval(timer);
+  }
 }
 
 async function resolveCommandSets(options: VerifyCommandOptions): Promise<string[][]> {

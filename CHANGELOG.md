@@ -2,6 +2,38 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.4.1] - 2026-06-15
+
+Review Intelligence trust patch focused on v0.4.0 dogfood findings.
+
+### Fixed
+
+- Detect incomplete verification attempts when a `verification_started` event has no later completed result.
+- Incomplete verification now appears as a blocking Review Intelligence proof gap and prevents `Ready for review`.
+- Report output no longer shows legacy verification-gap text that conflicts with Review Intelligence proof gaps.
+- `.agentflight/config.json` is classified as AgentFlight project config instead of generic `unknown`.
+
+### Changed
+
+- `agentflight verify` emits a minimal heartbeat while long-running verification commands are still active.
+- `.projscan-memory/memory.json` now triggers an informational suggestion to add `.projscan-memory/**` to `changedFileFilters.ignore` without hardcoding that path as a built-in ignore.
+
+### Documentation
+
+- Documented incomplete verification handling, heartbeat output, and optional ProjScan memory filters.
+- Updated v0.4.0 dogfood findings with v0.4.1 patch candidate status.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- AgentLoopKit verification passed.
+- ProjScan doctor passed with health `100/100`.
+- ProjScan preflight returned `proceed` with no caution.
+- Local packed-package smoke test passed.
+
 ## [0.4.0] - 2026-06-14
 
 ### Added

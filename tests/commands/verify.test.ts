@@ -5,6 +5,7 @@ import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
 import { startSession } from "../../src/core/session.js";
 import { runVerifyCommand } from "../../src/commands/verify.js";
+import type { CommandRunner } from "../../src/core/process.js";
 
 describe("verify command", () => {
   it("records a successful explicit command in the current session", async () => {
@@ -86,6 +87,38 @@ describe("verify command", () => {
       await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
     );
     expect(current.verificationRuns).toHaveLength(1);
+  });
+
+  it("emits heartbeat messages for long-running verification without adding them to evidence", async () => {
+    const repoRoot = await startedRepo();
+    const heartbeatMessages: string[] = [];
+    const commandRunner: CommandRunner = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return {
+        exitCode: 0,
+        stdout: "command stdout\n",
+        stderr: ""
+      };
+    };
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      commandArgs: ["npm", "test"],
+      now: () => new Date("2026-06-13T12:00:00.000Z"),
+      commandRunner,
+      heartbeatIntervalMs: 5,
+      onHeartbeat: (message) => heartbeatMessages.push(message)
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(heartbeatMessages.length).toBeGreaterThan(0);
+    expect(heartbeatMessages[0]).toContain("AgentFlight verify still running after");
+
+    const current = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const stdoutPath = join(repoRoot, current.verificationRuns[0].stdoutPath);
+    await expect(readFile(stdoutPath, "utf8")).resolves.toBe("command stdout\n");
   });
 });
 

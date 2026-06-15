@@ -19,6 +19,9 @@ export function categorizeFile(file: string): RiskCategory {
   if (/^\.agentloop\//.test(normalized)) {
     return "docs";
   }
+  if (normalized === ".agentflight/config.json") {
+    return "agentflight/config";
+  }
   if (/(^|\/)(test|tests|__tests__|spec)(\/|$)|\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) {
     return "tests";
   }
@@ -115,6 +118,7 @@ function buildReasons(categories: RiskCategorySummary[], level: RiskLevel): stri
   if (present.has("billing/payments")) reasons.push("Billing or payment files changed.");
   if (present.has("database/migrations")) reasons.push("Database migration files changed.");
   if (present.has("security/secrets")) reasons.push("Secret or credential-adjacent files changed.");
+  if (present.has("agentflight/config")) reasons.push("AgentFlight project configuration changed.");
   if (present.has("config")) reasons.push("Configuration or CI files changed.");
   if (present.has("backend/api")) reasons.push("Backend or API files changed.");
   if (present.has("dependencies")) reasons.push("Dependency or package metadata changed.");

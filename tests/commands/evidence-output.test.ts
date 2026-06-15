@@ -288,6 +288,77 @@ describe("evidence-aware session outputs", () => {
     expect(snapshot.output).toContain("Changed files: 1");
   });
 
+  it("surfaces incomplete verification consistently and removes legacy report gap conflicts", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    const currentSessionPath = join(repoRoot, ".agentflight", "current", "session.json");
+    const session = JSON.parse(await readFile(currentSessionPath, "utf8"));
+    session.events.push({
+      id: "evt-incomplete-verification",
+      type: "verification_started",
+      timestamp: "2026-06-13T12:00:00.000Z",
+      title: "Verification started",
+      metadata: { command: "npm test" }
+    });
+    await writeFile(currentSessionPath, JSON.stringify(session, null, 2));
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["src/auth/reset.ts"]
+    });
+    expect(status.output).toContain("Readiness: Needs verification");
+    expect(status.output).toContain(
+      "Verification was started but no completed result was recorded"
+    );
+    expect(status.output).toContain("agentflight verify -- npm test");
+
+    const report = await runReportCommand({
+      repoRoot,
+      changedFiles: ["src/auth/reset.ts"]
+    });
+    const markdown = await readFile(report.reportPath, "utf8");
+    expect(markdown).toContain("Verification was started but no completed result was recorded");
+    expect(markdown).toContain("agentflight verify -- npm test");
+    expect(markdown).not.toContain("Missing passing verification evidence for");
+
+    const replay = await runReplayCommand({
+      repoRoot,
+      changedFiles: ["src/auth/reset.ts"]
+    });
+    await expect(readFile(replay.replayPath, "utf8")).resolves.toContain(
+      "Verification was started but no completed result was recorded"
+    );
+
+    const resume = await runResumeCommand({
+      repoRoot,
+      changedFiles: ["src/auth/reset.ts"]
+    });
+    expect(resume.output).toContain(
+      "Verification was started but no completed result was recorded"
+    );
+    expect(resume.output).toContain("agentflight verify -- npm test");
+  });
+
+  it("suggests a ProjScan memory ignore pattern without filtering it by default", async () => {
+    const repoRoot = await startedRepo([]);
+    const changedFiles = [".projscan-memory/memory.json", "README.md"];
+
+    const status = await runStatusCommand({ repoRoot, changedFiles });
+    expect(status.output).toContain(".projscan-memory/memory.json");
+    expect(status.output).toContain(".projscan-memory/**");
+    expect(status.output).toContain("changedFileFilters.ignore");
+
+    const report = await runReportCommand({ repoRoot, changedFiles });
+    const markdown = await readFile(report.reportPath, "utf8");
+    expect(markdown).toContain(".projscan-memory/memory.json");
+    expect(markdown).toContain(".projscan-memory/**");
+    expect(markdown).toContain("changedFileFilters.ignore");
+
+    const resume = await runResumeCommand({ repoRoot, changedFiles });
+    expect(resume.output).toContain(".projscan-memory/memory.json");
+    expect(resume.output).toContain(".projscan-memory/**");
+    expect(resume.output).toContain("changedFileFilters.ignore");
+  });
+
   it("keeps status, report, replay, and resume compatible with older session shapes", async () => {
     const repoRoot = await createTempRepo();
     await initAgentFlight({ repoRoot, now: new Date("2026-06-13T11:00:00.000Z") });

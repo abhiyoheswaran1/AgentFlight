@@ -238,7 +238,7 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 - `agentflight init` initializes `.agentflight/` with safe writes.
 - `agentflight start --task "..."` starts a session and writes the current handoff.
 - `agentflight status` summarizes changed files, risk, verification status, review focus, proof gaps, readiness, snapshots, and next action.
-- `agentflight verify -- <command>` runs a proof command and records stdout/stderr evidence.
+- `agentflight verify -- <command>` runs a proof command, records stdout/stderr evidence, and prints a small heartbeat while long commands are still active.
 - `agentflight verify` runs commands from `.agentflight/config.json`.
 - `agentflight snapshot --note "..."` records current git, risk, and verification state as a timeline event.
 - `agentflight report` generates a Markdown proof report with review focus and readiness.

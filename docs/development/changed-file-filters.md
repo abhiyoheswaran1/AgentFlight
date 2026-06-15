@@ -15,6 +15,8 @@ These files are evidence and generated session data. Including them would make A
 
 `.agentflight/config.json` stays visible because it is user-controlled project configuration and may be intentionally committed.
 
+AgentFlight classifies `.agentflight/config.json` as AgentFlight project config. It remains reviewable without being treated as an unknown file.
+
 ## Project Filters
 
 Use `.agentflight/config.json` to hide generated or internal files that should not affect review intelligence:
@@ -46,6 +48,8 @@ Ignored files do not appear in:
 - `agentflight snapshot` risk and review summaries
 
 Keep filters conservative. Do not ignore generated files that reviewers are expected to inspect.
+
+If `.projscan-memory/memory.json` appears in changed-file analysis, AgentFlight will suggest adding `.projscan-memory/**` here. It does not ignore that path by default because some teams may want generated tool state to remain visible.
 
 ## Supported Pattern Shape
 

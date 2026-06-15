@@ -61,7 +61,8 @@ export function createCli(): Command {
       await printResult(
         runVerifyCommand({
           repoRoot: await getRepositoryRoot(process.cwd()),
-          commandArgs
+          commandArgs,
+          onHeartbeat: (message) => console.log(message)
         })
       );
     });

@@ -1024,3 +1024,74 @@ Results:
   - Supply chain: pass.
   - Concrete blockers: none reported.
   - Manual sign-off recommendation: acceptable for v0.4.0 release prep after human review of review-intelligence logic, changed-file filtering, and renderer/command consistency.
+
+### v0.4.1 Patch Candidate: Dogfood Friction Fixes
+
+Timestamp: `2026-06-15T00:05:00+02:00`
+
+Goal:
+
+- Implement only the focused v0.4.1 dogfood fixes after published v0.4.0 testing.
+- Do not bump version, commit, push, tag, publish, or start v0.5.0.
+
+Scope implemented:
+
+- Detect `verification_started` events that have no later passed/failed event or persisted verification run.
+- Surface incomplete verification as a blocking Review Intelligence proof gap.
+- Prevent `Ready for review` when incomplete verification needs rerun.
+- Add a minimal `agentflight verify` heartbeat for long-running commands.
+- Keep heartbeat output out of captured stdout/stderr evidence.
+- Route report proof-gap language through Review Intelligence instead of legacy verification-gap text.
+- Classify `.agentflight/config.json` as AgentFlight project config while keeping it visible.
+- Suggest `.projscan-memory/**` in `changedFileFilters.ignore` when `.projscan-memory/memory.json` appears, without making it a built-in ignore.
+
+Red/green evidence:
+
+```bash
+npm test -- tests/core/review-intelligence.test.ts tests/commands/evidence-output.test.ts tests/commands/verify.test.ts
+```
+
+Initial result:
+
+- Failed as expected for incomplete verification detection, ProjScan-memory guidance, AgentFlight config classification, and heartbeat support.
+
+After implementation:
+
+- Targeted tests passed: 3 files / 27 tests.
+
+### v0.4.1 Release Preparation
+
+Timestamp: `2026-06-15T07:10:00+02:00`
+
+Goal:
+
+- Release AgentFlight v0.4.1 as a focused Review Intelligence trust patch.
+- Do not add product scope or start v0.5.0.
+
+Commands run:
+
+```bash
+npm version 0.4.1 --no-git-tag-version
+npm run build
+node dist/cli.js --version
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx agentloopkit@latest verify
+npx projscan@latest doctor --format json
+npx projscan@latest preflight --mode before_commit --format json
+```
+
+Results:
+
+- Package metadata and lockfile are aligned at `0.4.1`.
+- Built CLI reported `0.4.1`.
+- `npm run verify` passed: typecheck, lint, 19 test files / 89 tests, build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.4.1`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- AgentLoopKit verification passed.
+- ProjScan doctor passed with health `100/100`.
+- ProjScan preflight returned `proceed` with no caution.
+- Local packed-package smoke test passed through init, start, verify, snapshot, status, report, replay, resume, and doctor.

@@ -66,6 +66,60 @@ describe("review intelligence", () => {
     expect(review.focus[0]?.proofStatus).toBe("failed");
   });
 
+  it("marks incomplete verification events as proof gaps and blocks readiness", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [],
+        events: [
+          event("session_started", "Session started", "2026-06-14T12:00:00.000Z"),
+          event("verification_started", "Verification started", "2026-06-14T12:01:00.000Z", {
+            command: "npm test"
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps).toContainEqual(
+      expect.objectContaining({
+        id: "incomplete-verification",
+        severity: "blocking",
+        suggestedCommand: "npm test"
+      })
+    );
+    expect(review.readiness).toMatchObject({
+      state: "needs_verification",
+      label: "Needs verification",
+      suggestedCommand: "npm test"
+    });
+    expect(review.readiness.reason).toContain("started but no completed result was recorded");
+    expect(review.readiness.nextAction).toContain("agentflight verify -- npm test");
+  });
+
+  it("does not mark a started verification as incomplete after a later successful run", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "passed")],
+        events: [
+          event("session_started", "Session started", "2026-06-14T12:00:00.000Z"),
+          event("verification_started", "Verification started", "2026-06-14T12:01:00.000Z", {
+            command: "npm test"
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps.map((gap) => gap.id)).not.toContain("incomplete-verification");
+    expect(review.readiness.state).toBe("ready_for_review");
+  });
+
   it("treats docs-only changes without proof as ready for review", () => {
     const changedFiles = ["docs/roadmap/index.md"];
     const review = buildReviewIntelligence({
@@ -86,6 +140,51 @@ describe("review intelligence", () => {
       state: "ready_for_review",
       label: "Ready for review"
     });
+  });
+
+  it("classifies AgentFlight config as project config without high risk scoring", () => {
+    const changedFiles = [".agentflight/config.json", "README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: []
+      })
+    });
+
+    const configFocus = review.focus.find((item) => item.file === ".agentflight/config.json");
+    expect(configFocus).toMatchObject({
+      category: "agentflight/config",
+      riskLevel: "medium",
+      proofStatus: "not_required"
+    });
+    expect(configFocus?.reasons).toContain("AgentFlight project config");
+    expect(configFocus?.suggestedReviewerFocus).toContain("AgentFlight session defaults");
+    expect(review.proofGaps.map((gap) => gap.id)).not.toContain("missing-config-proof");
+  });
+
+  it("suggests a configurable ProjScan memory filter without hiding it by default", () => {
+    const changedFiles = [".projscan-memory/memory.json", "README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.proofGaps).toContainEqual(
+      expect.objectContaining({
+        id: "suggest-projscan-memory-filter",
+        severity: "info",
+        relatedFiles: [".projscan-memory/memory.json"]
+      })
+    );
+    expect(review.proofGaps[0]?.message).toContain(".projscan-memory/**");
+    expect(review.proofGaps[0]?.message).toContain("changedFileFilters.ignore");
+    expect(review.readiness.state).toBe("ready_for_review");
   });
 
   it("requires build proof for frontend changes and suggests the configured build command", () => {
@@ -201,6 +300,7 @@ describe("review intelligence", () => {
 function testSession(options: {
   verificationCommands: string[];
   verificationRuns?: VerificationRun[] | undefined;
+  events?: AgentFlightSession["events"] | undefined;
 }): AgentFlightSession {
   return {
     id: "af-test",
@@ -211,10 +311,26 @@ function testSession(options: {
     packageManager: "npm",
     verificationCommands: options.verificationCommands,
     verificationRuns: options.verificationRuns ?? [],
+    events: options.events ?? [],
     tools: {
       projscan: { available: false, warnings: [] },
       agentloopkit: { available: false, warnings: [] }
     }
+  };
+}
+
+function event(
+  type: NonNullable<AgentFlightSession["events"]>[number]["type"],
+  title: string,
+  timestamp: string,
+  metadata?: Record<string, unknown>
+): NonNullable<AgentFlightSession["events"]>[number] {
+  return {
+    id: `evt-${type}-${timestamp}`,
+    type,
+    timestamp,
+    title,
+    ...(metadata ? { metadata } : {})
   };
 }
 

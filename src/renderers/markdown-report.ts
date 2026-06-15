@@ -81,9 +81,10 @@ function renderVerification(input: MarkdownReportInput): string {
     const commands = input.verificationCommands.length
       ? `\n\nSuggested commands:\n${renderList(input.verificationCommands)}`
       : "";
-    const gaps = input.verificationGaps?.length
-      ? `\n\nGaps:\n${renderList(input.verificationGaps)}`
-      : "";
+    const gaps =
+      !input.review && input.verificationGaps?.length
+        ? `\n\nGaps:\n${renderList(input.verificationGaps)}`
+        : "";
     return `No verification evidence recorded.${gaps}${commands}`;
   }
 
@@ -93,9 +94,10 @@ function renderVerification(input: MarkdownReportInput): string {
         `- ${run.command}: ${run.status} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)\n  - stdout: ${run.stdoutPath}\n  - stderr: ${run.stderrPath}`
     )
     .join("\n");
-  const gaps = input.verificationGaps?.length
-    ? `\n\nGaps:\n${renderList(input.verificationGaps)}`
-    : "";
+  const gaps =
+    !input.review && input.verificationGaps?.length
+      ? `\n\nGaps:\n${renderList(input.verificationGaps)}`
+      : "";
 
   return `${evidence}${gaps}`;
 }

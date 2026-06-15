@@ -89,6 +89,7 @@ export type RiskCategory =
   | "billing/payments"
   | "database/migrations"
   | "security/secrets"
+  | "agentflight/config"
   | "config"
   | "tests"
   | "docs"
