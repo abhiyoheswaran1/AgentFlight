@@ -84,4 +84,35 @@ describe("HTML replay", () => {
     expect(html).not.toMatch(/https?:\/\//);
     expect(html).not.toContain("<script");
   });
+
+  it("shows an inline, escaped output excerpt for failed verification runs", () => {
+    const html = renderHtmlReplay({
+      task: "Add reset flow",
+      sessionId: "af-2",
+      startedAt: "2026-06-16T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/auth/reset.ts"],
+      riskBadges: ["high"],
+      verificationEvidence: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-16T12:01:00.000Z",
+          finishedAt: "2026-06-16T12:01:08.000Z",
+          durationMs: 8000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-2/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-2/verification-1.stderr.txt",
+          outputExcerpt: "FAIL reset.test.ts\nexpected <token> to be single-use"
+        }
+      ],
+      reviewReadiness: "Blocked",
+      recommendation: "Fix the failing test."
+    });
+
+    expect(html).toContain("excerpt--failed");
+    expect(html).toContain("expected &lt;token&gt; to be single-use");
+    expect(html).not.toContain("<token>");
+    expect(html).not.toContain("<script");
+  });
 });

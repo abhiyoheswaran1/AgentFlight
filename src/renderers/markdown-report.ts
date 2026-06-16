@@ -89,10 +89,13 @@ function renderVerification(input: MarkdownReportInput): string {
   }
 
   const evidence = input.verificationEvidence
-    .map(
-      (run) =>
-        `- ${run.command}: ${run.status} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)\n  - stdout: ${run.stdoutPath}\n  - stderr: ${run.stderrPath}`
-    )
+    .map((run) => {
+      const base = `- ${run.command}: ${run.status} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)\n  - stdout: ${run.stdoutPath}\n  - stderr: ${run.stderrPath}`;
+      if (run.status === "failed" && run.outputExcerpt) {
+        return `${base}\n  - Output excerpt:\n\n${renderExcerptFence(run.outputExcerpt)}`;
+      }
+      return base;
+    })
     .join("\n");
   const gaps =
     !input.review && input.verificationGaps?.length
@@ -100,6 +103,12 @@ function renderVerification(input: MarkdownReportInput): string {
       : "";
 
   return `${evidence}${gaps}`;
+}
+
+function renderExcerptFence(excerpt: string): string {
+  // Use a longer fence if the excerpt itself contains a triple backtick.
+  const fence = excerpt.includes("```") ? "````" : "```";
+  return `${fence}text\n${excerpt}\n${fence}`;
 }
 
 function renderTimeline(events: SessionEvent[]): string {

@@ -130,6 +130,12 @@ export interface VerificationRun {
   status: "passed" | "failed";
   stdoutPath: string;
   stderrPath: string;
+  /**
+   * Short tail of the command output (stderr preferred, else stdout), captured at
+   * run time so a reviewer can see what happened without opening the evidence file.
+   * Local-only, never uploaded. Omitted when there is no output.
+   */
+  outputExcerpt?: string;
 }
 
 export type VerificationProofKind = "test" | "build" | "typecheck" | "lint" | "install" | "unknown";

@@ -61,7 +61,7 @@ AgentFlight turns a loose AI-agent session into a local proof trail:
 4. Read `status` to see changed files, risk, proof, gaps, and next action.
 5. Generate `report`, `replay`, and `resume` when the work is ready to review or hand off.
 
-The replay artifact is a self-contained local HTML file. It leads with the review verdict, then lays out risk, review focus, proof gaps, the session timeline, and verification evidence as a readable flight record:
+The replay artifact is a self-contained local HTML file. It leads with the review verdict, then lays out risk, review focus, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record:
 
 ![AgentFlight replay: review verdict, risk, timeline, and verification evidence](docs/assets/agentflight-replay-scroll.gif)
 
@@ -180,6 +180,7 @@ The current AgentFlight release supports:
 - proof gap detection and review readiness recommendations
 - configurable generated/internal changed-file filters
 - verification evidence capture with `agentflight verify`
+- inline failure excerpts in the replay and report, so failures are visible without opening evidence files
 - session events
 - snapshots with `agentflight snapshot --note "..."`
 - Markdown proof reports

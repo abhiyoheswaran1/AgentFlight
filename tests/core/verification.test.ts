@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createTempRepo } from "../helpers/temp.js";
 import {
+  buildOutputExcerpt,
   detectVerificationCommands,
   parseCommandLine,
   runVerificationCommand
@@ -79,6 +80,33 @@ describe("verification command detection", () => {
       stderrPath: ".agentflight/evidence/af-test/verification-1.stderr.txt"
     });
     await expect(readFile(join(repoRoot, run.stderrPath), "utf8")).resolves.toContain("nope");
+    expect(run.outputExcerpt).toContain("nope");
+  });
+});
+
+describe("buildOutputExcerpt", () => {
+  it("prefers stderr when it has content", () => {
+    expect(buildOutputExcerpt("compiled ok", "Error: boom")).toBe("Error: boom");
+  });
+
+  it("falls back to stdout when stderr is empty (test runners report there)", () => {
+    expect(buildOutputExcerpt("2 failed | 39 passed", "  \n ")).toBe("2 failed | 39 passed");
+  });
+
+  it("returns undefined when there is no output", () => {
+    expect(buildOutputExcerpt("", "")).toBeUndefined();
+    expect(buildOutputExcerpt("   \n\n", "")).toBeUndefined();
+  });
+
+  it("keeps only the last N lines", () => {
+    const input = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n");
+    const excerpt = buildOutputExcerpt(input, "", { maxLines: 3 });
+    expect(excerpt).toBe("line 28\nline 29\nline 30");
+  });
+
+  it("truncates very long single lines", () => {
+    const excerpt = buildOutputExcerpt("x".repeat(500), "", { maxLineLength: 10 });
+    expect(excerpt).toBe(`${"x".repeat(10)}…`);
   });
 });
 

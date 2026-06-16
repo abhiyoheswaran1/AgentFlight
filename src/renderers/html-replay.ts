@@ -45,16 +45,16 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
       --bg: oklch(0.984 0.004 255);
       --paper: oklch(0.997 0.002 255);
       --ink: oklch(0.265 0.018 258);
-      --chrome: oklch(0.515 0.022 258);
-      --faint: oklch(0.66 0.018 258);
+      --chrome: oklch(0.505 0.022 258);
+      --faint: oklch(0.585 0.02 258);
       --rule: oklch(0.905 0.008 258);
       --rule-strong: oklch(0.81 0.014 258);
       --soft: oklch(0.957 0.006 258);
       --accent: oklch(0.5 0.092 262);
 
-      --ok: oklch(0.52 0.085 152);
+      --ok: oklch(0.5 0.088 152);
       --ok-bg: oklch(0.965 0.022 152);
-      --warn: oklch(0.52 0.092 74);
+      --warn: oklch(0.49 0.1 74);
       --warn-bg: oklch(0.964 0.034 78);
       --danger: oklch(0.515 0.158 27);
       --danger-bg: oklch(0.962 0.026 27);
@@ -139,13 +139,18 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
     .flag.tone-high { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
     .flag.tone-medium { border-color: var(--warn); color: var(--warn); background: var(--warn-bg); }
 
-    /* readout band: instrument readings, not metric cards */
+    /* readout band: instrument readings, not metric cards.
+       Sticks to the top so risk and readiness stay visible on long records. */
     .summary-grid {
       display: flex;
       flex-wrap: wrap;
       gap: 0;
       margin: 0 0 8px;
       border-bottom: 1px solid var(--rule);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--bg);
     }
     .reading {
       display: flex;
@@ -264,6 +269,22 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
     summary { color: var(--chrome); cursor: pointer; font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; width: max-content; }
     summary:hover { color: var(--ink); }
     .paths { font-family: var(--mono); font-size: 12px; color: var(--faint); line-height: 1.7; margin-top: 7px; overflow-wrap: anywhere; }
+    .excerpt {
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.55;
+      margin: 2px 0 0;
+      padding: 11px 13px;
+      background: var(--soft);
+      border: 1px solid var(--rule);
+      border-radius: 5px;
+      color: var(--ink);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .excerpt--failed { background: var(--danger-bg); border-color: var(--danger); color: oklch(0.4 0.1 27); }
 
     /* changed file list */
     .files { columns: 2; column-gap: 36px; margin: 0; padding: 0; list-style: none; }
@@ -322,6 +343,24 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
       .timeline-rail { display: none; }
       .files { columns: 1; }
       .gaps li { grid-template-columns: 1fr; gap: 2px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto; }
+    }
+
+    /* Print: a clean evidence record for PDF handoffs and incident reconstruction. */
+    @media print {
+      :root { --bg: #fff; --paper: #fff; }
+      body { font-size: 11pt; }
+      main { max-width: none; padding: 0; }
+      .summary-grid { position: static; }
+      .section { padding-top: 20px; }
+      .section, .record, .entry, .timeline-item, .callout, .excerpt { break-inside: avoid; }
+      details { display: none; }
+      .excerpt { max-height: none; overflow: visible; }
+      a { color: inherit; text-decoration: none; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -477,12 +516,14 @@ function renderVerification(evidence: VerificationRun[]): string {
         <div class="entry-body">
           <div class="entry-cmd">${escapeHtml(item.command)}</div>
           <div class="entry-meta">exit ${escapeHtml(String(item.exitCode ?? "unknown"))} &middot; ${escapeHtml(String(item.durationMs))}ms</div>
+          ${item.status === "failed" && item.outputExcerpt ? `<pre class="excerpt excerpt--failed" aria-label="Output excerpt">${escapeHtml(item.outputExcerpt)}</pre>` : ""}
           <details>
             <summary>Evidence files</summary>
             <div class="paths">
               <div>stdout: ${escapeHtml(item.stdoutPath)}</div>
               <div>stderr: ${escapeHtml(item.stderrPath)}</div>
             </div>
+            ${item.status === "passed" && item.outputExcerpt ? `<pre class="excerpt">${escapeHtml(item.outputExcerpt)}</pre>` : ""}
           </details>
         </div>
       </div>`

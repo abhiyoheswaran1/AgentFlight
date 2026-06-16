@@ -124,7 +124,9 @@ export async function runVerificationCommand(
   await writeTextFileSafe(join(options.repoRoot, stdoutPath), result.stdout, { overwrite: true });
   await writeTextFileSafe(join(options.repoRoot, stderrPath), result.stderr, { overwrite: true });
 
-  return {
+  const outputExcerpt = buildOutputExcerpt(result.stdout, result.stderr);
+
+  const run: VerificationRun = {
     command: formatCommand(options.commandArgs),
     startedAt: startedAt.toISOString(),
     finishedAt: finishedAt.toISOString(),
@@ -134,6 +136,47 @@ export async function runVerificationCommand(
     stdoutPath,
     stderrPath
   };
+  if (outputExcerpt !== undefined) run.outputExcerpt = outputExcerpt;
+
+  return run;
+}
+
+export interface OutputExcerptOptions {
+  maxLines?: number;
+  maxLineLength?: number;
+  maxChars?: number;
+}
+
+/**
+ * Build a compact tail of command output for inline display. Prefers stderr when it
+ * carries content (crashes, stack traces), otherwise falls back to stdout (most test
+ * runners, type checkers, and linters report failures there). Returns undefined when
+ * there is nothing meaningful to show.
+ */
+export function buildOutputExcerpt(
+  stdout: string,
+  stderr: string,
+  options: OutputExcerptOptions = {}
+): string | undefined {
+  const maxLines = options.maxLines ?? 14;
+  const maxLineLength = options.maxLineLength ?? 200;
+  const maxChars = options.maxChars ?? 1400;
+
+  const source = stderr.trim().length > 0 ? stderr : stdout;
+  const trimmed = source.replace(/\s+$/u, "");
+  if (trimmed.length === 0) return undefined;
+
+  const lines = trimmed
+    .split("\n")
+    .slice(-maxLines)
+    .map((line) => (line.length > maxLineLength ? `${line.slice(0, maxLineLength)}…` : line));
+
+  let excerpt = lines.join("\n");
+  if (excerpt.length > maxChars) {
+    excerpt = `…${excerpt.slice(excerpt.length - maxChars)}`;
+  }
+
+  return excerpt;
 }
 
 export async function readVerificationStdout(
