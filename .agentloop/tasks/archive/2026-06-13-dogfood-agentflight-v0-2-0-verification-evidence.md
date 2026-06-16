@@ -1,12 +1,12 @@
-# Dogfood AgentFlight MVP
+# Dogfood AgentFlight v0.2.0 verification evidence
 
 - Created date: 2026-06-13
 - Task type: feature
-- Status: proposed
+- Status: done
 
 ## Problem Statement
 
-AgentFlight session task: Dogfood AgentFlight MVP
+AgentFlight session task: Dogfood AgentFlight v0.2.0 verification evidence
 
 ## Desired Outcome
 

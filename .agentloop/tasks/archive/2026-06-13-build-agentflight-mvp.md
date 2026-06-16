@@ -1,20 +1,21 @@
-# Dogfood AgentFlight v0.2.0 verification evidence
+# Build AgentFlight MVP
 
 - Created date: 2026-06-13
 - Task type: feature
-- Status: proposed
+- Status: done
 
 ## Problem Statement
 
-AgentFlight session task: Dogfood AgentFlight v0.2.0 verification evidence
+AgentFlight needs its first local-first TypeScript npm CLI MVP.
 
 ## Desired Outcome
 
-Task is implemented with local verification evidence.
+A working agentflight CLI with init, start, status, report, replay, resume, and doctor commands, documented dogfooding with ProjScan and AgentLoopKit, and verification evidence.
 
 ## Constraints
 
-- Keep changes scoped and do not claim completion without proof.
+- Local-first only; no cloud, auth, billing, telemetry, or source upload.
+- Use ProjScan and AgentLoopKit as development workflow dependencies from day one.
 
 ## Non-Goals
 
@@ -34,11 +35,12 @@ Task is implemented with local verification evidence.
 
 ## Acceptance Criteria
 
-- Add acceptance criteria before implementation starts.
+- npm run build, test, typecheck, lint, format:check, and verify pass.
+- AgentFlight dogfoods itself using init, start, status, report, replay, resume, and doctor.
 
 ## Verification Commands
 
-- No verification command recorded.
+- npm run verify
 
 ## Post-Verification Gates
 

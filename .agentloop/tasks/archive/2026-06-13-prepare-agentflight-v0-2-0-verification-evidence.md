@@ -1,21 +1,22 @@
-# Build AgentFlight MVP
+# Prepare AgentFlight v0.2.0 verification evidence
 
 - Created date: 2026-06-13
 - Task type: feature
-- Status: in-progress
+- Status: done
 
 ## Problem Statement
 
-AgentFlight needs its first local-first TypeScript npm CLI MVP.
+AgentFlight needs real verification evidence capture so reports, replay, status, and resume prompts prove what ran.
 
 ## Desired Outcome
 
-A working agentflight CLI with init, start, status, report, replay, resume, and doctor commands, documented dogfooding with ProjScan and AgentLoopKit, and verification evidence.
+agentflight verify records command evidence locally and downstream commands use that evidence honestly.
 
 ## Constraints
 
-- Local-first only; no cloud, auth, billing, telemetry, or source upload.
-- Use ProjScan and AgentLoopKit as development workflow dependencies from day one.
+- Do not publish or cut a version in this task.
+- Local-first only; no telemetry, cloud, auth, billing, GitHub App, or database.
+- Use safe child_process execution without shell interpolation.
 
 ## Non-Goals
 
@@ -35,12 +36,15 @@ A working agentflight CLI with init, start, status, report, replay, resume, and 
 
 ## Acceptance Criteria
 
-- npm run build, test, typecheck, lint, format:check, and verify pass.
-- AgentFlight dogfoods itself using init, start, status, report, replay, resume, and doctor.
+- agentflight verify -- <command> records passing and failing command results.
+- agentflight verify with no args runs configured commands.
+- status, report, replay, and resume reflect captured verification evidence.
+- npm run verify and npm run format:check pass.
 
 ## Verification Commands
 
 - npm run verify
+- npm run format:check
 
 ## Post-Verification Gates
 

@@ -1,0 +1,218 @@
+[
+  {
+    "status": "M",
+    "path": ".agentloop/handoffs/decision-log.md"
+  },
+  {
+    "status": "M",
+    "path": ".agentloop/handoffs/release-notes.md"
+  },
+  {
+    "status": "M",
+    "path": ".agentloop/handoffs/reviewer-brief.md"
+  },
+  {
+    "status": "M",
+    "path": ".agentloop/handoffs/verification-report.md"
+  },
+  {
+    "status": "M",
+    "path": ".agentloop/state.json"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-audit-agentflight-v0-3-0-release-readiness.md"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-audit-agentflight-v0-3-0.md"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-build-agentflight-mvp.md"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-dogfood-agentflight-mvp.md"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-dogfood-agentflight-v0-2-0-core-workflow.md"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-dogfood-agentflight-v0-2-0-verification-evidence.md"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-prepare-agentflight-v0-2-0-verification-evidence.md"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-prepare-agentflight-v0-2-1-dogfood-friction-patch.md"
+  },
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-13-prepare-agentflight-v0-3-0-session-events-and-snapshots.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-16-15-34-pr-summary-2.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-16-15-34-pr-summary-3.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-16-15-34-pr-summary-4.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-16-15-34-pr-summary-5.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-16-15-34-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-2/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-2/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-2/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-2/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-3/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-3/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-3/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-3/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-4/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-4/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-4/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-4/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-5/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-5/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-5/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff-5/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-16-15-34-handoff/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-16-backfill-agentloopkit-history-through-agentflight-v0-4-1.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-audit-agentflight-v0-3-0-release-readiness.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-audit-agentflight-v0-3-0.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-build-agentflight-mvp.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-dogfood-agentflight-mvp.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-dogfood-agentflight-v0-2-0-core-workflow.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-dogfood-agentflight-v0-2-0-verification-evidence.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-prepare-agentflight-v0-2-0-verification-evidence.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-prepare-agentflight-v0-2-1-dogfood-friction-patch.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-13-prepare-agentflight-v0-3-0-session-events-and-snapshots.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-15-dogfood-agentflight-v0-4-0-review-intelligence.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-15-implement-agentflight-v0-4-0-review-intelligence.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-15-prepare-agentflight-v0-4-1-review-intelligence-trust-patch.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-15-release-agentflight-v0-4-0-review-intelligence.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-15-release-agentflight-v0-4-1-review-intelligence-trust-patch.md"
+  }
+]

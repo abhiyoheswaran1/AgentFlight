@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-16-15-34-handoff-4",
+  "command": "handoff",
+  "createdAt": "2026-06-16-15-34",
+  "createdAtEpochMs": 1781616899963,
+  "task": {
+    "path": ".agentloop/tasks/2026-06-15-release-agentflight-v0-4-0-review-intelligence.md",
+    "title": "Release AgentFlight v0.4.0 Review Intelligence",
+    "status": "done"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-16-15-34-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-16-15-34-pr-summary-4.md",
+  "changedFileCount": 9
+}

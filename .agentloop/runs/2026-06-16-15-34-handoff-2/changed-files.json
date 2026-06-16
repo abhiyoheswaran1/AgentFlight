@@ -1,0 +1,26 @@
+[
+  {
+    "status": "M",
+    "path": ".agentloop/state.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-15-dogfood-agentflight-v0-4-0-review-intelligence.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-15-implement-agentflight-v0-4-0-review-intelligence.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-15-prepare-agentflight-v0-4-1-review-intelligence-trust-patch.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-15-release-agentflight-v0-4-0-review-intelligence.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-15-release-agentflight-v0-4-1-review-intelligence-trust-patch.md"
+  }
+]

@@ -1,0 +1,15 @@
+ .agentloop/handoffs/decision-log.md                | 32 ++++++++++
+ .agentloop/handoffs/release-notes.md               | 38 ++++++++++++
+ .agentloop/handoffs/reviewer-brief.md              | 54 ++++++++++++++++
+ .agentloop/handoffs/verification-report.md         | 28 +++++++++
+ .agentloop/state.json                              |  2 +-
+ ...3-audit-agentflight-v0-3-0-release-readiness.md | 68 --------------------
+ .../tasks/2026-06-13-audit-agentflight-v0-3-0.md   | 66 --------------------
+ .../tasks/2026-06-13-build-agentflight-mvp.md      | 68 --------------------
+ .../tasks/2026-06-13-dogfood-agentflight-mvp.md    | 66 --------------------
+ ...-13-dogfood-agentflight-v0-2-0-core-workflow.md | 66 --------------------
+ ...ood-agentflight-v0-2-0-verification-evidence.md | 66 --------------------
+ ...are-agentflight-v0-2-0-verification-evidence.md | 72 ----------------------
+ ...re-agentflight-v0-2-1-dogfood-friction-patch.md | 69 ---------------------
+ ...ntflight-v0-3-0-session-events-and-snapshots.md | 70 ---------------------
+ 14 files changed, 153 insertions(+), 612 deletions(-)
