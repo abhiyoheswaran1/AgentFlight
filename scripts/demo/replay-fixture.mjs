@@ -74,7 +74,13 @@ export const fixture = {
       exitCode: 1,
       status: "failed",
       stdoutPath: ".agentflight/evidence/af-7d3f/verification-1.stdout.txt",
-      stderrPath: ".agentflight/evidence/af-7d3f/verification-1.stderr.txt"
+      stderrPath: ".agentflight/evidence/af-7d3f/verification-1.stderr.txt",
+      outputExcerpt:
+        "FAIL  tests/auth/reset.test.ts > rejects reused tokens\n" +
+        "AssertionError: expected second reset with the same token to be rejected\n" +
+        "  - Expected: 401\n" +
+        "  + Received: 200\n" +
+        "Tests  2 failed | 39 passed (41)"
     },
     {
       command: "npm test",

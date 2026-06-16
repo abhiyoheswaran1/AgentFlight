@@ -2,6 +2,30 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.5.0] - 2026-06-16
+
+Inline verification evidence and replay accessibility.
+
+### Added
+
+- `agentflight verify` captures a short output excerpt (stderr preferred, otherwise stdout) at run time and stores it on the verification run.
+- The replay shows the excerpt inline for failed runs, so a reviewer can see what broke without opening the evidence file. Passing runs keep the excerpt tucked inside the evidence details to stay calm.
+- The Markdown proof report includes the failure excerpt as a fenced block for failed runs.
+
+### Changed
+
+- Replay readout band now sticks to the top so risk and readiness stay visible while scrolling long records.
+- Raised contrast on muted replay text and risk colors to meet WCAG AA for small text.
+
+### Added (replay)
+
+- Print stylesheet for clean PDF handoffs and incident reconstruction: expands evidence, avoids mid-record page breaks, and preserves risk and readiness color.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+
 ## [0.4.2] - 2026-06-16
 
 Replay UI redesign and refreshed product demos.
