@@ -1,6 +1,6 @@
 {
   "name": "agentflight",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Local-first flight recorder for AI coding agents.",
   "type": "module",
   "main": "./dist/cli.js",
@@ -15,6 +15,8 @@
     "docs/agentflight_logo/icon.svg",
     "docs/assets/agentflight-cli-demo.svg",
     "docs/assets/agentflight-replay-timeline.png",
+    "docs/assets/agentflight-replay-scroll.gif",
+    "docs/assets/agentflight-terminal-demo.gif",
     "docs/development/dogfooding.md",
     "docs/development/changed-file-filters.md",
     "docs/development/release.md",
@@ -35,6 +37,9 @@
     "agentflight": "tsx src/cli.ts",
     "projscan": "projscan start --intent \"Build AgentFlight, a local-first flight recorder for AI coding agents\"",
     "agentloopkit:doctor": "agentloopkit doctor",
+    "demo:replay": "npm run build && node scripts/demo/capture-replay.mjs",
+    "demo:terminal": "vhs docs/marketing/agentflight-terminal-demo.tape",
+    "demo:assets": "npm run demo:replay && npm run demo:terminal",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "repository": {
@@ -66,10 +71,11 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.3",
-    "agentloopkit": "^0.28.7",
+    "agentloopkit": "^0.35.2",
     "eslint": "^10.5.0",
+    "playwright": "^1.61.0",
     "prettier": "^3.8.4",
-    "projscan": "^4.3.1",
+    "projscan": "^4.5.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0",

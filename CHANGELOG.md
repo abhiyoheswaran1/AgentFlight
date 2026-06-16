@@ -2,6 +2,26 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.4.2] - 2026-06-16
+
+Replay UI redesign and refreshed product demos.
+
+### Changed
+
+- Redesigned the HTML replay artifact as a flight-record evidence ledger: a verdict-led masthead where review readiness is the lead signal, an instrument-style readout band in place of the metric-card grid, a log-spine timeline whose event nodes encode type by shape and fill, and a verification ledger with explicit `PASS`/`FAIL` stamps.
+- The replay now stays calm by default and applies semantic color only when risk is elevated or proof is failing, and never relies on color alone.
+- Updated ProjScan to 4.5.0 and AgentLoopKit to 0.35.2.
+
+### Added
+
+- Reproducible demo-asset pipeline: `npm run demo:assets` regenerates the replay screenshot and scroll GIF (Playwright) and the terminal workflow GIF (VHS) from `scripts/demo/` and `docs/marketing/`.
+- Refreshed README with the new terminal workflow GIF and an animated replay walkthrough.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+
 ## [0.4.1] - 2026-06-15
 
 Review Intelligence trust patch focused on v0.4.0 dogfood findings.

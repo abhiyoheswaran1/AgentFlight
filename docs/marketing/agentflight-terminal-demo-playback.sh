@@ -1,89 +1,86 @@
 #!/usr/bin/env bash
+# Scripted, deterministic playback for the AgentFlight terminal demo GIF.
+# Output mirrors the real CLI wording; it is curated so the recording stays clean.
 set -euo pipefail
 
-prompt() {
-  printf '\033[1;36m$ %s\033[0m\n' "$1"
-}
+CYAN=$'\033[38;5;38m'
+DIM=$'\033[38;5;245m'
+GREEN=$'\033[38;5;71m'
+AMBER=$'\033[38;5;179m'
+BOLD=$'\033[1m'
+RESET=$'\033[0m'
 
-section() {
-  printf '\033[1;37m%s\033[0m\n' "$1"
-}
+prompt() { printf '%s%s$%s %s\n' "$BOLD" "$CYAN" "$RESET" "$1"; }
+note()   { printf '%s%s%s\n' "$DIM" "$1" "$RESET"; }
+plain()  { printf '%s\n' "$1"; }
+label()  { printf '%s%s%s\n' "$DIM" "$1" "$RESET"; }
 
 clear
+sleep 0.4
 
-prompt 'npx agentflight@latest start --task "Add password reset flow"'
+prompt 'npx agentflight start --task "Add password reset flow"'
 sleep 0.7
-cat <<'OUT'
-AgentFlight started
+plain  'AgentFlight started'
+plain  ''
+label  'Task:'
+plain  'Add password reset flow'
+plain  ''
+label  'Detected:'
+plain  'Git branch: main'
+plain  'Package manager: npm'
+printf 'ProjScan: %savailable%s\n' "$GREEN" "$RESET"
+printf 'AgentLoopKit: %savailable%s\n' "$GREEN" "$RESET"
+plain  ''
+label  'Suggested proof:'
+plain  'npm test'
+plain  ''
+plain  'Now run your coding agent normally.'
+sleep 1.1
 
-Task:
-Add password reset flow
-
-Session:
-af-20260613-add-password-reset-flow
-
-Detected:
-Git branch: main
-Package manager: npm
-
-Now run your coding agent normally.
-OUT
-
-sleep 1.0
 printf '\n'
-section '# Codex, Claude Code, or Cursor changes the repo'
-sleep 0.8
+note '# Codex, Claude Code, or Cursor edits the repo'
+sleep 0.9
 
-prompt 'npx agentflight@latest verify -- npm test'
+prompt 'npx agentflight verify -- npm test'
 sleep 0.7
-cat <<'OUT'
-Verification recorded
+plain  'AgentFlight verification'
+plain  ''
+printf '%spassed%s: npm test\n' "$GREEN" "$RESET"
+label  'Evidence saved:'
+plain  '- stdout: .agentflight/evidence/af-7d3f/verification-1.stdout.txt'
+plain  '- stderr: .agentflight/evidence/af-7d3f/verification-1.stderr.txt'
+sleep 1.1
 
-Command:
-npm test
-
-Status:
-passed
-
-Evidence:
-stdout: .agentflight/evidence/.../verification-1.stdout.txt
-stderr: .agentflight/evidence/.../verification-1.stderr.txt
-OUT
-
-sleep 1.0
 printf '\n'
-prompt 'npx agentflight@latest snapshot --note "Initial implementation verified"'
+prompt 'npx agentflight status'
 sleep 0.7
-cat <<'OUT'
-Snapshot recorded
+plain  'AgentFlight status'
+plain  ''
+label  'Changed files:'
+plain  '3'
+plain  ''
+printf 'Risk: %smedium%s\n' "$AMBER" "$RESET"
+plain  '- Authentication-sensitive files changed.'
+plain  ''
+label  'Verification Evidence:'
+plain  '1 passed, 0 failed'
+plain  ''
+label  'Review first:'
+plain  '1. src/auth/reset.ts'
+plain  '   Why: identity/session path'
+plain  '   Focus: Check session, permission, and identity boundaries first.'
+plain  ''
+printf 'Review readiness: %sReady for review%s\n' "$GREEN" "$RESET"
+plain  ''
+label  'Next action:'
+plain  'Generate a proof report with agentflight report'
+sleep 1.3
 
-Note: Initial implementation verified
-Changed files: 3
-Risk: medium
-Verification: 1 passed, 0 failed
-OUT
-
-sleep 1.0
 printf '\n'
-prompt 'npx agentflight@latest status'
+prompt 'npx agentflight replay'
 sleep 0.7
-cat <<'OUT'
-AgentFlight status
-
-Task:
-Add password reset flow
-
-Changed files:
-3
-
-Risk: medium
-Verification Evidence:
-1 passed, 0 failed
-
-Review readiness: Ready for review
-
-Next action:
-Generate a proof report with agentflight report
-OUT
-
-sleep 3.0
+label  'Replay generated:'
+plain  '.agentflight/reports/af-7d3f-replay.html'
+plain  ''
+note '# Open the replay to review changes, risk, and proof'
+sleep 2.4

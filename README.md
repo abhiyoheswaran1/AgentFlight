@@ -22,7 +22,7 @@ AgentFlight helps you:
 - generate a local replay timeline
 - create a resume prompt for the next agent or reviewer
 
-![Animated AgentFlight CLI workflow](docs/assets/agentflight-cli-demo.svg)
+![AgentFlight CLI workflow: start, verify, status, and replay](docs/assets/agentflight-terminal-demo.gif)
 
 ## 60-Second Workflow
 
@@ -61,9 +61,11 @@ AgentFlight turns a loose AI-agent session into a local proof trail:
 4. Read `status` to see changed files, risk, proof, gaps, and next action.
 5. Generate `report`, `replay`, and `resume` when the work is ready to review or hand off.
 
-The replay artifact is a self-contained local HTML file:
+The replay artifact is a self-contained local HTML file. It leads with the review verdict, then lays out risk, review focus, proof gaps, the session timeline, and verification evidence as a readable flight record:
 
-![AgentFlight replay timeline](docs/assets/agentflight-replay-timeline.png)
+![AgentFlight replay: review verdict, risk, timeline, and verification evidence](docs/assets/agentflight-replay-scroll.gif)
+
+A high-resolution still is also available at [`docs/assets/agentflight-replay-timeline.png`](docs/assets/agentflight-replay-timeline.png).
 
 ## Why This Exists
 

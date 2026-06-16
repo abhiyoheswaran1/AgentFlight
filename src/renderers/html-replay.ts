@@ -516,7 +516,8 @@ function nodeClass(type: string): string {
   if (type.includes("failed")) return "node--fail";
   if (type.includes("snapshot")) return "node--snapshot";
   if (type.includes("session_started")) return "node--start";
-  if (type.includes("replay") || type.includes("report") || type.includes("resume")) return "node--report";
+  if (type.includes("replay") || type.includes("report") || type.includes("resume"))
+    return "node--report";
   return "node--default";
 }
 
