@@ -1,67 +1,51 @@
-# Build AgentFlight MVP
+# Redesign replay UI and refresh product demos (GIFs + screenshots)
 
-- Created date: 2026-06-13
+- Created date: 2026-06-16
 - Task type: feature
-- Status: in-progress
+- Status: proposed
 
 ## Problem Statement
-
-AgentFlight needs its first local-first TypeScript npm CLI MVP.
+AgentFlight session task: Redesign replay UI and refresh product demos (GIFs + screenshots)
 
 ## Desired Outcome
-
-A working agentflight CLI with init, start, status, report, replay, resume, and doctor commands, documented dogfooding with ProjScan and AgentLoopKit, and verification evidence.
+Task is implemented with local verification evidence.
 
 ## Constraints
-
-- Local-first only; no cloud, auth, billing, telemetry, or source upload.
-- Use ProjScan and AgentLoopKit as development workflow dependencies from day one.
+- Keep changes scoped and do not claim completion without proof.
 
 ## Non-Goals
-
 - None recorded yet.
 
 ## Assumptions
-
 - None recorded yet.
 
 ## Likely Files or Areas
-
 - None recorded yet.
 
 ## Files or Areas Not to Touch
-
 - None recorded yet.
 
 ## Acceptance Criteria
-
-- npm run build, test, typecheck, lint, format:check, and verify pass.
-- AgentFlight dogfoods itself using init, start, status, report, replay, resume, and doctor.
+- Add acceptance criteria before implementation starts.
 
 ## Verification Commands
-
-- npm run verify
+- No verification command recorded.
 
 ## Post-Verification Gates
-
 - No post-verification gate recorded. Use this for commands that need a fresh AgentLoop verification report.
 
 ## Implementation Plan
-
 - Inspect relevant files before editing.
 - Keep changes focused on this contract.
 - Record any architecture decision in DECISIONS.md.
 
 ## Risk Notes
-
 - Re-check protected areas before changing migrations, auth, secrets, billing, deployment, or public APIs.
 
 ## Rollback Notes
-
 Document how to revert or disable this change.
 
 ## Handoff Requirements
-
 - Summarize files changed.
 - Include verification commands and results.
 - State unverified areas honestly.

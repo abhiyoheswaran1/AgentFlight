@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-16-15-38-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-16-15-38",
+  "createdAtEpochMs": 1781617084764,
+  "task": {
+    "path": ".agentloop/tasks/2026-06-16-backfill-agentloopkit-history-through-agentflight-v0-4-1.md",
+    "title": "Backfill AgentLoopKit history through AgentFlight v0.4.1",
+    "status": "done"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-16-15-37-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-16-15-38-pr-summary.md",
+  "changedFileCount": 54
+}

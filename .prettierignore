@@ -4,6 +4,8 @@ node_modules
 .agentflight/sessions
 .agentflight/reports
 .agentflight/current
+.agentloop
+output
 .projscan-cache
 .projscan-memory
 package-lock.json

@@ -1,22 +1,20 @@
-# Prepare AgentFlight v0.2.0 verification evidence
+# Dogfood AgentFlight MVP
 
 - Created date: 2026-06-13
 - Task type: feature
-- Status: proposed
+- Status: done
 
 ## Problem Statement
 
-AgentFlight needs real verification evidence capture so reports, replay, status, and resume prompts prove what ran.
+AgentFlight session task: Dogfood AgentFlight MVP
 
 ## Desired Outcome
 
-agentflight verify records command evidence locally and downstream commands use that evidence honestly.
+Task is implemented with local verification evidence.
 
 ## Constraints
 
-- Do not publish or cut a version in this task.
-- Local-first only; no telemetry, cloud, auth, billing, GitHub App, or database.
-- Use safe child_process execution without shell interpolation.
+- Keep changes scoped and do not claim completion without proof.
 
 ## Non-Goals
 
@@ -36,15 +34,11 @@ agentflight verify records command evidence locally and downstream commands use 
 
 ## Acceptance Criteria
 
-- agentflight verify -- <command> records passing and failing command results.
-- agentflight verify with no args runs configured commands.
-- status, report, replay, and resume reflect captured verification evidence.
-- npm run verify and npm run format:check pass.
+- Add acceptance criteria before implementation starts.
 
 ## Verification Commands
 
-- npm run verify
-- npm run format:check
+- No verification command recorded.
 
 ## Post-Verification Gates
 
