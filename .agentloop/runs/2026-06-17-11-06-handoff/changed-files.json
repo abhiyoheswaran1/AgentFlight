@@ -1,0 +1,138 @@
+[
+  {
+    "status": "M",
+    "path": ".agentloop/state.json"
+  },
+  {
+    "status": "M",
+    "path": "AGENTFLIGHT_DEVLOG.md"
+  },
+  {
+    "status": "M",
+    "path": "CHANGELOG.md"
+  },
+  {
+    "status": "M",
+    "path": "docs/development/changed-file-filters.md"
+  },
+  {
+    "status": "M",
+    "path": "package-lock.json"
+  },
+  {
+    "status": "M",
+    "path": "package.json"
+  },
+  {
+    "status": "M",
+    "path": "src/commands/status.ts"
+  },
+  {
+    "status": "M",
+    "path": "src/commands/verify.ts"
+  },
+  {
+    "status": "M",
+    "path": "src/core/output.ts"
+  },
+  {
+    "status": "M",
+    "path": "src/renderers/html-replay.ts"
+  },
+  {
+    "status": "M",
+    "path": "src/renderers/markdown-report.ts"
+  },
+  {
+    "status": "M",
+    "path": "src/renderers/resume-prompt.ts"
+  },
+  {
+    "status": "M",
+    "path": "tests/commands/verify.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "tests/renderers/html-replay.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "tests/renderers/markdown-report.test.ts"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-17-09-05-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-17-09-08-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-17-10-32-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-17-10-33-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-17-10-39-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-17-10-33-handoff/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-17-10-33-handoff/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-17-10-33-handoff/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-17-10-33-handoff/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-17-10-39-handoff/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-17-10-39-handoff/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-17-10-39-handoff/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-17-10-39-handoff/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-17-dogfood-agentflight-v0-5-0-successful-verification-path.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-17-release-agentflight-v0-5-1-excerpt-and-report-polish.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-17-dogfood-agentflight-v0-5-0.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-17-prepare-agentflight-v0-5-1-dogfood-patch.md"
+  },
+  {
+    "status": "??",
+    "path": "docs/development/v0.5.0-dogfood-findings.md"
+  },
+  {
+    "status": "??",
+    "path": "docs/development/v0.5.1-release-audit.md"
+  }
+]

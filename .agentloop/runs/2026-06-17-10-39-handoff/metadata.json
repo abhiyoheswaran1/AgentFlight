@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-17-10-39-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-17-10-39",
+  "createdAtEpochMs": 1781685556341,
+  "task": {
+    "path": ".agentloop/tasks/archive/2026-06-17-prepare-agentflight-v0-5-1-dogfood-patch.md",
+    "title": "Prepare AgentFlight v0.5.1 dogfood patch",
+    "status": "done"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-17-10-38-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-17-10-39-pr-summary.md",
+  "changedFileCount": 25
+}

@@ -115,4 +115,58 @@ describe("HTML replay", () => {
     expect(html).not.toContain("<token>");
     expect(html).not.toContain("<script");
   });
+
+  it("renders long suggested proof commands compactly with the full command in a title", () => {
+    const longCommand = `node -e "${"console.error('very noisy proof command'); ".repeat(12)}process.exit(1)"`;
+    const html = renderHtmlReplay({
+      task: "Dogfood failure",
+      sessionId: "af-long-command",
+      startedAt: "2026-06-17T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/auth/reset.ts"],
+      riskBadges: ["high"],
+      verificationEvidence: [],
+      reviewReadiness: "Blocked by failed verification",
+      review: {
+        focus: [
+          {
+            rank: 1,
+            file: "src/auth/reset.ts",
+            category: "auth",
+            riskLevel: "high",
+            score: 130,
+            reasons: ["identity/session path", "matching proof missing"],
+            suggestedReviewerFocus: "Check session, permission, and identity boundaries first.",
+            proofStatus: "missing",
+            suggestedCommand: longCommand,
+            relatedProofGapIds: ["failed-verification"]
+          }
+        ],
+        proofGaps: [
+          {
+            id: "failed-verification",
+            severity: "blocking",
+            message: `A verification command failed and must be fixed or rerun successfully: ${longCommand}`,
+            suggestedCommand: longCommand,
+            relatedFiles: ["src/auth/reset.ts"]
+          }
+        ],
+        readiness: {
+          state: "blocked_by_failed_verification",
+          label: "Blocked by failed verification",
+          reason: `A verification command failed and must be fixed or rerun successfully: ${longCommand}`,
+          nextAction: `Fix the failed command, then rerun agentflight verify -- ${longCommand}`,
+          suggestedCommand: longCommand,
+          proofGaps: []
+        }
+      },
+      recommendation: `Blocked by failed verification. Fix the failed command, then rerun agentflight verify -- ${longCommand}`
+    });
+
+    expect(html).toContain("agentflight verify -- node -e");
+    expect(html).toContain("…");
+    expect(html).toContain('title="agentflight verify -- node -e');
+    expect(html).toContain("process.exit(1)");
+    expect(html).toMatch(/>agentflight verify -- node -e [^<]*…<\/code>/);
+  });
 });

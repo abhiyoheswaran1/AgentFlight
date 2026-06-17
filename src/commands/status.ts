@@ -2,6 +2,7 @@ import { listChangedFiles } from "../core/git.js";
 import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
 import { pathExists, readJsonFile } from "../core/fs-safe.js";
+import { compactCommandInText, formatVerifyCommandForDisplay } from "../core/output.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
@@ -76,10 +77,10 @@ Latest snapshot:
 ${formatLatestSnapshot(latestSnapshot)}
 
 Readiness: ${review.readiness.label}
-Reason: ${review.readiness.reason}
+Reason: ${compactCommandInText(review.readiness.reason, review.readiness.suggestedCommand)}
 
 Next action:
-${review.readiness.nextAction}
+${compactCommandInText(review.readiness.nextAction, review.readiness.suggestedCommand)}
 `
   };
 }
@@ -146,7 +147,7 @@ function formatReviewFocus(items: ReviewFocusItem[]): string {
   return items
     .map(
       (item) =>
-        `${item.rank}. ${item.file}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   Suggested proof: ${item.suggestedCommand}` : ""}`
+        `${item.rank}. ${item.file}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
 }
@@ -156,7 +157,7 @@ function formatProofGaps(gaps: ProofGap[]): string {
   return gaps
     .map(
       (gap) =>
-        `- ${gap.severity}: ${gap.message}${gap.suggestedCommand ? `\n  Suggested proof: agentflight verify -- ${gap.suggestedCommand}` : ""}`
+        `- ${gap.severity}: ${compactCommandInText(gap.message, gap.suggestedCommand)}${gap.suggestedCommand ? `\n  Suggested proof: ${formatVerifyCommandForDisplay(gap.suggestedCommand)}` : ""}`
     )
     .join("\n");
 }

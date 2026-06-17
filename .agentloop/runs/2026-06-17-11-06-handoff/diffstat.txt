@@ -1,0 +1,16 @@
+ .agentloop/state.json                    |  2 +-
+ AGENTFLIGHT_DEVLOG.md                    | 64 ++++++++++++++++++++++
+ CHANGELOG.md                             | 26 +++++++++
+ docs/development/changed-file-filters.md |  7 ++-
+ package-lock.json                        |  4 +-
+ package.json                             |  2 +-
+ src/commands/status.ts                   |  9 ++--
+ src/commands/verify.ts                   | 12 ++---
+ src/core/output.ts                       | 47 ++++++++++++++++
+ src/renderers/html-replay.ts             | 22 ++++++--
+ src/renderers/markdown-report.ts         | 29 +++++-----
+ src/renderers/resume-prompt.ts           | 10 ++--
+ tests/commands/verify.test.ts            | 75 ++++++++++++++++++++++++++
+ tests/renderers/html-replay.test.ts      | 54 +++++++++++++++++++
+ tests/renderers/markdown-report.test.ts  | 93 ++++++++++++++++++++++++++++++++
+ 15 files changed, 415 insertions(+), 41 deletions(-)

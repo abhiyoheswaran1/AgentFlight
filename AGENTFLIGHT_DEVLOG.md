@@ -2,6 +2,70 @@
 
 This log records setup, dogfooding, and verification evidence for the AgentFlight MVP.
 
+## 2026-06-17
+
+### v0.5.1 Dogfood Patch Candidate
+
+Scope:
+
+- Keep v0.5.1 focused on v0.5.0 dogfood findings.
+- Do not start v0.6.0.
+- Do not bump version, commit, push, tag, publish, or release.
+
+Implemented patch candidate:
+
+- Changed inline `agentflight verify` output to print the stored
+  stderr-preferred output excerpt instead of rereading and printing stdout.
+- Kept raw stdout and stderr evidence files unchanged.
+- Added compact display helpers for long suggested proof commands in status,
+  Markdown reports, HTML replays, and resume prompts.
+- Kept full long suggested proof commands locally available in HTML replay
+  `title` attributes while keeping visible review rows compact.
+- Reduced noisy AgentLoopKit Tooling lines in Markdown reports to concise status
+  messages when AgentLoopKit is unavailable or doctor reports local issues.
+- Preserved `.projscan-memory/**` as suggestion-only guidance, not a built-in
+  ignored path.
+- Removed untracked dogfood artifacts from the sibling `fifa-predictor` repo:
+  `.agentflight/` and `.projscan-memory/`.
+
+TDD evidence:
+
+```bash
+npm test -- tests/commands/verify.test.ts
+npm test -- tests/renderers/markdown-report.test.ts tests/renderers/html-replay.test.ts tests/renderers/resume-prompt.test.ts
+```
+
+Results:
+
+- Initial terminal excerpt regression failed because `runVerifyCommand` printed
+  saved stdout instead of `VerificationRun.outputExcerpt`.
+- Initial report/replay compact-command tests failed because long commands were
+  rendered in full.
+- Initial AgentLoopKit Tooling test failed because report output embedded full
+  doctor diagnostics.
+- After the patch, the targeted command and renderer tests passed.
+
+### v0.5.1 Release Audit Pass
+
+Release scope:
+
+- Bump package metadata from `0.5.0` to `0.5.1`.
+- Document manual ProjScan sign-off for the scale/review caution.
+- Commit, push, tag, and rely on Trusted Publishing for npm release.
+- Do not add product features or start v0.6.0.
+
+Audit evidence:
+
+- `node dist/cli.js --version` reported `0.5.1` after the version bump and
+  build.
+- `docs/development/v0.5.1-release-audit.md` records the ProjScan caution:
+  maximum changed-file risk score `165.3 >= 80`.
+- The caution was accepted as a manual release sign-off because ProjScan
+  reported no concrete blockers, dependency changes, contract changes, taint or
+  dataflow risks, risky functions, or cycles.
+- Local packed-package smoke testing confirmed stderr-preferred failure
+  excerpts in terminal, report, and replay output while preserving raw evidence.
+
 ## 2026-06-13
 
 ### Repository Baseline

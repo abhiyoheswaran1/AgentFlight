@@ -2,6 +2,32 @@
 
 All notable AgentFlight changes are documented here.
 
+## AgentFlight v0.5.1 - 2026-06-17
+
+Focused dogfood patch for v0.5.0 review artifacts.
+
+### Fixed
+
+- Terminal `agentflight verify` now uses the same stderr-preferred failure excerpt as report/replay artifacts.
+- Raw stdout/stderr evidence remains preserved.
+- Reduced noisy AgentLoopKit Tooling diagnostics in Markdown reports.
+
+### Changed
+
+- Trimmed long suggested proof commands in status, report, replay, and resume surfaces.
+- Added shared output display helpers for compact proof commands and concise tool-report lines.
+- Kept `.projscan-memory/**` as suggestion-only guidance, not a built-in ignored path.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed.
+- `npm audit --audit-level=moderate` found 0 vulnerabilities.
+- AgentLoopKit verification passed.
+- ProjScan doctor passed with score 100/A.
+- ProjScan preflight/review returned a documented manual release-signoff caution for scale risk only, with no concrete blockers.
+
 ## [0.5.0] - 2026-06-16
 
 Inline verification evidence and replay accessibility.

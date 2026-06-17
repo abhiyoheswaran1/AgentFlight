@@ -1,3 +1,4 @@
+import { compactCommandInText, formatVerifyCommandForDisplay } from "../core/output.js";
 import type {
   ProofGap,
   ReviewFocusItem,
@@ -74,7 +75,7 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
   return items
     .map(
       (item) =>
-        `${item.rank}. ${item.file}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${item.suggestedCommand}` : ""}`
+        `${item.rank}. ${item.file}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
 }
@@ -85,7 +86,7 @@ function renderProofGaps(input: ResumePromptInput): string {
       ? input.proofGaps
           .map(
             (gap) =>
-              `- ${gap.severity}: ${gap.message}${gap.suggestedCommand ? `\n  Suggested proof: agentflight verify -- ${gap.suggestedCommand}` : ""}`
+              `- ${gap.severity}: ${compactCommandInText(gap.message, gap.suggestedCommand)}${gap.suggestedCommand ? `\n  Suggested proof: ${formatVerifyCommandForDisplay(gap.suggestedCommand)}` : ""}`
           )
           .join("\n")
       : "No proof gaps recorded.";
@@ -96,7 +97,8 @@ function renderProofGaps(input: ResumePromptInput): string {
 
 function renderReadiness(readiness: ReviewReadinessDecision | undefined): string {
   if (!readiness) return "No review readiness recorded.";
+  const command = readiness.suggestedCommand;
   return `${readiness.label}
-- Reason: ${readiness.reason}
-- Next action: ${readiness.nextAction}`;
+- Reason: ${compactCommandInText(readiness.reason, command)}
+- Next action: ${compactCommandInText(readiness.nextAction, command)}`;
 }

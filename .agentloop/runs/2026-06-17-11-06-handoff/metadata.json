@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-17-11-06-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-17-11-06",
+  "createdAtEpochMs": 1781687200905,
+  "task": {
+    "path": ".agentloop/tasks/2026-06-17-release-agentflight-v0-5-1-excerpt-and-report-polish.md",
+    "title": "Release AgentFlight v0.5.1 excerpt and report polish",
+    "status": "in-progress"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-17-11-05-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-17-11-06-pr-summary.md",
+  "changedFileCount": 34
+}

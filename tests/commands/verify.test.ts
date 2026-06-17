@@ -68,6 +68,81 @@ describe("verify command", () => {
     ]);
   });
 
+  it("prints the stderr-preferred failure excerpt while preserving raw evidence", async () => {
+    const repoRoot = await startedRepo();
+    const commandRunner: CommandRunner = async () => ({
+      exitCode: 42,
+      stdout: "STDOUT_NOISE: this should stay in evidence only\nSTDOUT_NOISE: second line\n",
+      stderr: "STDERR_SIGNAL: useful failure line\nHTML_ESCAPE_CHECK: <script>alert(1)</script>\n"
+    });
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      commandArgs: ["node", "-e", "process.exit(42)"],
+      now: () => new Date("2026-06-13T12:00:00.000Z"),
+      commandRunner
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("STDERR_SIGNAL: useful failure line");
+    expect(result.output).toContain("HTML_ESCAPE_CHECK: <script>alert(1)</script>");
+    expect(result.output).not.toContain("STDOUT_NOISE");
+
+    const current = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const run = current.verificationRuns[0];
+    await expect(readFile(join(repoRoot, run.stdoutPath), "utf8")).resolves.toBe(
+      "STDOUT_NOISE: this should stay in evidence only\nSTDOUT_NOISE: second line\n"
+    );
+    await expect(readFile(join(repoRoot, run.stderrPath), "utf8")).resolves.toBe(
+      "STDERR_SIGNAL: useful failure line\nHTML_ESCAPE_CHECK: <script>alert(1)</script>\n"
+    );
+  });
+
+  it("falls back to stdout for terminal excerpts when stderr is empty", async () => {
+    const repoRoot = await startedRepo();
+    const commandRunner: CommandRunner = async () => ({
+      exitCode: 1,
+      stdout: "STDOUT_SIGNAL: test runner failure\n",
+      stderr: ""
+    });
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      commandArgs: ["npm", "test"],
+      now: () => new Date("2026-06-13T12:00:00.000Z"),
+      commandRunner
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("STDOUT_SIGNAL: test runner failure");
+  });
+
+  it("keeps terminal failure excerpts capped", async () => {
+    const repoRoot = await startedRepo();
+    const stderr = Array.from(
+      { length: 20 },
+      (_, index) => `stderr line ${String(index + 1).padStart(2, "0")}`
+    ).join("\n");
+    const commandRunner: CommandRunner = async () => ({
+      exitCode: 1,
+      stdout: "",
+      stderr
+    });
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      commandArgs: ["npm", "test"],
+      now: () => new Date("2026-06-13T12:00:00.000Z"),
+      commandRunner
+    });
+
+    expect(result.output).not.toContain("stderr line 01");
+    expect(result.output).toContain("stderr line 07");
+    expect(result.output).toContain("stderr line 20");
+  });
+
   it("runs configured verification commands when no explicit command is provided", async () => {
     const repoRoot = await startedRepo();
     const configPath = join(repoRoot, ".agentflight", "config.json");

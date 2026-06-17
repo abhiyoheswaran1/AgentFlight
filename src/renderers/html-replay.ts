@@ -1,3 +1,4 @@
+import { compactCommandInText, formatVerifyCommandForDisplay } from "../core/output.js";
 import type {
   ProofGap,
   ReviewFocusItem,
@@ -29,6 +30,10 @@ export interface HtmlReplayInput {
 export function renderHtmlReplay(input: HtmlReplayInput): string {
   const readiness = input.reviewReadiness ?? "Unknown";
   const verdict = classifyReadiness(readiness);
+  const recommendation = compactCommandInText(
+    input.recommendation,
+    input.review?.readiness.suggestedCommand
+  );
 
   return `<!doctype html>
 <html lang="en">
@@ -408,7 +413,7 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
     <section class="section">
       <div class="section-head"><h2 class="label">Recommendation</h2></div>
-      <p>${escapeHtml(input.recommendation)}</p>
+      <p>${escapeHtml(recommendation)}</p>
     </section>
 
     <footer>
@@ -459,6 +464,7 @@ function renderTimeline(items: ReplayTimelineItem[]): string {
 
 function renderReview(review: ReviewIntelligence | undefined): string {
   if (!review) return "";
+  const command = review.readiness.suggestedCommand;
   return `<section class="section">
       <div class="section-head"><h2 class="label">Review Focus</h2><span class="count">${escapeHtml(String(review.focus.length))} files</span></div>
       ${renderReviewFocus(review.focus)}
@@ -466,8 +472,8 @@ function renderReview(review: ReviewIntelligence | undefined): string {
       ${renderProofGaps(review.proofGaps)}
       <div class="callout">
         <div class="callout-state">${escapeHtml(review.readiness.label)}</div>
-        <div class="callout-reason">${escapeHtml(review.readiness.reason)}</div>
-        <div class="callout-next"><span class="label">Next</span>${escapeHtml(review.readiness.nextAction)}</div>
+        <div class="callout-reason">${escapeHtml(compactCommandInText(review.readiness.reason, command))}</div>
+        <div class="callout-next"><span class="label">Next</span>${escapeHtml(compactCommandInText(review.readiness.nextAction, command))}</div>
       </div>
     </section>`;
 }
@@ -477,7 +483,7 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
   return `<div class="records">${items
     .map(
       (item) =>
-        `<div class="record"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: <code>${escapeHtml(item.suggestedCommand)}</code></div>` : ""}</div></div>`
+        `<div class="record"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
     )
     .join("")}</div>`;
 }
@@ -487,9 +493,15 @@ function renderProofGaps(gaps: ProofGap[]): string {
   return `<ul class="gaps">${gaps
     .map(
       (gap) =>
-        `<li><span class="gap-sev sev-${escapeHtml(gap.severity.toLowerCase())}">${escapeHtml(gap.severity)}</span><span>${escapeHtml(gap.message)}${gap.suggestedCommand ? ` <code>agentflight verify -- ${escapeHtml(gap.suggestedCommand)}</code>` : ""}</span></li>`
+        `<li><span class="gap-sev sev-${escapeHtml(gap.severity.toLowerCase())}">${escapeHtml(gap.severity)}</span><span>${escapeHtml(compactCommandInText(gap.message, gap.suggestedCommand))}${gap.suggestedCommand ? ` ${renderSuggestedProof(gap.suggestedCommand)}` : ""}</span></li>`
     )
     .join("")}</ul>`;
+}
+
+function renderSuggestedProof(command: string): string {
+  const full = `agentflight verify -- ${command}`;
+  const display = formatVerifyCommandForDisplay(command);
+  return `<code title="${escapeHtml(full)}">${escapeHtml(display)}</code>`;
 }
 
 function renderFileGroups(groups: RiskCategorySummary[]): string {

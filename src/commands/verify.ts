@@ -1,11 +1,6 @@
 import { loadConfig } from "../core/config.js";
 import { appendSessionEvent, appendVerificationRun } from "../core/session.js";
-import {
-  formatCommand,
-  parseCommandLine,
-  readVerificationStdout,
-  runVerificationCommand
-} from "../core/verification.js";
+import { formatCommand, parseCommandLine, runVerificationCommand } from "../core/verification.js";
 import { readCurrentSession } from "./status.js";
 import type { VerificationRun } from "../types/index.js";
 import type { CommandRunner } from "../core/process.js";
@@ -83,9 +78,8 @@ No verification command was provided and no commands are configured in .agentfli
     output.push(`- stdout: ${run.stdoutPath}`);
     output.push(`- stderr: ${run.stderrPath}`);
 
-    const stdout = await readVerificationStdout(options.repoRoot, run);
-    if (stdout.trim().length > 0) {
-      output.push(stdout.trimEnd());
+    if (run.outputExcerpt) {
+      output.push(run.outputExcerpt);
     }
 
     if (run.status === "failed") {

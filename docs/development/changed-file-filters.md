@@ -49,7 +49,12 @@ Ignored files do not appear in:
 
 Keep filters conservative. Do not ignore generated files that reviewers are expected to inspect.
 
-If `.projscan-memory/memory.json` appears in changed-file analysis, AgentFlight will suggest adding `.projscan-memory/**` here. It does not ignore that path by default because some teams may want generated tool state to remain visible.
+If `.projscan-memory/memory.json` appears in changed-file analysis during first
+run or dogfood work, AgentFlight will suggest adding `.projscan-memory/**` here.
+It does not ignore that path by default because some teams may want generated
+tool state to remain visible. Treat the suggestion as a local repo-policy
+decision: add the filter only when ProjScan memory is generated evidence rather
+than a file reviewers should inspect.
 
 ## Supported Pattern Shape
 
