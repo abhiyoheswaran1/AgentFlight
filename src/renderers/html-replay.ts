@@ -30,6 +30,9 @@ export interface HtmlReplayInput {
 export function renderHtmlReplay(input: HtmlReplayInput): string {
   const readiness = input.reviewReadiness ?? "Unknown";
   const verdict = classifyReadiness(readiness);
+  const firstFailedRunIndex = input.verificationEvidence.findIndex(
+    (item) => item.status === "failed"
+  );
   const recommendation = compactCommandInText(
     input.recommendation,
     input.review?.readiness.suggestedCommand
@@ -171,8 +174,34 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
     .reading-value.tone-high { color: var(--danger); }
     .reading-value.tone-medium { color: var(--warn); }
 
+    .jump-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 14px 0 0;
+      padding: 12px 0 4px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .jump-nav a,
+    .review-shortcuts a {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--chrome);
+      text-decoration: none;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      padding: 3px 9px;
+      background: var(--paper);
+    }
+    .jump-nav a:hover,
+    .review-shortcuts a:hover { color: var(--ink); border-color: var(--rule-strong); }
+    .jump-nav a.nav-urgent,
+    .review-shortcuts a.nav-urgent { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
+    .review-shortcuts { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+
     /* sections */
     .section { padding-top: 38px; }
+    .section, .entry { scroll-margin-top: 96px; }
     .section-head {
       display: flex;
       align-items: baseline;
@@ -360,6 +389,7 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
       body { font-size: 11pt; }
       main { max-width: none; padding: 0; }
       .summary-grid { position: static; }
+      .jump-nav, .review-shortcuts { display: none; }
       .section { padding-top: 20px; }
       .section, .record, .entry, .timeline-item, .callout, .excerpt { break-inside: avoid; }
       details { display: none; }
@@ -389,29 +419,31 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
     ${renderSummary(input)}
 
-    ${renderReview(input.review)}
+    ${renderJumpNav(input, firstFailedRunIndex)}
 
-    <section class="section">
+    ${renderReview(input.review, firstFailedRunIndex)}
+
+    <section class="section" id="timeline">
       <div class="section-head"><h2 class="label">Timeline</h2><span class="count">${escapeHtml(String(input.timeline.length))} events</span></div>
       ${renderTimeline(input.timeline)}
     </section>
 
-    <section class="section">
+    <section class="section" id="changed-file-groups">
       <div class="section-head"><h2 class="label">Changed File Groups</h2><span class="count">${escapeHtml(String(input.changedFileGroups?.length ?? 0))} groups</span></div>
       ${renderFileGroups(input.changedFileGroups ?? [])}
     </section>
 
-    <section class="section">
+    <section class="section" id="changed-files">
       <div class="section-head"><h2 class="label">Changed Files</h2><span class="count">${escapeHtml(String(input.changedFiles.length))} files</span></div>
       ${renderFileList(input.changedFiles)}
     </section>
 
-    <section class="section">
+    <section class="section" id="verification-evidence">
       <div class="section-head"><h2 class="label">Verification Evidence</h2><span class="count">${escapeHtml(String(input.verificationEvidence.length))} runs</span></div>
       ${renderVerification(input.verificationEvidence)}
     </section>
 
-    <section class="section">
+    <section class="section" id="recommendation">
       <div class="section-head"><h2 class="label">Recommendation</h2></div>
       <p>${escapeHtml(recommendation)}</p>
     </section>
@@ -424,6 +456,32 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 </body>
 </html>
 `;
+}
+
+function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): string {
+  const links: Array<{ href: string; label: string; urgent?: boolean }> = [];
+  if (input.review) {
+    links.push({ href: "#review-focus", label: "Review Focus" });
+    links.push({ href: "#proof-gaps", label: "Proof Gaps" });
+  }
+  if (firstFailedRunIndex >= 0) {
+    links.push({
+      href: `#verification-run-${firstFailedRunIndex + 1}`,
+      label: "First failed run",
+      urgent: true
+    });
+  }
+  links.push({ href: "#timeline", label: "Timeline" });
+  links.push({ href: "#verification-evidence", label: "Verification" });
+  links.push({ href: "#changed-files", label: "Changed Files" });
+  links.push({ href: "#recommendation", label: "Recommendation" });
+
+  return `<nav class="jump-nav" aria-label="Replay sections">${links
+    .map(
+      (link) =>
+        `<a href="${escapeHtml(link.href)}"${link.urgent ? ` class="nav-urgent"` : ""}>${escapeHtml(link.label)}</a>`
+    )
+    .join("")}</nav>`;
 }
 
 function renderSummary(input: HtmlReplayInput): string {
@@ -462,18 +520,25 @@ function renderTimeline(items: ReplayTimelineItem[]): string {
     .join("")}</div>`;
 }
 
-function renderReview(review: ReviewIntelligence | undefined): string {
+function renderReview(review: ReviewIntelligence | undefined, firstFailedRunIndex: number): string {
   if (!review) return "";
   const command = review.readiness.suggestedCommand;
-  return `<section class="section">
+  const failedRunShortcut =
+    firstFailedRunIndex >= 0
+      ? `<div class="review-shortcuts"><a class="nav-urgent" href="#verification-run-${escapeHtml(String(firstFailedRunIndex + 1))}">Jump to first failed run</a></div>`
+      : "";
+  return `<section class="section" id="review-focus">
       <div class="section-head"><h2 class="label">Review Focus</h2><span class="count">${escapeHtml(String(review.focus.length))} files</span></div>
       ${renderReviewFocus(review.focus)}
-      <div class="section-head" style="margin-top: 32px;"><h2 class="label">Proof Gaps</h2><span class="count">${escapeHtml(String(review.proofGaps.length))} gaps</span></div>
+    </section>
+    <section class="section" id="proof-gaps">
+      <div class="section-head"><h2 class="label">Proof Gaps</h2><span class="count">${escapeHtml(String(review.proofGaps.length))} gaps</span></div>
       ${renderProofGaps(review.proofGaps)}
       <div class="callout">
         <div class="callout-state">${escapeHtml(review.readiness.label)}</div>
         <div class="callout-reason">${escapeHtml(compactCommandInText(review.readiness.reason, command))}</div>
         <div class="callout-next"><span class="label">Next</span>${escapeHtml(compactCommandInText(review.readiness.nextAction, command))}</div>
+        ${failedRunShortcut}
       </div>
     </section>`;
 }
@@ -522,8 +587,9 @@ function renderFileList(files: string[]): string {
 function renderVerification(evidence: VerificationRun[]): string {
   if (evidence.length === 0) return `<p class="empty">No verification evidence recorded.</p>`;
   return `<div class="ledger">${evidence
-    .map(
-      (item) => `<div class="entry">
+    .map((item, index) => {
+      const runNumber = index + 1;
+      return `<div class="entry entry--${escapeHtml(item.status)}" id="verification-run-${escapeHtml(String(runNumber))}">
         <div class="stamp stamp--${escapeHtml(item.status)}">${escapeHtml(stampText(item.status))}</div>
         <div class="entry-body">
           <div class="entry-cmd">${escapeHtml(item.command)}</div>
@@ -538,8 +604,8 @@ function renderVerification(evidence: VerificationRun[]): string {
             ${item.status === "passed" && item.outputExcerpt ? `<pre class="excerpt">${escapeHtml(item.outputExcerpt)}</pre>` : ""}
           </details>
         </div>
-      </div>`
-    )
+      </div>`;
+    })
     .join("")}</div>`;
 }
 

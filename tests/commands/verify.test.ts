@@ -164,6 +164,80 @@ describe("verify command", () => {
     expect(current.verificationRuns).toHaveLength(1);
   });
 
+  it("runs commands from a named verification profile", async () => {
+    const repoRoot = await startedRepo();
+    const configPath = join(repoRoot, ".agentflight", "config.json");
+    const config = JSON.parse(await readFile(configPath, "utf8"));
+    config.verification.profiles = {
+      quick: [`${process.execPath} -e "console.log('profile ok')"`]
+    };
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      profile: "quick",
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toContain("Profile: quick");
+    expect(result.output).toContain("profile ok");
+
+    const current = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    expect(current.verificationRuns).toHaveLength(1);
+    expect(current.verificationRuns[0].command).toContain("profile ok");
+  });
+
+  it("returns a helpful error for unknown, empty, or malformed verification profiles", async () => {
+    const repoRoot = await startedRepo();
+    const configPath = join(repoRoot, ".agentflight", "config.json");
+    const config = JSON.parse(await readFile(configPath, "utf8"));
+    config.verification.profiles = {
+      empty: [],
+      malformed: "npm test"
+    };
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    await expect(runVerifyCommand({ repoRoot, profile: "missing" })).resolves.toMatchObject({
+      exitCode: 1,
+      runs: []
+    });
+    await expect(runVerifyCommand({ repoRoot, profile: "empty" })).resolves.toMatchObject({
+      exitCode: 1,
+      runs: []
+    });
+    const malformed = await runVerifyCommand({ repoRoot, profile: "malformed" });
+    const emptyName = await runVerifyCommand({ repoRoot, profile: "   " });
+
+    expect(malformed.exitCode).toBe(1);
+    expect(malformed.output).toContain("Verification profile malformed is invalid");
+    expect(emptyName.exitCode).toBe(1);
+    expect(emptyName.output).toContain("Verification profile name cannot be empty");
+
+    const current = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    expect(current.verificationRuns).toEqual([]);
+  });
+
+  it("does not combine a named profile with an explicit verification command", async () => {
+    const repoRoot = await startedRepo();
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      profile: "quick",
+      commandArgs: [process.execPath, "-e", "console.log('should not run')"]
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.runs).toEqual([]);
+    expect(result.output).toContain(
+      "Cannot combine --profile with an explicit verification command"
+    );
+  });
+
   it("emits heartbeat messages for long-running verification without adding them to evidence", async () => {
     const repoRoot = await startedRepo();
     const heartbeatMessages: string[] = [];

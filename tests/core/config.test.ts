@@ -19,7 +19,7 @@ describe("AgentFlight config", () => {
         projscan: { enabled: true, mode: "npx" },
         agentloopkit: { enabled: true, mode: "npx" }
       },
-      verification: { commands: [] },
+      verification: { commands: [], profiles: {} },
       changedFileFilters: { ignore: [] },
       privacy: { localOnly: true, telemetry: false }
     });

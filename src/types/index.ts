@@ -16,6 +16,7 @@ export interface AgentFlightConfig {
   };
   verification: {
     commands: string[];
+    profiles?: Record<string, string[]>;
   };
   changedFileFilters?: {
     ignore: string[];
@@ -160,6 +161,16 @@ export interface ReviewFocusItem {
   proofStatus: ReviewProofStatus;
   suggestedCommand?: string;
   relatedProofGapIds: string[];
+}
+
+export interface ProjScanReviewHint {
+  file: string;
+  /**
+   * Optional local ProjScan score for this file. AgentFlight treats it as a
+   * capped ranking hint, not as proof or a merge decision.
+   */
+  riskScore?: number;
+  reason?: string;
 }
 
 export interface ProofGap {

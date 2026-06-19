@@ -21,6 +21,7 @@ export interface StatusCommandOptions {
   repoRoot: string;
   now?: Date | undefined;
   changedFiles?: string[] | undefined;
+  format?: string | undefined;
 }
 
 export interface StatusCommandResult {
@@ -30,6 +31,7 @@ export interface StatusCommandResult {
 export async function runStatusCommand(
   options: StatusCommandOptions
 ): Promise<StatusCommandResult> {
+  const format = normalizeStatusFormat(options.format);
   const session = await readCurrentSession(options.repoRoot);
   const config = await loadConfig(options.repoRoot);
   const changedFiles = filterChangedFiles(
@@ -44,6 +46,34 @@ export async function runStatusCommand(
   });
   const review = buildReviewIntelligence({ changedFiles, risk, session });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
+  const readinessReason = compactCommandInText(
+    review.readiness.reason,
+    review.readiness.suggestedCommand
+  );
+  const nextAction = compactCommandInText(
+    review.readiness.nextAction,
+    review.readiness.suggestedCommand
+  );
+
+  if (format === "json") {
+    return {
+      output: `${JSON.stringify(
+        buildStatusJson({
+          session,
+          duration,
+          changedFiles,
+          risk,
+          verification,
+          review,
+          latestSnapshot,
+          readinessReason,
+          nextAction
+        }),
+        null,
+        2
+      )}\n`
+    };
+  }
 
   return {
     output: `AgentFlight status
@@ -77,11 +107,68 @@ Latest snapshot:
 ${formatLatestSnapshot(latestSnapshot)}
 
 Readiness: ${review.readiness.label}
-Reason: ${compactCommandInText(review.readiness.reason, review.readiness.suggestedCommand)}
+Reason: ${readinessReason}
 
 Next action:
-${compactCommandInText(review.readiness.nextAction, review.readiness.suggestedCommand)}
+${nextAction}
 `
+  };
+}
+
+type StatusFormat = "text" | "json";
+
+function normalizeStatusFormat(format: string | undefined): StatusFormat {
+  if (!format || format === "text") return "text";
+  if (format === "json") return "json";
+  throw new Error(`Unsupported status format "${format}". Use "text" or "json".`);
+}
+
+function buildStatusJson(input: {
+  session: AgentFlightSession;
+  duration: string;
+  changedFiles: string[];
+  risk: ReturnType<typeof analyzeRisk>;
+  verification: ReturnType<typeof buildVerificationSummary>;
+  review: ReturnType<typeof buildReviewIntelligence>;
+  latestSnapshot: SessionEvent | null;
+  readinessReason: string;
+  nextAction: string;
+}): Record<string, unknown> {
+  return {
+    task: input.session.task,
+    session: {
+      id: input.session.id,
+      startedAt: input.session.startedAt,
+      duration: input.duration
+    },
+    changedFiles: input.changedFiles,
+    changedFileCount: input.changedFiles.length,
+    changedAreas: input.risk.categories,
+    risk: input.risk,
+    verification: {
+      passed: input.verification.passed,
+      failed: input.verification.failed,
+      runs: input.verification.runs
+    },
+    review: {
+      focus: input.review.focus,
+      proofGaps: input.review.proofGaps,
+      readiness: input.review.readiness
+    },
+    latestSnapshot: formatLatestSnapshotJson(input.latestSnapshot),
+    reason: input.readinessReason,
+    nextAction: input.nextAction
+  };
+}
+
+function formatLatestSnapshotJson(event: SessionEvent | null): Record<string, unknown> | null {
+  if (!event) return null;
+  const risk = readMetadataObject(event, "risk");
+  return {
+    timestamp: event.timestamp,
+    note: event.message ?? null,
+    riskLevel: typeof risk.level === "string" ? risk.level : "unknown",
+    changedFiles: typeof risk.changedFiles === "number" ? risk.changedFiles : null
   };
 }
 

@@ -10,7 +10,7 @@ AgentFlight is used by developers, reviewers, and AI-agent operators during loca
 
 ## Product Purpose
 
-AgentFlight is a local-first flight recorder for AI coding agents. Its replay and report surfaces help developers understand session history, inspect changed files and risk, verify proof, identify gaps, and decide what should happen next.
+AgentFlight is a local-first review layer for AI coding sessions. It records what the coding agent did, captures verification evidence, shows failure excerpts, identifies proof gaps, and helps reviewers decide what should happen next.
 
 Success means a developer can trust the artifact quickly: what changed, what proof exists, what failed or is missing, and whether the work is ready for review.
 

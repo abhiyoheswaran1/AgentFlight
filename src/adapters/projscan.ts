@@ -52,7 +52,7 @@ export async function runProjScanBaseline(
     run,
     "projscan",
     "projscan@latest",
-    ["start", "--intent", "Build AgentFlight, a local-first flight recorder for AI coding agents"],
+    ["start", "--intent", "Build AgentFlight, a local-first review layer for AI coding sessions"],
     cwd,
     20_000
   );

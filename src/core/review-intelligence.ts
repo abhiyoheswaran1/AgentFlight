@@ -8,6 +8,7 @@ import type {
   ReviewProofStatus,
   ReviewReadinessDecision,
   ReviewReadinessState,
+  ProjScanReviewHint,
   RiskAnalysis,
   RiskCategory,
   RiskLevel,
@@ -19,6 +20,7 @@ export interface BuildReviewIntelligenceOptions {
   changedFiles: string[];
   risk: RiskAnalysis;
   session: AgentFlightSession;
+  projscanHints?: ProjScanReviewHint[] | undefined;
 }
 
 const baseScores: Record<RiskCategory, number> = {
@@ -79,7 +81,8 @@ export function buildReviewIntelligence(
     changedFiles: options.changedFiles,
     proofGaps,
     proofKinds,
-    runs
+    runs,
+    projscanHints: options.projscanHints
   });
   const readiness = buildReadinessDecision({
     changedFiles: options.changedFiles,
@@ -243,19 +246,24 @@ function buildReviewFocus(input: {
   proofGaps: ProofGap[];
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
   runs: VerificationRun[];
+  projscanHints?: ProjScanReviewHint[] | undefined;
 }): ReviewFocusItem[] {
   const hasFailedVerification = input.runs.some((run) => run.status === "failed");
+  const projscanHints = normalizeProjScanHints(input.projscanHints, input.changedFiles);
   const items = input.changedFiles.map((file) => {
     const category = categorizeFile(file);
     const relatedGaps = input.proofGaps.filter((gap) => gap.relatedFiles.includes(file));
+    const projscanHint = projscanHints.get(normalizeFilePath(file));
     const proofStatus = determineProofStatus({
       category,
       relatedGaps,
       hasFailedVerification,
       proofKinds: input.proofKinds
     });
-    const reasons = buildFocusReasons(category, proofStatus, relatedGaps);
-    const score = scoreFocusItem(category, proofStatus, relatedGaps, hasFailedVerification);
+    const reasons = buildFocusReasons(category, proofStatus, relatedGaps, projscanHint);
+    const score =
+      scoreFocusItem(category, proofStatus, relatedGaps, hasFailedVerification) +
+      scoreProjScanHint(projscanHint);
 
     const suggestedCommand = relatedGaps.find((gap) => gap.suggestedCommand)?.suggestedCommand;
     return {
@@ -381,10 +389,16 @@ function scoreFocusItem(
   return score;
 }
 
+function scoreProjScanHint(hint: NormalizedProjScanHint | undefined): number {
+  if (!hint) return 0;
+  return Math.round(hint.riskScore * 0.6);
+}
+
 function buildFocusReasons(
   category: RiskCategory,
   proofStatus: ReviewProofStatus,
-  relatedGaps: ProofGap[]
+  relatedGaps: ProofGap[],
+  projscanHint?: NormalizedProjScanHint | undefined
 ): string[] {
   const reasons = [categoryLabel(category)];
   if (proofStatus === "failed") reasons.push("verification failed");
@@ -393,7 +407,85 @@ function buildFocusReasons(
   } else if (relatedGaps.length > 0) {
     reasons.push("matching proof missing");
   }
+  if (projscanHint?.reason) reasons.push(`ProjScan: ${projscanHint.reason}`);
   return reasons;
+}
+
+interface NormalizedProjScanHint {
+  riskScore: number;
+  reason?: string | undefined;
+}
+
+function normalizeProjScanHints(
+  hints: ProjScanReviewHint[] | undefined,
+  changedFiles: string[]
+): Map<string, NormalizedProjScanHint> {
+  const changedFileSet = new Set(changedFiles.map(normalizeFilePath));
+  const normalized = new Map<string, NormalizedProjScanHint>();
+  if (!Array.isArray(hints)) return normalized;
+
+  for (const hint of hints) {
+    const parsed = parseProjScanHint(hint, changedFileSet);
+    if (!parsed) continue;
+    normalized.set(parsed.file, mergeProjScanHint(normalized.get(parsed.file), parsed.hint));
+  }
+
+  return normalized;
+}
+
+function parseProjScanHint(
+  hint: ProjScanReviewHint,
+  changedFileSet: Set<string>
+): { file: string; hint: NormalizedProjScanHint } | null {
+  const file = readProjScanHintFile(hint, changedFileSet);
+  if (!file) return null;
+
+  const riskScore = readProjScanHintRiskScore(hint);
+  const reason = readProjScanHintReason(hint);
+  if (riskScore === null && !reason) return null;
+
+  return {
+    file,
+    hint: {
+      riskScore: riskScore ?? 0,
+      ...(reason ? { reason } : {})
+    }
+  };
+}
+
+function readProjScanHintFile(
+  hint: ProjScanReviewHint,
+  changedFileSet: Set<string>
+): string | null {
+  const file = typeof hint.file === "string" ? normalizeFilePath(hint.file) : "";
+  return file && changedFileSet.has(file) ? file : null;
+}
+
+function readProjScanHintRiskScore(hint: ProjScanReviewHint): number | null {
+  if (typeof hint.riskScore !== "number" || !Number.isFinite(hint.riskScore)) return null;
+  return clamp(hint.riskScore, 0, 100);
+}
+
+function readProjScanHintReason(hint: ProjScanReviewHint): string {
+  return typeof hint.reason === "string" ? hint.reason.trim() : "";
+}
+
+function mergeProjScanHint(
+  previous: NormalizedProjScanHint | undefined,
+  next: NormalizedProjScanHint
+): NormalizedProjScanHint {
+  return {
+    riskScore: Math.max(next.riskScore, previous?.riskScore ?? 0),
+    ...(next.reason ? { reason: next.reason } : previous?.reason ? { reason: previous.reason } : {})
+  };
+}
+
+function normalizeFilePath(file: string): string {
+  return file.replaceAll("\\", "/").replace(/^\.\//, "");
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function categoryLabel(category: RiskCategory): string {

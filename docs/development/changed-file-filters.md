@@ -17,6 +17,23 @@ These files are evidence and generated session data. Including them would make A
 
 AgentFlight classifies `.agentflight/config.json` as AgentFlight project config. It remains reviewable without being treated as an unknown file.
 
+`agentflight init` uses the same framing in its first-run output: `config.json`
+is project configuration, while `sessions/`, `reports/`, `current/`, and
+`evidence/` are local runtime evidence.
+
+AgentFlight also excludes local AgentLoopKit evidence when it appears in the
+same worktree:
+
+- `.agentloop/state.json`
+- `.agentloop/reports/**`
+- `.agentloop/handoffs/**`
+- `.agentloop/runs/**`
+
+These paths are local loop state, verification reports, handoffs, and run
+ledgers. AgentLoopKit project contracts and repo guidance stay visible,
+including `.agentloop/tasks/**`, `.agentloop/policies/**`,
+`.agentloop/harness/**`, and `.agentloop/gates/**`.
+
 ## Project Filters
 
 Use `.agentflight/config.json` to hide generated or internal files that should not affect review intelligence:

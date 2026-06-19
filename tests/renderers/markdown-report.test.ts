@@ -166,4 +166,156 @@ describe("markdown proof report", () => {
     expect(markdown).not.toContain("agentloop.config.json");
     expect(markdown).not.toContain("Template manifest");
   });
+
+  it("renders a compact report without timeline or tooling sections", () => {
+    const markdown = renderMarkdownReport(
+      {
+        task: "Failure review",
+        sessionId: "af-compact",
+        startedAt: "2026-06-17T12:00:00.000Z",
+        changedFiles: ["src/api/users.ts"],
+        risk: {
+          level: "medium",
+          changedFiles: 1,
+          categories: [{ category: "backend/api", files: ["src/api/users.ts"] }],
+          reasons: ["Backend/API files changed."]
+        },
+        verificationCommands: [],
+        verificationEvidence: [
+          {
+            command: "npm test",
+            startedAt: "2026-06-17T12:01:00.000Z",
+            finishedAt: "2026-06-17T12:01:05.000Z",
+            durationMs: 5000,
+            exitCode: 1,
+            status: "failed",
+            stdoutPath: ".agentflight/evidence/af-compact/verification-1.stdout.txt",
+            stderrPath: ".agentflight/evidence/af-compact/verification-1.stderr.txt",
+            outputExcerpt: "expected failure excerpt"
+          }
+        ],
+        timelineEvents: [],
+        review: {
+          focus: [
+            {
+              rank: 1,
+              file: "src/api/users.ts",
+              category: "backend/api",
+              riskLevel: "medium",
+              score: 100,
+              reasons: ["backend/API file", "verification failed"],
+              suggestedReviewerFocus: "Check request handling, validation, and error paths first.",
+              proofStatus: "failed",
+              suggestedCommand: "npm test",
+              relatedProofGapIds: ["failed-verification"]
+            }
+          ],
+          proofGaps: [
+            {
+              id: "failed-verification",
+              severity: "blocking",
+              message:
+                "A verification command failed and must be fixed or rerun successfully: npm test",
+              suggestedCommand: "npm test",
+              relatedFiles: ["src/api/users.ts"]
+            }
+          ],
+          readiness: {
+            state: "blocked_by_failed_verification",
+            label: "Blocked by failed verification",
+            reason:
+              "A verification command failed and must be fixed or rerun successfully: npm test",
+            nextAction: "Fix the failed command, then rerun agentflight verify -- npm test",
+            suggestedCommand: "npm test",
+            proofGaps: []
+          }
+        },
+        tooling: {
+          projscan: { available: true, warnings: [] },
+          agentloopkit: { available: true, warnings: [] }
+        }
+      },
+      { mode: "compact" }
+    );
+
+    expect(markdown).toContain("# AgentFlight Compact Report");
+    expect(markdown).toContain("## Review Readiness");
+    expect(markdown).toContain("## Verification Evidence");
+    expect(markdown).toContain("expected failure excerpt");
+    expect(markdown).toContain(".agentflight/evidence/af-compact/verification-1.stderr.txt");
+    expect(markdown).not.toContain("## Timeline");
+    expect(markdown).not.toContain("## Tooling");
+  });
+
+  it("renders a local PR comment draft without posting-oriented claims", () => {
+    const markdown = renderMarkdownReport(
+      {
+        task: "Review handoff",
+        sessionId: "af-pr-comment",
+        startedAt: "2026-06-17T12:00:00.000Z",
+        changedFiles: ["src/api/users.ts"],
+        risk: {
+          level: "medium",
+          changedFiles: 1,
+          categories: [{ category: "backend/api", files: ["src/api/users.ts"] }],
+          reasons: ["Backend/API files changed."]
+        },
+        verificationCommands: [],
+        verificationEvidence: [
+          {
+            command: "npm test",
+            startedAt: "2026-06-17T12:01:00.000Z",
+            finishedAt: "2026-06-17T12:01:05.000Z",
+            durationMs: 5000,
+            exitCode: 0,
+            status: "passed",
+            stdoutPath: ".agentflight/evidence/af-pr-comment/verification-1.stdout.txt",
+            stderrPath: ".agentflight/evidence/af-pr-comment/verification-1.stderr.txt"
+          }
+        ],
+        timelineEvents: [],
+        review: {
+          focus: [
+            {
+              rank: 1,
+              file: "src/api/users.ts",
+              category: "backend/api",
+              riskLevel: "medium",
+              score: 70,
+              reasons: ["backend/API file"],
+              suggestedReviewerFocus: "Check request handling, validation, and error paths first.",
+              proofStatus: "covered",
+              relatedProofGapIds: []
+            }
+          ],
+          proofGaps: [],
+          readiness: {
+            state: "ready_for_review",
+            label: "Ready for review",
+            reason: "Verification evidence matches the observed review risk.",
+            nextAction:
+              "Generate or share the AgentFlight report/replay and request scoped human review.",
+            proofGaps: []
+          }
+        },
+        tooling: {
+          projscan: { available: true, warnings: [] },
+          agentloopkit: { available: true, warnings: [] }
+        }
+      },
+      { mode: "pr-comment" }
+    );
+
+    expect(markdown).toContain("## AgentFlight Review Summary");
+    expect(markdown).toContain("Generated locally by AgentFlight. Not posted automatically.");
+    expect(markdown).toContain("Readiness: Ready for review");
+    expect(markdown).toContain("Review first");
+    expect(markdown).toContain("src/api/users.ts");
+    expect(markdown).toContain("Proof gaps: none");
+    expect(markdown).toContain("npm test: passed");
+    expect(markdown).toContain(".agentflight/evidence/af-pr-comment/verification-1.stdout.txt");
+    expect(markdown).not.toContain("## Timeline");
+    expect(markdown).not.toContain("## Tooling");
+    expect(markdown).not.toContain("posted to GitHub");
+  });
 });

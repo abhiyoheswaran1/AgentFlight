@@ -48,7 +48,8 @@ export function createDefaultConfig(options: CreateDefaultConfigOptions): AgentF
       }
     },
     verification: {
-      commands: []
+      commands: [],
+      profiles: {}
     },
     changedFileFilters: {
       ignore: []

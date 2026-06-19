@@ -35,8 +35,8 @@ Future Pro, Team, and Enterprise functionality should build on these seams:
 
 - Report renderer variants in `src/renderers/`.
 - Policy and verification enrichment through `src/adapters/agentloopkit.ts`.
-- Risk enrichment through `src/adapters/projscan.ts`.
-- Structured command results for future `--json` output.
+- Risk enrichment through `src/adapters/projscan.ts`; Review Intelligence accepts optional typed ProjScan review hints, but it does not call ProjScan directly.
+- Structured local command results; `status --format json` is the first supported JSON surface.
 - Local session history indexing without changing session files.
 
 Do not add cloud, auth, billing, or GitHub App behavior to the MVP.

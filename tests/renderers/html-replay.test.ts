@@ -169,4 +169,131 @@ describe("HTML replay", () => {
     expect(html).toContain("process.exit(1)");
     expect(html).toMatch(/>agentflight verify -- node -e [^<]*…<\/code>/);
   });
+
+  it("renders accessible review navigation with sticky-safe section anchors", () => {
+    const html = renderHtmlReplay({
+      task: "Review navigation",
+      sessionId: "af-nav",
+      startedAt: "2026-06-19T12:00:00.000Z",
+      timeline: [
+        {
+          type: "session_started",
+          title: "Session started",
+          timestamp: "2026-06-19T12:00:00.000Z"
+        }
+      ],
+      changedFiles: ["src/renderers/html-replay.ts"],
+      changedFileGroups: [{ category: "frontend", files: ["src/renderers/html-replay.ts"] }],
+      riskBadges: ["medium"],
+      verificationEvidence: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-19T12:01:00.000Z",
+          finishedAt: "2026-06-19T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath: ".agentflight/evidence/af-nav/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-nav/verification-1.stderr.txt"
+        }
+      ],
+      reviewReadiness: "Ready for review",
+      review: {
+        focus: [
+          {
+            rank: 1,
+            file: "src/renderers/html-replay.ts",
+            category: "frontend",
+            riskLevel: "medium",
+            score: 80,
+            reasons: ["replay surface"],
+            suggestedReviewerFocus: "Check navigation and evidence layout.",
+            proofStatus: "covered",
+            relatedProofGapIds: []
+          }
+        ],
+        proofGaps: [],
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Passing verification evidence is present.",
+          nextAction: "Review changed files and replay evidence.",
+          proofGaps: []
+        }
+      },
+      recommendation: "Review the replay."
+    });
+
+    expect(html).toContain('<nav class="jump-nav" aria-label="Replay sections">');
+    expect(html).toContain('href="#review-focus"');
+    expect(html).toContain('href="#proof-gaps"');
+    expect(html).toContain('href="#timeline"');
+    expect(html).toContain('href="#verification-evidence"');
+    expect(html).toContain('<section class="section" id="review-focus">');
+    expect(html).toContain('<section class="section" id="proof-gaps">');
+    expect(html).toContain('<section class="section" id="timeline">');
+    expect(html).toContain('<section class="section" id="verification-evidence">');
+    expect(html).toContain(".section, .entry { scroll-margin-top:");
+  });
+
+  it("adds failed-run anchors and a review shortcut to the first failed verification", () => {
+    const html = renderHtmlReplay({
+      task: "Failure navigation",
+      sessionId: "af-failed-nav",
+      startedAt: "2026-06-19T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/core/verification.ts"],
+      riskBadges: ["high"],
+      verificationEvidence: [
+        {
+          command: "npm run lint",
+          startedAt: "2026-06-19T12:01:00.000Z",
+          finishedAt: "2026-06-19T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath: ".agentflight/evidence/af-failed-nav/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-failed-nav/verification-1.stderr.txt"
+        },
+        {
+          command: "npm test",
+          startedAt: "2026-06-19T12:02:00.000Z",
+          finishedAt: "2026-06-19T12:02:05.000Z",
+          durationMs: 5000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-failed-nav/verification-2.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-failed-nav/verification-2.stderr.txt",
+          outputExcerpt: "expected stderr failure"
+        }
+      ],
+      reviewReadiness: "Blocked by failed verification",
+      review: {
+        focus: [],
+        proofGaps: [
+          {
+            id: "failed-verification",
+            severity: "blocking",
+            message: "A verification command failed and must be fixed or rerun successfully.",
+            suggestedCommand: "npm test",
+            relatedFiles: []
+          }
+        ],
+        readiness: {
+          state: "blocked_by_failed_verification",
+          label: "Blocked by failed verification",
+          reason: "A verification command failed and must be fixed or rerun successfully.",
+          nextAction: "Fix the failed command, then rerun agentflight verify -- npm test",
+          suggestedCommand: "npm test",
+          proofGaps: []
+        }
+      },
+      recommendation: "Fix the failed verification."
+    });
+
+    expect(html).toContain('href="#verification-run-2"');
+    expect(html).toContain('<div class="entry entry--failed" id="verification-run-2">');
+    expect(html).toContain("First failed run");
+    expect(html).toContain("Jump to first failed run");
+  });
 });

@@ -17,7 +17,11 @@ Or configure commands in `.agentflight/config.json`:
 ```json
 {
   "verification": {
-    "commands": ["npm run typecheck", "npm run lint", "npm test", "npm run build"]
+    "commands": ["npm run typecheck", "npm run lint", "npm test", "npm run build"],
+    "profiles": {
+      "quick": ["npm run typecheck", "npm test"],
+      "release": ["npm run verify"]
+    }
   }
 }
 ```
@@ -27,6 +31,16 @@ Then run:
 ```bash
 agentflight verify
 ```
+
+Or run a named local command group:
+
+```bash
+agentflight verify --profile quick
+```
+
+Profiles are only local config aliases. They do not change how verification
+evidence is captured, and they do not add CI, JSON output, remote presets, or
+background execution.
 
 Each verification run records:
 

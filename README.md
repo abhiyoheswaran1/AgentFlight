@@ -6,9 +6,9 @@
   </a>
 </p>
 
-See what your coding agent did. Prove it works. Know what to do next.
+See what your coding agent did, what failed, and whether the work is ready for review.
 
-AgentFlight is a local-first flight recorder for AI coding agents from Baseframe Labs. It sits around Codex, Claude Code, Cursor, Windsurf, Gemini CLI, Aider, OpenCode, and similar tools so you can review the session instead of guessing what happened.
+AgentFlight is a local-first review layer for AI coding sessions from Baseframe Labs. It records what your coding agent did, captures verification evidence, shows failure excerpts, and tells you what needs review before you trust the result.
 
 Website: [baseframelabs.com/apps/agentflight](https://www.baseframelabs.com/apps/agentflight)
 
@@ -178,6 +178,7 @@ The current AgentFlight release supports:
 - changed file risk categorisation
 - review focus ranking for changed files
 - proof gap detection and review readiness recommendations
+- config-defined verification profiles for repeated local command groups
 - configurable generated/internal changed-file filters
 - verification evidence capture with `agentflight verify`
 - inline failure excerpts in the replay and report, so failures are visible without opening evidence files
@@ -224,7 +225,7 @@ Runtime session data is ignored by git by default in this repo:
 
 `.agentflight/config.json` is intentionally not ignored, so a project can commit its local AgentFlight defaults when useful.
 
-AgentFlight always excludes its own runtime session/report/current/evidence files from changed-file analysis. Additional generated or internal files can be ignored locally:
+AgentFlight always excludes its own runtime session/report/current/evidence files from changed-file analysis. It also hides local AgentLoopKit evidence paths such as `.agentloop/reports/**`, `.agentloop/handoffs/**`, `.agentloop/runs/**`, and `.agentloop/state.json` while keeping task contracts and policies visible. Additional generated or internal files can be ignored locally:
 
 ```json
 {
@@ -238,13 +239,17 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 
 ## Commands
 
-- `agentflight init` initializes `.agentflight/` with safe writes.
+- `agentflight init` initializes `.agentflight/` with safe writes and explains which local files are project config versus runtime evidence.
 - `agentflight start --task "..."` starts a session and writes the current handoff.
 - `agentflight status` summarizes changed files, risk, verification status, review focus, proof gaps, readiness, snapshots, and next action.
+- `agentflight status --format json` prints the same local status data as structured JSON for scripts.
 - `agentflight verify -- <command>` runs a proof command, records stdout/stderr evidence, and prints a small heartbeat while long commands are still active.
 - `agentflight verify` runs commands from `.agentflight/config.json`.
+- `agentflight verify --profile <name>` runs a named local command group from `.agentflight/config.json`.
 - `agentflight snapshot --note "..."` records current git, risk, and verification state as a timeline event.
 - `agentflight report` generates a Markdown proof report with review focus and readiness.
+- `agentflight report --mode compact` writes a shorter local Markdown review summary.
+- `agentflight report --mode pr-comment` writes a local PR-comment draft without posting anywhere.
 - `agentflight replay` generates a local self-contained HTML replay with review focus and proof gaps.
 - `agentflight resume` prints and saves a continuation prompt with the next safest action.
 - `agentflight doctor` checks local setup, scripts, tools, config, and current session state.

@@ -31,6 +31,28 @@ describe("git status parsing", () => {
     ]);
   });
 
+  it("filters AgentLoopKit evidence paths from changed files while keeping contracts visible", async () => {
+    const run: CommandRunner = async () => ({
+      exitCode: 0,
+      stdout: [
+        " M .agentloop/state.json",
+        "?? .agentloop/reports/2026-06-19-verification-report.md",
+        "?? .agentloop/handoffs/2026-06-19-pr-summary.md",
+        "?? .agentloop/runs/2026-06-19-handoff/metadata.json",
+        "?? .agentloop/tasks/2026-06-19-implementation.md",
+        "?? .agentloop/policies/security.md",
+        " M src/auth/reset.ts"
+      ].join("\n"),
+      stderr: ""
+    });
+
+    await expect(listChangedFiles("/repo", run)).resolves.toEqual([
+      ".agentloop/tasks/2026-06-19-implementation.md",
+      ".agentloop/policies/security.md",
+      "src/auth/reset.ts"
+    ]);
+  });
+
   it("treats a repo with only AgentFlight runtime artifacts as clean for session analysis", async () => {
     const run: CommandRunner = async (command, args) => {
       if (args.includes("branch")) {

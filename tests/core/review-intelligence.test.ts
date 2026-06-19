@@ -248,6 +248,75 @@ describe("review intelligence", () => {
     });
   });
 
+  it("keeps deterministic fallback ranking when ProjScan hints are absent", () => {
+    const changedFiles = ["README.md", "src/components/LoginForm.tsx"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: [verificationRun("npm run build", "passed")]
+      })
+    });
+
+    expect(review.focus.map((item) => item.file)).toEqual([
+      "src/components/LoginForm.tsx",
+      "README.md"
+    ]);
+    expect(review.focus.flatMap((item) => item.reasons)).not.toContain(
+      "ProjScan: public launch messaging changed"
+    );
+  });
+
+  it("uses ProjScan hints to raise review priority and explain the signal", () => {
+    const changedFiles = ["README.md", "src/components/LoginForm.tsx"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: [verificationRun("npm run build", "passed")]
+      }),
+      projscanHints: [
+        {
+          file: "README.md",
+          riskScore: 95,
+          reason: "public launch messaging changed"
+        }
+      ]
+    });
+
+    expect(review.focus[0]).toMatchObject({
+      file: "README.md",
+      category: "docs"
+    });
+    expect(review.focus[0]?.score).toBeGreaterThan(review.focus[1]?.score ?? 0);
+    expect(review.focus[0]?.reasons).toContain("ProjScan: public launch messaging changed");
+  });
+
+  it("ignores unmatched or malformed ProjScan hints safely", () => {
+    const changedFiles = ["README.md", "src/components/LoginForm.tsx"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: [verificationRun("npm run build", "passed")]
+      }),
+      projscanHints: [
+        { file: "docs/missing.md", riskScore: 100, reason: "not in changed files" },
+        { file: "", riskScore: 100, reason: "empty path" },
+        { file: "README.md", riskScore: Number.NaN, reason: "" }
+      ]
+    });
+
+    expect(review.focus.map((item) => item.file)).toEqual([
+      "src/components/LoginForm.tsx",
+      "README.md"
+    ]);
+    expect(review.focus.flatMap((item) => item.reasons).join("\n")).not.toContain("ProjScan:");
+  });
+
   it("uses passing verification evidence to mark high-risk files as covered", () => {
     const changedFiles = ["src/auth/session.ts"];
     const review = buildReviewIntelligence({

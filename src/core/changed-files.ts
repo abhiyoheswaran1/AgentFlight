@@ -5,6 +5,14 @@ const agentFlightRuntimePrefixes = [
   ".agentflight/evidence/"
 ];
 
+const agentLoopKitEvidencePrefixes = [
+  ".agentloop/reports/",
+  ".agentloop/handoffs/",
+  ".agentloop/runs/"
+];
+
+const agentLoopKitEvidencePaths = [".agentloop/state.json"];
+
 export interface ChangedFileFilterOptions {
   ignore?: string[] | undefined;
 }
@@ -13,7 +21,7 @@ export function filterChangedFiles(
   files: string[],
   options: ChangedFileFilterOptions = {}
 ): string[] {
-  const runtimeFiltered = filterAgentFlightRuntimePaths(files);
+  const runtimeFiltered = filterBuiltInRuntimePaths(files);
   const ignore = Array.isArray(options.ignore) ? options.ignore : [];
   const patterns = ignore
     .map(normalizeIgnorePattern)
@@ -31,11 +39,29 @@ export function filterAgentFlightRuntimePaths(files: string[]): string[] {
   return files.filter((file) => !isAgentFlightRuntimePath(file));
 }
 
+export function filterBuiltInRuntimePaths(files: string[]): string[] {
+  return files.filter((file) => !isBuiltInRuntimePath(file));
+}
+
 export function isAgentFlightRuntimePath(file: string): boolean {
   const normalized = normalizeChangedFilePath(file);
   return agentFlightRuntimePrefixes.some(
     (prefix) => normalized === prefix.slice(0, -1) || normalized.startsWith(prefix)
   );
+}
+
+export function isAgentLoopKitEvidencePath(file: string): boolean {
+  const normalized = normalizeChangedFilePath(file);
+  return (
+    agentLoopKitEvidencePaths.includes(normalized) ||
+    agentLoopKitEvidencePrefixes.some(
+      (prefix) => normalized === prefix.slice(0, -1) || normalized.startsWith(prefix)
+    )
+  );
+}
+
+export function isBuiltInRuntimePath(file: string): boolean {
+  return isAgentFlightRuntimePath(file) || isAgentLoopKitEvidencePath(file);
 }
 
 function normalizeChangedFilePath(file: string): string {

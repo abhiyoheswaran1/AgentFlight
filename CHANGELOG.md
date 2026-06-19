@@ -2,6 +2,49 @@
 
 All notable AgentFlight changes are documented here.
 
+## AgentFlight v0.6.0 - 2026-06-19
+
+Local review ergonomics and automation surfaces for heavier real-world dogfood.
+
+### Added
+
+- Replay navigation for long HTML evidence ledgers, including jump links, section anchors, failed-run anchors, and a shortcut to the first failed verification run.
+- Local JSON status output with `agentflight status --format json` for scripts that need structured session, risk, verification, and Review Intelligence state.
+- Named verification profiles with `agentflight verify --profile <name>` for local command groups stored in `.agentflight/config.json`.
+- Markdown report modes:
+  - `agentflight report --mode compact` for shorter local review summaries.
+  - `agentflight report --mode pr-comment` for a local PR-comment draft that is never posted automatically.
+- Optional typed ProjScan review hints for deterministic Review Intelligence ranking enrichment without making Review Intelligence call ProjScan directly.
+- First-run guidance that explains which `.agentflight/` paths are runtime evidence and which files are project config.
+
+### Changed
+
+- AgentFlight now describes itself as a local-first review layer for AI coding sessions across package metadata, README, and product docs.
+- Long suggested proof commands stay compact in high-density review surfaces while preserving the full suggested action where useful.
+- Local AgentLoopKit evidence paths are filtered from AgentFlight changed-file review surfaces:
+  - `.agentloop/state.json`
+  - `.agentloop/reports/**`
+  - `.agentloop/handoffs/**`
+  - `.agentloop/runs/**`
+- AgentLoopKit task contracts, policies, harness files, and gates remain visible for review.
+- `.projscan-memory/**` remains suggestion-only guidance, not a built-in ignored path.
+
+### Fixed
+
+- Reduced Review Intelligence and report noise caused by generated local workflow evidence.
+- Split complex verification/profile and ProjScan-hint logic into smaller helpers without changing command behavior.
+- Added regression coverage for PR-comment draft failure excerpts so stderr-preferred excerpts stay aligned with report/replay behavior.
+
+### Verification
+
+- `npm run verify` passed.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed.
+- `npm audit --audit-level=moderate` found 0 vulnerabilities.
+- AgentLoopKit verification passed.
+- ProjScan doctor passed with score 100/A.
+- ProjScan preflight/review returned a documented manual release-signoff caution for scale risk only, with no concrete blockers.
+
 ## AgentFlight v0.5.1 - 2026-06-17
 
 Focused dogfood patch for v0.5.0 review artifacts.

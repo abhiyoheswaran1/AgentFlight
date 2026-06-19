@@ -29,6 +29,11 @@ Detected:
 ${formatToolAvailability("AgentLoopKit", result.detections.agentloopkit)}
 ${formatToolAvailability("ProjScan", result.detections.projscan)}
 
+Local files:
+.agentflight/config.json is project config. Review or commit it when shared AgentFlight defaults are useful.
+.agentflight/sessions/, reports/, evidence/, current/ are local runtime evidence and are excluded from AgentFlight changed-file analysis.
+If .projscan-memory/memory.json appears as generated tool state, add ".projscan-memory/**" to changedFileFilters.ignore in .agentflight/config.json.
+
 Next commands:
 agentflight start --task "Describe the work"
 agentflight status

@@ -12,6 +12,10 @@ describe("CLI entrypoint detection", () => {
     expect(createCli().version()).toBe(packageJson.version);
   });
 
+  it("uses the current product positioning in the CLI description", () => {
+    expect(createCli().description()).toBe("Local-first review layer for AI coding sessions.");
+  });
+
   it("treats encoded file URLs and argv paths with spaces as the same entrypoint", () => {
     expect(
       isDirectCliInvocation(

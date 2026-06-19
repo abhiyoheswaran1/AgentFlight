@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
@@ -36,6 +36,54 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).toContain("Readiness: Ready for review");
     expect(status.output).toContain("Proof gaps:");
     expect(status.output).toContain("- none");
+  });
+
+  it("emits parseable local JSON status for scripts", async () => {
+    const command = `${process.execPath} -e "console.log('proof ok')"`;
+    const repoRoot = await startedRepo([command]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('proof ok')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:05:00.000Z"),
+      format: "json"
+    });
+    const payload = JSON.parse(status.output);
+
+    expect(payload).toMatchObject({
+      task: { title: "Capture verification" },
+      session: { id: expect.stringContaining("af-") },
+      changedFiles: ["docs/development/verification.md"],
+      risk: { level: "low", changedFiles: 1 },
+      verification: { passed: 1, failed: 0 },
+      review: {
+        readiness: { state: "ready_for_review", label: "Ready for review" },
+        proofGaps: []
+      }
+    });
+    expect(payload.review.focus[0]).toMatchObject({
+      file: "docs/development/verification.md",
+      proofStatus: "not_required"
+    });
+    expect(payload.nextAction).toContain("Generate or share");
+    expect(status.output).not.toContain("diff --git");
+  });
+
+  it("rejects unsupported status formats", async () => {
+    const repoRoot = await startedRepo([]);
+
+    await expect(
+      runStatusCommand({
+        repoRoot,
+        changedFiles: ["README.md"],
+        format: "yaml"
+      })
+    ).rejects.toThrow("Unsupported status format");
   });
 
   it("shows the latest snapshot in status", async () => {
@@ -145,6 +193,114 @@ describe("evidence-aware session outputs", () => {
     expect(html).not.toMatch(/https?:\/\//);
   });
 
+  it("writes a compact Markdown report without changing the full report default", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [
+        process.execPath,
+        "-e",
+        "console.error('compact failure excerpt'); process.exit(1)"
+      ],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const compact = await runReportCommand({
+      repoRoot,
+      changedFiles: ["src/api/users.ts"],
+      mode: "compact"
+    });
+    const compactMarkdown = await readFile(compact.reportPath, "utf8");
+    expect(compact.reportPath).toContain("-proof-compact.md");
+    expect(compactMarkdown).toContain("# AgentFlight Compact Report");
+    expect(compactMarkdown).toContain("compact failure excerpt");
+    expect(compactMarkdown).toContain(".agentflight/evidence/");
+    expect(compactMarkdown).not.toContain("## Timeline");
+
+    const full = await runReportCommand({
+      repoRoot,
+      changedFiles: ["src/api/users.ts"]
+    });
+    const fullMarkdown = await readFile(full.reportPath, "utf8");
+    expect(full.reportPath).toContain("-proof.md");
+    expect(full.reportPath).not.toContain("-compact");
+    expect(fullMarkdown).toContain("# AgentFlight Proof Report");
+    expect(fullMarkdown).toContain("## Timeline");
+  });
+
+  it("rejects invalid report modes before writing a report", async () => {
+    const repoRoot = await startedRepo([]);
+
+    await expect(
+      runReportCommand({
+        repoRoot,
+        changedFiles: ["README.md"],
+        mode: "pdf"
+      })
+    ).rejects.toThrow("Unsupported report mode");
+
+    await expect(readdir(join(repoRoot, ".agentflight", "reports"))).resolves.toEqual([".gitkeep"]);
+  });
+
+  it("writes a local PR comment draft report mode without posting anywhere", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('pr comment proof')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const report = await runReportCommand({
+      repoRoot,
+      changedFiles: ["src/api/users.ts"],
+      mode: "pr-comment"
+    });
+    const markdown = await readFile(report.reportPath, "utf8");
+
+    expect(report.reportPath).toContain("-pr-comment.md");
+    expect(markdown).toContain("## AgentFlight Review Summary");
+    expect(markdown).toContain("Generated locally by AgentFlight. Not posted automatically.");
+    expect(markdown).toContain("Readiness:");
+    expect(markdown).toContain("Review first");
+    expect(markdown).toContain("Proof gaps:");
+    expect(markdown).toContain("npm test");
+    expect(markdown).toContain(".agentflight/evidence/");
+    expect(markdown).not.toContain("## Timeline");
+    expect(markdown).not.toContain("## Tooling");
+  });
+
+  it("uses stderr-preferred failed excerpts in local PR comment drafts", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    const scriptPath = join(repoRoot, "failing-pr-draft.js");
+    await writeFile(
+      scriptPath,
+      "console.log('stdout noise for pr draft'); console.error('stderr pr failure excerpt'); process.exit(1);"
+    );
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, scriptPath],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const report = await runReportCommand({
+      repoRoot,
+      changedFiles: ["src/api/users.ts"],
+      mode: "pr-comment"
+    });
+    const markdown = await readFile(report.reportPath, "utf8");
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const [run] = session.verificationRuns;
+    const stdoutEvidence = await readFile(join(repoRoot, run.stdoutPath), "utf8");
+    const stderrEvidence = await readFile(join(repoRoot, run.stderrPath), "utf8");
+
+    expect(markdown).toContain("stderr pr failure excerpt");
+    expect(markdown).not.toContain("stdout noise for pr draft");
+    expect(stdoutEvidence).toContain("stdout noise for pr draft");
+    expect(stderrEvidence).toContain("stderr pr failure excerpt");
+  });
+
   it("uses handoff-focused next actions in resume when proof is complete", async () => {
     const command = `${process.execPath} -e "console.log('proof ok')"`;
     const repoRoot = await startedRepo([command]);
@@ -252,6 +408,70 @@ describe("evidence-aware session outputs", () => {
     expect(resume.output).not.toContain(".agentflight/evidence/");
     expect(resume.output).not.toContain(".agentflight/reports/");
     expect(resume.output).not.toContain(".agentflight/sessions/");
+  });
+
+  it("excludes AgentLoopKit evidence while keeping reviewable AgentLoopKit files visible", async () => {
+    const repoRoot = await startedRepo([]);
+    const changedFiles = [
+      ".agentloop/state.json",
+      ".agentloop/reports/2026-06-19-verification-report.md",
+      ".agentloop/handoffs/2026-06-19-pr-summary.md",
+      ".agentloop/runs/2026-06-19-handoff/metadata.json",
+      ".agentloop/tasks/2026-06-19-implementation.md",
+      ".agentloop/policies/security.md",
+      ".agentloop/harness/commands.json",
+      ".agentloop/gates/review.md",
+      "src/auth/reset.ts"
+    ];
+
+    const status = await runStatusCommand({ repoRoot, changedFiles });
+    expect(status.output).toContain("Changed files:\n5");
+    expect(status.output).toContain(".agentloop/tasks/2026-06-19-implementation.md");
+    expect(status.output).toContain(".agentloop/policies/security.md");
+    expect(status.output).toContain(".agentloop/harness/commands.json");
+    expect(status.output).toContain(".agentloop/gates/review.md");
+    expect(status.output).toContain("src/auth/reset.ts");
+    expect(status.output).not.toContain(".agentloop/state.json");
+    expect(status.output).not.toContain(".agentloop/reports/");
+    expect(status.output).not.toContain(".agentloop/handoffs/");
+    expect(status.output).not.toContain(".agentloop/runs/");
+
+    const report = await runReportCommand({ repoRoot, changedFiles });
+    const markdown = await readFile(report.reportPath, "utf8");
+    expect(markdown).toContain(".agentloop/tasks/2026-06-19-implementation.md");
+    expect(markdown).toContain(".agentloop/policies/security.md");
+    expect(markdown).not.toContain(".agentloop/reports/");
+    expect(markdown).not.toContain(".agentloop/handoffs/");
+    expect(markdown).not.toContain(".agentloop/runs/");
+    expect(markdown).not.toContain(".agentloop/state.json");
+
+    const replay = await runReplayCommand({ repoRoot, changedFiles });
+    const html = await readFile(replay.replayPath, "utf8");
+    expect(html).toContain(".agentloop/tasks/2026-06-19-implementation.md");
+    expect(html).toContain(".agentloop/gates/review.md");
+    expect(html).not.toContain(".agentloop/reports/");
+    expect(html).not.toContain(".agentloop/handoffs/");
+    expect(html).not.toContain(".agentloop/runs/");
+    expect(html).not.toContain(".agentloop/state.json");
+
+    const resume = await runResumeCommand({ repoRoot, changedFiles });
+    expect(resume.output).toContain(".agentloop/tasks/2026-06-19-implementation.md");
+    expect(resume.output).toContain(".agentloop/harness/commands.json");
+    expect(resume.output).not.toContain(".agentloop/reports/");
+    expect(resume.output).not.toContain(".agentloop/handoffs/");
+    expect(resume.output).not.toContain(".agentloop/runs/");
+    expect(resume.output).not.toContain(".agentloop/state.json");
+
+    const snapshot = await runSnapshotCommand({
+      repoRoot,
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: true,
+        changedFiles
+      }
+    });
+    expect(snapshot.output).toContain("Changed files: 5");
   });
 
   it("applies configured generated-file filters in status, report, replay, resume, and snapshot", async () => {

@@ -2,6 +2,79 @@
 
 This log records setup, dogfooding, and verification evidence for the AgentFlight MVP.
 
+## 2026-06-19
+
+### v0.6.0 Local Review Ergonomics Release Pass
+
+Release decision:
+
+- The post-v0.5.1 work is a minor release, not a patch.
+- New user-facing surfaces include replay navigation, named verification
+  profiles, JSON status, compact report mode, local PR-comment draft mode,
+  ProjScan review-hint enrichment hooks, and AgentLoopKit evidence filtering.
+- The release remains local-first: no cloud, login, billing, telemetry, hosted
+  services, source upload, GitHub App, or automatic PR posting.
+
+Implemented since v0.5.1:
+
+- Improved replay navigation and review ergonomics for long evidence ledgers.
+- Added first-run workspace hygiene guidance for `.agentflight/` runtime paths.
+- Updated product positioning to "local-first review layer for AI coding
+  sessions."
+- Added optional ProjScan review hints to Review Intelligence without making
+  Review Intelligence invoke ProjScan.
+- Added config-defined verification profiles for repeated local command groups.
+- Added compact Markdown report mode.
+- Added local PR-comment draft report mode; it writes a local artifact only.
+- Added `agentflight status --format json`.
+- Filtered local AgentLoopKit evidence paths from AgentFlight changed-file
+  surfaces while keeping task contracts, policies, harness files, and gates
+  visible.
+- Refactored verification/profile handling and ProjScan hint normalization into
+  smaller helpers after ProjScan flagged high-complexity functions.
+
+Release verification plan:
+
+```bash
+npm test -- tests/commands/verify.test.ts tests/commands/evidence-output.test.ts tests/core/review-intelligence.test.ts
+npm run verify
+npm run format:check
+npm pack --dry-run
+npm audit --audit-level=moderate
+npx --yes projscan@latest doctor --format json
+npx --yes projscan@latest preflight --mode before_commit --format json
+npx --yes projscan@latest review --format json
+npx --yes agentloopkit@latest verify
+```
+
+Manual sign-off expectation:
+
+- ProjScan is expected to return a scale/release-signoff caution because the
+  accumulated v0.6.0 handoff is large.
+- The release should not proceed if ProjScan reports concrete blockers such as
+  dependency changes, contract changes, risky functions, cycles, taint flows, or
+  dataflow risks.
+
+Pre-release verification results:
+
+- `npm test -- tests/commands/verify.test.ts tests/commands/evidence-output.test.ts tests/core/review-intelligence.test.ts`
+  passed: 3 files / 43 tests.
+- `npm run verify` passed: typecheck, lint, 19 test files / 121 tests, build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx --yes agentloopkit@latest verify` passed.
+- `npx --yes projscan@latest doctor --format json` passed with score `100` and
+  grade `A`.
+- `npx --yes projscan@latest preflight --mode before_commit --format json`
+  returned `caution`: `111` changed files exceeded the threshold of `50`, and
+  maximum changed-file risk score was `172.7`.
+- `npx --yes projscan@latest review --format json` reported no risky functions,
+  no new cycles, no dependency changes, no contract changes, no new taint flows,
+  and no new dataflow risks.
+- Manual sign-off accepted the ProjScan result as a release-scale caution, not
+  a concrete blocker.
+
 ## 2026-06-17
 
 ### v0.5.1 Dogfood Patch Candidate

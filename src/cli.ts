@@ -19,7 +19,7 @@ export function createCli(): Command {
 
   program
     .name("agentflight")
-    .description("Local-first flight recorder for AI coding agents.")
+    .description("Local-first review layer for AI coding sessions.")
     .version(readPackageVersion());
 
   program
@@ -47,21 +47,29 @@ export function createCli(): Command {
   program
     .command("status")
     .description("Show what changed since the session started.")
-    .action(async () => {
-      await printResult(runStatusCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
+    .option("--format <format>", "status output format: text or json", "text")
+    .action(async (options: { format?: string }) => {
+      await printResult(
+        runStatusCommand({
+          repoRoot: await getRepositoryRoot(process.cwd()),
+          format: options.format
+        })
+      );
     });
 
   program
     .command("verify")
     .description("Run verification and capture local evidence for the current session.")
+    .option("--profile <name>", "run a named verification profile from .agentflight/config.json")
     .allowUnknownOption(true)
     .allowExcessArguments(true)
     .argument("[command...]", "verification command to run after --")
-    .action(async (commandArgs: string[]) => {
+    .action(async (commandArgs: string[], options: { profile?: string }) => {
       await printResult(
         runVerifyCommand({
           repoRoot: await getRepositoryRoot(process.cwd()),
           commandArgs,
+          profile: options.profile,
           onHeartbeat: (message) => console.log(message)
         })
       );
@@ -83,8 +91,11 @@ export function createCli(): Command {
   program
     .command("report")
     .description("Generate a Markdown proof report for the current session.")
-    .action(async () => {
-      await printResult(runReportCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
+    .option("--mode <mode>", "Markdown report mode: full, compact, or pr-comment", "full")
+    .action(async (options: { mode?: string }) => {
+      await printResult(
+        runReportCommand({ repoRoot: await getRepositoryRoot(process.cwd()), mode: options.mode })
+      );
     });
 
   program

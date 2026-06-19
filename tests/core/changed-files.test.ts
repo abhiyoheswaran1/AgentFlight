@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   filterAgentFlightRuntimePaths,
+  filterBuiltInRuntimePaths,
   filterChangedFiles,
+  isAgentLoopKitEvidencePath,
   isAgentFlightRuntimePath
 } from "../../src/core/changed-files.js";
 
@@ -21,6 +23,30 @@ describe("changed-file filtering", () => {
       "src/auth/session.ts"
     ]);
     expect(isAgentFlightRuntimePath(".agentflight/config.json")).toBe(false);
+  });
+
+  it("keeps AgentLoopKit evidence filters always on while leaving contracts and policy visible", () => {
+    const files = [
+      ".agentloop/state.json",
+      ".agentloop/reports/2026-06-19-verification-report.md",
+      ".agentloop/handoffs/2026-06-19-pr-summary.md",
+      ".agentloop/runs/2026-06-19-handoff/metadata.json",
+      ".agentloop/tasks/2026-06-19-implementation.md",
+      ".agentloop/policies/security.md",
+      ".agentloop/harness/commands.json",
+      ".agentloop/gates/review.md",
+      "src/auth/session.ts"
+    ];
+
+    expect(filterBuiltInRuntimePaths(files)).toEqual([
+      ".agentloop/tasks/2026-06-19-implementation.md",
+      ".agentloop/policies/security.md",
+      ".agentloop/harness/commands.json",
+      ".agentloop/gates/review.md",
+      "src/auth/session.ts"
+    ]);
+    expect(isAgentLoopKitEvidencePath(".agentloop/state.json")).toBe(true);
+    expect(isAgentLoopKitEvidencePath(".agentloop/tasks/2026-06-19-implementation.md")).toBe(false);
   });
 
   it("applies user-configured generated/internal ignore patterns after built-in filters", () => {
