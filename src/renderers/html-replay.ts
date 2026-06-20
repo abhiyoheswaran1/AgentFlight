@@ -1,4 +1,8 @@
-import { compactCommandInText, formatVerifyCommandForDisplay } from "../core/output.js";
+import {
+  compactCommandInText,
+  formatCommandForDisplay,
+  formatVerifyCommandForDisplay
+} from "../core/output.js";
 import type {
   ProofGap,
   ReviewFocusItem,
@@ -569,6 +573,12 @@ function renderSuggestedProof(command: string): string {
   return `<code title="${escapeHtml(full)}">${escapeHtml(display)}</code>`;
 }
 
+function renderLedgerCommand(command: string): string {
+  const display = formatCommandForDisplay(command);
+  const title = display === command ? "" : ` title="${escapeHtml(command)}"`;
+  return `<div class="entry-cmd"${title}>${escapeHtml(display)}</div>`;
+}
+
 function renderFileGroups(groups: RiskCategorySummary[]): string {
   if (groups.length === 0) return `<p class="empty">No changed file groups detected.</p>`;
   return `<div class="records">${groups
@@ -592,7 +602,7 @@ function renderVerification(evidence: VerificationRun[]): string {
       return `<div class="entry entry--${escapeHtml(item.status)}" id="verification-run-${escapeHtml(String(runNumber))}">
         <div class="stamp stamp--${escapeHtml(item.status)}">${escapeHtml(stampText(item.status))}</div>
         <div class="entry-body">
-          <div class="entry-cmd">${escapeHtml(item.command)}</div>
+          ${renderLedgerCommand(item.command)}
           <div class="entry-meta">exit ${escapeHtml(String(item.exitCode ?? "unknown"))} &middot; ${escapeHtml(String(item.durationMs))}ms</div>
           ${item.status === "failed" && item.outputExcerpt ? `<pre class="excerpt excerpt--failed" aria-label="Output excerpt">${escapeHtml(item.outputExcerpt)}</pre>` : ""}
           <details>

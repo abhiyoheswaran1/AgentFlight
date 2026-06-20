@@ -55,6 +55,8 @@ All notable AgentFlight changes are documented here.
   dependency gaps prefer build/install-style proof before typecheck.
 - Review Intelligence proof-gap rules are now centralized in one ordered table
   to keep future proof guidance changes easier to review.
+- HTML replay verification ledgers now display long run commands compactly while
+  keeping the full command available in the title text.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

@@ -2,6 +2,50 @@
 
 This log records setup, dogfooding, and verification evidence for the AgentFlight MVP.
 
+## 2026-06-21
+
+### Compact Replay Ledger Commands
+
+Persona readout:
+
+- Product Maintainer: replay should stay the best artifact to open after proof
+  passes, so dense ledger rows should not be dominated by command noise.
+- CLI Engineer: display compaction should not mutate captured verification
+  command evidence.
+- Security Reviewer: HTML title and visible command text must remain escaped.
+- Docs and DX Writer: reviewers still need a way to inspect the full command
+  when the visible label is shortened.
+
+Implemented locally:
+
+- HTML replay verification ledger rows now use the shared compact command
+  display helper for long run commands.
+- The full command remains available in the `title` attribute when the visible
+  command is shortened.
+- Stored verification run data and raw stdout/stderr evidence are unchanged.
+
+Verification:
+
+- Added a renderer regression test for compact visible ledger commands, full
+  title text, and HTML escaping.
+- `npm test -- tests/renderers/html-replay.test.ts` passed: 1 file / 6 tests.
+- Dogfooded a harmless long passing `agentflight verify` command and regenerated
+  replay: the long ledger command rendered compactly, the full command was
+  escaped in `title`, and the passing stderr excerpt stayed tucked in details.
+- Adjacent bug pass with HTML replay, Markdown report, evidence output, and
+  Review Intelligence tests passed: 4 files / 54 tests.
+- `npm run verify` passed: 20 files / 147 tests, plus typecheck, lint, and
+  build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found 0 vulnerabilities.
+- `npx projscan@latest doctor --format json` passed with score 100/A.
+- ProjScan preflight/review kept the existing accumulated branch-scale manual
+  signoff caution: 86 changed files and max changed-file risk score 188.6, with
+  no concrete cycle, risky-function, dependency, contract, taint, or dataflow
+  blockers reported.
+- `npx agentloopkit@latest verify` passed.
+
 ## 2026-06-20
 
 ### Centralized Proof-Gap Rules

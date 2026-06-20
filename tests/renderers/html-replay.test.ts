@@ -170,6 +170,39 @@ describe("HTML replay", () => {
     expect(html).toMatch(/>agentflight verify -- node -e [^<]*…<\/code>/);
   });
 
+  it("renders long verification ledger commands compactly with the full command in a title", () => {
+    const longCommand = `node -e "${"console.log('ledger proof command noise'); ".repeat(10)}console.error('<ledger-failure>'); process.exit(1)"`;
+    const html = renderHtmlReplay({
+      task: "Long ledger command",
+      sessionId: "af-long-ledger-command",
+      startedAt: "2026-06-20T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/core/verification.ts"],
+      riskBadges: ["medium"],
+      verificationEvidence: [
+        {
+          command: longCommand,
+          startedAt: "2026-06-20T12:01:00.000Z",
+          finishedAt: "2026-06-20T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-long-ledger-command/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-long-ledger-command/verification-1.stderr.txt",
+          outputExcerpt: "ledger failure"
+        }
+      ],
+      reviewReadiness: "Blocked by failed verification",
+      recommendation: "Fix the failed verification."
+    });
+
+    expect(html).toContain('class="entry-cmd" title="node -e');
+    expect(html).toContain("process.exit(1)");
+    expect(html).toContain("&lt;ledger-failure&gt;");
+    expect(html).not.toContain("<ledger-failure>");
+    expect(html).toMatch(/<div class="entry-cmd" title="[^"]*">node -e [^<]*…<\/div>/);
+  });
+
   it("renders accessible review navigation with sticky-safe section anchors", () => {
     const html = renderHtmlReplay({
       task: "Review navigation",
