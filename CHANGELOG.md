@@ -34,6 +34,8 @@ All notable AgentFlight changes are documented here.
   heavier optional `projscan start` baseline on the startup path.
 - `agentflight start` now uses lightweight AgentLoopKit availability inspection
   on the startup path while preserving task reuse/linking.
+- `agentflight start` now reuses AgentLoopKit's local active-task state file
+  directly instead of parsing `agentloopkit status` output.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

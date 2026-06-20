@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { CommandRunner } from "../core/process.js";
 import { runCommand } from "../core/process.js";
 import type { ToolAdapterResult } from "../types/index.js";
@@ -66,7 +68,7 @@ export async function createAgentLoopTask(
   title: string,
   run: CommandRunner = runCommand
 ): Promise<ToolAdapterResult> {
-  const activeTask = await findActiveAgentLoopTask(cwd, run);
+  const activeTask = await readActiveAgentLoopTask(cwd);
   if (activeTask) return activeTask;
 
   const result = await runToolWithFallback({
@@ -106,40 +108,26 @@ export async function createAgentLoopTask(
   };
 }
 
-async function findActiveAgentLoopTask(
-  cwd: string,
-  run: CommandRunner
-): Promise<ToolAdapterResult | null> {
-  const status = await runToolWithFallback({
-    run,
-    localCommand: "agentloopkit",
-    packageName: "agentloopkit@latest",
-    args: ["status", "--redact-paths"],
-    cwd,
-    timeoutMs: 5_000
-  });
-
-  if (status.exitCode !== 0) return null;
-  const activeLine = status.stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .find((line) => line.includes("Active task:"));
-
-  if (!activeLine || isNoActiveAgentLoopTaskLine(activeLine)) return null;
+async function readActiveAgentLoopTask(cwd: string): Promise<ToolAdapterResult | null> {
+  const activeTaskPath = await readActiveTaskPath(cwd);
+  if (!activeTaskPath) return null;
 
   return {
     available: true,
     taskLinked: true,
-    summary: `Using active AgentLoopKit task. ${activeLine.replace(/^- /, "")}`,
+    summary: `Using active AgentLoopKit task. Active task: ${activeTaskPath}`,
     warnings: []
   };
 }
 
-function isNoActiveAgentLoopTaskLine(activeLine: string): boolean {
-  const normalized = activeLine.toLowerCase();
-  return (
-    normalized.includes("none active") ||
-    normalized.includes("none pinned") ||
-    normalized.includes("no active task")
-  );
+async function readActiveTaskPath(cwd: string): Promise<string | null> {
+  try {
+    const raw = await readFile(join(cwd, ".agentloop", "state.json"), "utf8");
+    const parsed = JSON.parse(raw) as { activeTaskPath?: unknown };
+    return typeof parsed.activeTaskPath === "string" && parsed.activeTaskPath.trim()
+      ? parsed.activeTaskPath
+      : null;
+  } catch {
+    return null;
+  }
 }
