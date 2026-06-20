@@ -7,6 +7,7 @@ export interface InspectAgentLoopKitOptions {
   cwd?: string;
   run?: CommandRunner;
   command?: string;
+  includeDoctor?: boolean;
 }
 
 export async function inspectAgentLoopKit(
@@ -26,6 +27,15 @@ export async function inspectAgentLoopKit(
     return {
       available: false,
       warnings: [`AgentLoopKit unavailable: ${summarizeFailure(version)}`]
+    };
+  }
+
+  if (options.includeDoctor === false) {
+    return {
+      available: true,
+      version: normalizeVersion(version.stdout),
+      summary: "AgentLoopKit available for task discipline.",
+      warnings: []
     };
   }
 

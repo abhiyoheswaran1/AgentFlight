@@ -31,6 +31,25 @@ describe("AgentLoopKit adapter", () => {
     });
   });
 
+  it("can inspect availability without running doctor", async () => {
+    const calls: string[] = [];
+    const run: CommandRunner = async (_command, args) => {
+      calls.push(args.join(" "));
+      if (args.includes("--version")) return { exitCode: 0, stdout: "0.28.7\n", stderr: "" };
+      if (args.includes("doctor")) return { exitCode: 0, stdout: "unexpected doctor", stderr: "" };
+      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
+    };
+
+    await expect(inspectAgentLoopKit({ run, includeDoctor: false })).resolves.toMatchObject({
+      available: true,
+      version: "0.28.7",
+      summary: "AgentLoopKit available for task discipline.",
+      warnings: []
+    });
+    expect(calls.some((call) => call.includes("--version"))).toBe(true);
+    expect(calls.some((call) => call.includes("doctor"))).toBe(false);
+  });
+
   it("prefers the repo-local binary before an older PATH binary", async () => {
     const commands: string[] = [];
     const run: CommandRunner = async (command, args) => {

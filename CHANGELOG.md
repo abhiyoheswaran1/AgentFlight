@@ -27,6 +27,8 @@ All notable AgentFlight changes are documented here.
   summaries when optional tooling is available but degraded.
 - `agentflight start` now inspects ProjScan availability without running the
   heavier optional `projscan start` baseline on the startup path.
+- `agentflight start` now uses lightweight AgentLoopKit availability inspection
+  on the startup path while preserving task reuse/linking.
 
 ## AgentFlight v0.6.0 - 2026-06-19
 

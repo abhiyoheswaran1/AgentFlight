@@ -192,8 +192,8 @@ describe("AgentFlight command workflow", () => {
           warnings: []
         };
       },
-      inspectAgentLoopKit: async () => {
-        calls.push("inspect-agentloopkit");
+      inspectAgentLoopKit: async (options) => {
+        calls.push(`inspect-agentloopkit:${String(options?.includeDoctor)}`);
         return {
           available: true,
           version: "0.35.2",
@@ -212,7 +212,11 @@ describe("AgentFlight command workflow", () => {
       }
     });
 
-    expect(calls).toEqual(["inspect-projscan", "inspect-agentloopkit", "create-agentloop-task"]);
+    expect(calls).toEqual([
+      "inspect-projscan",
+      "inspect-agentloopkit:false",
+      "create-agentloop-task"
+    ]);
     expect(tools.projscan).toMatchObject({
       available: true,
       version: "4.5.0",
