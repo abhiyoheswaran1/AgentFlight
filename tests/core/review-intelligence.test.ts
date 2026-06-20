@@ -187,6 +187,30 @@ describe("review intelligence", () => {
     expect(review.readiness.state).toBe("ready_for_review");
   });
 
+  it("keeps generated ProjScan memory below real first-run review targets", () => {
+    const changedFiles = [".projscan-memory/memory.json", ".agentflight/config.json", "README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.focus.map((item) => item.file)).toEqual([
+      ".agentflight/config.json",
+      "README.md",
+      ".projscan-memory/memory.json"
+    ]);
+    expect(review.focus.find((item) => item.file === ".projscan-memory/memory.json")).toMatchObject(
+      {
+        category: "unknown",
+        proofStatus: "unknown"
+      }
+    );
+  });
+
   it("requires build proof for frontend changes and suggests the configured build command", () => {
     const changedFiles = ["src/components/LoginForm.tsx"];
     const review = buildReviewIntelligence({

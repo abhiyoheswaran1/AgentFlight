@@ -629,21 +629,36 @@ describe("evidence-aware session outputs", () => {
 
   it("suggests a ProjScan memory ignore pattern without filtering it by default", async () => {
     const repoRoot = await startedRepo([]);
-    const changedFiles = [".projscan-memory/memory.json", "README.md"];
+    const changedFiles = [".projscan-memory/memory.json", ".agentflight/config.json", "README.md"];
 
     const status = await runStatusCommand({ repoRoot, changedFiles });
     expect(status.output).toContain(".projscan-memory/memory.json");
+    expect(status.output).toContain(".agentflight/config.json");
     expect(status.output).toContain(".projscan-memory/**");
     expect(status.output).toContain("changedFileFilters.ignore");
 
     const report = await runReportCommand({ repoRoot, changedFiles });
     const markdown = await readFile(report.reportPath, "utf8");
     expect(markdown).toContain(".projscan-memory/memory.json");
+    expect(markdown).toContain(".agentflight/config.json");
     expect(markdown).toContain(".projscan-memory/**");
     expect(markdown).toContain("changedFileFilters.ignore");
 
+    const handoff = await runHandoffCommand({ repoRoot, changedFiles });
+    const handoffReviewFirst = handoff.output.slice(
+      handoff.output.indexOf("Review first:"),
+      handoff.output.indexOf("Proof gaps:")
+    );
+    expect(handoffReviewFirst.indexOf(".agentflight/config.json")).toBeLessThan(
+      handoffReviewFirst.indexOf(".projscan-memory/memory.json")
+    );
+    expect(handoffReviewFirst.indexOf("README.md")).toBeLessThan(
+      handoffReviewFirst.indexOf(".projscan-memory/memory.json")
+    );
+
     const resume = await runResumeCommand({ repoRoot, changedFiles });
     expect(resume.output).toContain(".projscan-memory/memory.json");
+    expect(resume.output).toContain(".agentflight/config.json");
     expect(resume.output).toContain(".projscan-memory/**");
     expect(resume.output).toContain("changedFileFilters.ignore");
   });

@@ -1,5 +1,10 @@
 # Roadmap
 
+Current working direction: keep AgentFlight focused on becoming the best
+local-first review layer for AI coding sessions. See
+[docs/development/product-direction.md](../development/product-direction.md)
+for the active post-v0.6.0 priority order.
+
 ## MVP
 
 - Local CLI package.
@@ -21,11 +26,14 @@
 ## Future Free/Open-Core
 
 - Basic local session history.
-- Structured `--json` output.
-- Richer configurable verification command profiles.
+- Continued local handoff ergonomics.
+- First-run workspace hygiene polish.
+- Replay navigation and review ergonomics.
+- Proof guidance quality improvements.
 - Deeper ProjScan-enriched review hints once stable structured output exists.
 - More precise git diff stats without including full code by default.
-- Timeline filtering and richer local replay navigation.
+- Structured local automation surfaces where they make review artifacts easier
+  to inspect.
 
 ## Future Pro
 

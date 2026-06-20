@@ -8,6 +8,9 @@ All notable AgentFlight changes are documented here.
 
 - Added `agentflight handoff`, a local-only review handoff command that generates the report, replay, and resume artifacts and summarizes readiness, proof gaps, review focus, and failed verification excerpts.
 - Added post-v0.6.0 user-research findings and a v0.6.0 website update prompt focused on the local handoff workflow.
+- Added a post-v0.6.0 product direction note that keeps local handoff, first-run
+  workspace hygiene, replay ergonomics, proof guidance, and explainable ranking
+  as the priority order.
 
 ## AgentFlight v0.6.0 - 2026-06-19
 
@@ -29,6 +32,9 @@ Local review ergonomics and automation surfaces for heavier real-world dogfood.
 - Clarified first-run workspace hygiene docs: `.projscan-memory/**` can be added
   to `changedFileFilters.ignore` when ProjScan memory is generated evidence
   rather than a review target.
+- Lowered generated ProjScan memory priority in Review Intelligence so
+  `.projscan-memory/memory.json` remains visible but no longer outranks real
+  first-run review targets such as `.agentflight/config.json` or docs changes.
 
 - AgentFlight now describes itself as a local-first review layer for AI coding sessions across package metadata, README, and product docs.
 - Long suggested proof commands stay compact in high-density review surfaces while preserving the full suggested action where useful.

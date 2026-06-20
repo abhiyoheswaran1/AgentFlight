@@ -56,6 +56,8 @@ const reviewerFocusByCategory = new Map<RiskCategory, string>([
   ["unknown", "Inspect manually because AgentFlight could not classify this file."]
 ]);
 
+const generatedGuidanceFiles = new Set([".projscan-memory/memory.json"]);
+
 const readinessLabels: Record<ReviewReadinessState, string> = {
   ready_for_review: "Ready for review",
   not_ready_for_review: "Not ready for review",
@@ -262,7 +264,7 @@ function buildReviewFocus(input: {
     });
     const reasons = buildFocusReasons(category, proofStatus, relatedGaps, projscanHint);
     const score =
-      scoreFocusItem(category, proofStatus, relatedGaps, hasFailedVerification) +
+      scoreFocusItem(file, category, proofStatus, relatedGaps, hasFailedVerification) +
       scoreProjScanHint(projscanHint);
 
     const suggestedCommand = relatedGaps.find((gap) => gap.suggestedCommand)?.suggestedCommand;
@@ -375,18 +377,49 @@ function readinessDecision(input: {
 }
 
 function scoreFocusItem(
+  file: string,
   category: RiskCategory,
   proofStatus: ReviewProofStatus,
   relatedGaps: ProofGap[],
   hasFailedVerification: boolean
 ): number {
-  let score = baseScores[category];
-  if (proofStatus === "missing") score += 30;
-  if (hasFailedVerification && category !== "docs") score += 40;
-  if (category === "dependencies" && relatedGaps.length > 0) score += 20;
-  if (category === "config" && relatedGaps.length > 0) score += 15;
-  if (category === "unknown") score += 10;
-  return score;
+  const generatedGuidanceFile = isGeneratedGuidanceFile(file);
+  return (
+    baseFocusScore(category, generatedGuidanceFile) +
+    proofStatusScore(proofStatus) +
+    failedVerificationScore(category, hasFailedVerification) +
+    categoryGapScore(category, relatedGaps, generatedGuidanceFile)
+  );
+}
+
+function baseFocusScore(category: RiskCategory, generatedGuidanceFile: boolean): number {
+  return generatedGuidanceFile ? 5 : baseScores[category];
+}
+
+function proofStatusScore(proofStatus: ReviewProofStatus): number {
+  return proofStatus === "missing" ? 30 : 0;
+}
+
+function failedVerificationScore(category: RiskCategory, hasFailedVerification: boolean): number {
+  return hasFailedVerification && category !== "docs" ? 40 : 0;
+}
+
+function categoryGapScore(
+  category: RiskCategory,
+  relatedGaps: ProofGap[],
+  generatedGuidanceFile: boolean
+): number {
+  const hasGaps = relatedGaps.length > 0;
+  const scores: Partial<Record<RiskCategory, number>> = {
+    dependencies: hasGaps ? 20 : 0,
+    config: hasGaps ? 15 : 0,
+    unknown: generatedGuidanceFile ? 0 : 10
+  };
+  return scores[category] ?? 0;
+}
+
+function isGeneratedGuidanceFile(file: string): boolean {
+  return generatedGuidanceFiles.has(normalizeFilePath(file));
 }
 
 function scoreProjScanHint(hint: NormalizedProjScanHint | undefined): number {
