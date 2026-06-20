@@ -4,6 +4,24 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-20
 
+### Centralized Proof-Gap Rules
+
+Maintainability finding:
+
+- Review Intelligence proof-gap rules were repeated inline in
+  `buildProofGaps`, making future command-preference changes easy to misorder.
+
+Implemented locally:
+
+- Moved category proof-gap rules into one ordered `categoryProofGapRules` table.
+- Kept readiness, scoring, proof-gap IDs, messages, and command preferences
+  unchanged.
+
+Verification:
+
+- `npm test -- tests/core/review-intelligence.test.ts` passed: 1 file / 18
+  tests.
+
 ### Proof Command Preference
 
 Dogfood finding:

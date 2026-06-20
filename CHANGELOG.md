@@ -53,6 +53,8 @@ All notable AgentFlight changes are documented here.
 - Review Intelligence suggested proof now follows each proof gap's preferred
   proof-kind order, so source gaps prefer `npm test` when available and
   dependency gaps prefer build/install-style proof before typecheck.
+- Review Intelligence proof-gap rules are now centralized in one ordered table
+  to keep future proof guidance changes easier to review.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

@@ -80,6 +80,73 @@ const readinessLabels: Record<ReviewReadinessState, string> = {
   unknown: "Unknown"
 };
 
+interface CategoryProofGapRule {
+  categories: RiskCategory[];
+  id: string;
+  severity: ProofGap["severity"];
+  proofKinds: VerificationProofKind[];
+  message: string;
+}
+
+const categoryProofGapRules: CategoryProofGapRule[] = [
+  {
+    categories: ["auth", "billing/payments", "security/secrets"],
+    id: "missing-auth-test-proof",
+    severity: "blocking",
+    proofKinds: ["test"],
+    message: "Sensitive auth, payment, or security files changed without passing test evidence."
+  },
+  {
+    categories: ["database/migrations"],
+    id: "missing-database-test-proof",
+    severity: "blocking",
+    proofKinds: ["test", "build"],
+    message: "Database schema or migration files changed without passing test or build evidence."
+  },
+  {
+    categories: ["backend/api"],
+    id: "missing-backend-proof",
+    severity: "warning",
+    proofKinds: ["test", "build"],
+    message: "Backend/API files changed without passing test or build evidence."
+  },
+  {
+    categories: ["dependencies"],
+    id: "missing-dependency-proof",
+    severity: "warning",
+    proofKinds: ["install", "build", "typecheck", "test"],
+    message: "Dependency files changed without install, build, typecheck, or test evidence."
+  },
+  {
+    categories: ["config"],
+    id: "missing-config-proof",
+    severity: "warning",
+    proofKinds: ["lint", "typecheck", "build"],
+    message: "Config or CI files changed without lint, typecheck, or build evidence."
+  },
+  {
+    categories: ["frontend"],
+    id: "missing-frontend-build-proof",
+    severity: "warning",
+    proofKinds: ["build", "test"],
+    message: "Frontend files changed without passing build or test evidence."
+  },
+  {
+    categories: ["source"],
+    id: "missing-source-proof",
+    severity: "warning",
+    proofKinds: ["test", "typecheck", "build"],
+    message: "Source files changed without passing typecheck, test, or build evidence."
+  },
+  {
+    categories: ["tests"],
+    id: "missing-test-suite-proof",
+    severity: "warning",
+    proofKinds: ["test"],
+    message: "Test files changed without passing test evidence."
+  }
+];
+
 export function buildReviewIntelligence(
   options: BuildReviewIntelligenceOptions
 ): ReviewIntelligence {
@@ -173,62 +240,9 @@ function buildProofGaps(input: {
   }
 
   const filesByCategory = groupFilesByCategory(input.changedFiles);
-  addCategoryGap(gaps, input, filesByCategory, {
-    categories: ["auth", "billing/payments", "security/secrets"],
-    id: "missing-auth-test-proof",
-    severity: "blocking",
-    proofKinds: ["test"],
-    message: "Sensitive auth, payment, or security files changed without passing test evidence."
-  });
-  addCategoryGap(gaps, input, filesByCategory, {
-    categories: ["database/migrations"],
-    id: "missing-database-test-proof",
-    severity: "blocking",
-    proofKinds: ["test", "build"],
-    message: "Database schema or migration files changed without passing test or build evidence."
-  });
-  addCategoryGap(gaps, input, filesByCategory, {
-    categories: ["backend/api"],
-    id: "missing-backend-proof",
-    severity: "warning",
-    proofKinds: ["test", "build"],
-    message: "Backend/API files changed without passing test or build evidence."
-  });
-  addCategoryGap(gaps, input, filesByCategory, {
-    categories: ["dependencies"],
-    id: "missing-dependency-proof",
-    severity: "warning",
-    proofKinds: ["install", "build", "typecheck", "test"],
-    message: "Dependency files changed without install, build, typecheck, or test evidence."
-  });
-  addCategoryGap(gaps, input, filesByCategory, {
-    categories: ["config"],
-    id: "missing-config-proof",
-    severity: "warning",
-    proofKinds: ["lint", "typecheck", "build"],
-    message: "Config or CI files changed without lint, typecheck, or build evidence."
-  });
-  addCategoryGap(gaps, input, filesByCategory, {
-    categories: ["frontend"],
-    id: "missing-frontend-build-proof",
-    severity: "warning",
-    proofKinds: ["build", "test"],
-    message: "Frontend files changed without passing build or test evidence."
-  });
-  addCategoryGap(gaps, input, filesByCategory, {
-    categories: ["source"],
-    id: "missing-source-proof",
-    severity: "warning",
-    proofKinds: ["test", "typecheck", "build"],
-    message: "Source files changed without passing typecheck, test, or build evidence."
-  });
-  addCategoryGap(gaps, input, filesByCategory, {
-    categories: ["tests"],
-    id: "missing-test-suite-proof",
-    severity: "warning",
-    proofKinds: ["test"],
-    message: "Test files changed without passing test evidence."
-  });
+  for (const rule of categoryProofGapRules) {
+    addCategoryGap(gaps, input, filesByCategory, rule);
+  }
 
   addGeneratedFileGuidance(gaps, input.changedFiles);
 
@@ -242,13 +256,7 @@ function addCategoryGap(
     proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
   },
   filesByCategory: Map<RiskCategory, string[]>,
-  rule: {
-    categories: RiskCategory[];
-    id: string;
-    severity: ProofGap["severity"];
-    proofKinds: VerificationProofKind[];
-    message: string;
-  }
+  rule: CategoryProofGapRule
 ): void {
   const relatedFiles = rule.categories.flatMap((category) => filesByCategory.get(category) ?? []);
   if (relatedFiles.length === 0) return;
