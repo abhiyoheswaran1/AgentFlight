@@ -16,6 +16,10 @@ describe("CLI entrypoint detection", () => {
     expect(createCli().description()).toBe("Local-first review layer for AI coding sessions.");
   });
 
+  it("includes the local history command", () => {
+    expect(createCli().commands.map((command) => command.name())).toContain("history");
+  });
+
   it("treats encoded file URLs and argv paths with spaces as the same entrypoint", () => {
     expect(
       isDirectCliInvocation(

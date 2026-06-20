@@ -7,6 +7,9 @@ All notable AgentFlight changes are documented here.
 ### Added
 
 - Added `agentflight handoff`, a local-only review handoff command that generates the report, replay, and resume artifacts and summarizes readiness, proof gaps, review focus, and failed verification excerpts.
+- Added `agentflight history`, a read-only local command for listing recent
+  sessions, proof counts, the current-session marker, and existing report/replay
+  artifact paths without search indexing, export, sync, or session switching.
 - Added post-v0.6.0 user-research findings and a v0.6.0 website update prompt focused on the local handoff workflow.
 - Added a post-v0.6.0 product direction note that keeps local handoff, first-run
   workspace hygiene, replay ergonomics, proof guidance, and explainable ranking

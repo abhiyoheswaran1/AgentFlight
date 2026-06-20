@@ -42,7 +42,17 @@ User problem: first-time users decide whether to trust a tool quickly. Review
 focus should not lead with generated tool memory when a real app file or
 project config needs attention.
 
-### 3. Replay And Review Ergonomics
+### 3. Local Session Discovery
+
+Users should be able to find recent local sessions and existing report/replay
+artifacts without remembering `.agentflight/` paths. This should stay read-only:
+no search index, sync, export, or session switching until those workflows earn
+their keep through dogfood.
+
+User problem: after several agent loops, the evidence exists locally but the
+developer may not know which replay or report to open.
+
+### 4. Replay And Review Ergonomics
 
 Long sessions need faster navigation and less repetition. Replay should remain
 the best artifact to inspect when verification is complete, while report should
@@ -51,7 +61,7 @@ remain the best artifact when verification failed.
 User problem: reviewers need to find the failed proof, relevant changed files,
 and next action without reading a full transcript.
 
-### 4. Proof Guidance Quality
+### 5. Proof Guidance Quality
 
 Suggested verification commands should be compact, relevant, and consistent
 across status, report, replay, resume, and handoff. Failure excerpts should stay
@@ -59,7 +69,7 @@ stderr-preferred and raw evidence should remain intact.
 
 User problem: proof guidance should reduce uncertainty, not add output noise.
 
-### 5. Engine-Backed Review Ranking
+### 6. Engine-Backed Review Ranking
 
 ProjScan-enriched ranking can improve prioritization, but it should stay
 deterministic, optional, and explainable. AgentFlight should not become a hidden

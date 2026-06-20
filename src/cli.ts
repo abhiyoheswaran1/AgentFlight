@@ -6,6 +6,7 @@ import { Command } from "commander";
 import { getRepositoryRoot } from "./core/git.js";
 import { runDoctorCommand } from "./commands/doctor.js";
 import { runHandoffCommand } from "./commands/handoff.js";
+import { runHistoryCommand } from "./commands/history.js";
 import { runInitCommand } from "./commands/init.js";
 import { runReplayCommand } from "./commands/replay.js";
 import { runReportCommand } from "./commands/report.js";
@@ -118,6 +119,19 @@ export function createCli(): Command {
     .description("Generate a local review handoff for the current session.")
     .action(async () => {
       await printResult(runHandoffCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
+    });
+
+  program
+    .command("history")
+    .description("List recent local AgentFlight sessions.")
+    .option("--limit <count>", "number of recent sessions to show")
+    .action(async (options: { limit?: string }) => {
+      await printResult(
+        runHistoryCommand({
+          repoRoot: await getRepositoryRoot(process.cwd()),
+          limit: options.limit === undefined ? undefined : Number(options.limit)
+        })
+      );
     });
 
   program

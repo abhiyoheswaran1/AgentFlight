@@ -4,6 +4,71 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Local Session History
+
+Research signal:
+
+- After repeated dogfood loops, AgentFlight had useful local report/replay
+  artifacts but no simple way to list recent sessions. Real engineers should
+  not need to remember generated filenames or inspect `.agentflight/sessions/`
+  directly to find the prior proof trail.
+
+Persona readout:
+
+- Product Maintainer: local session discovery supports the handoff ladder
+  without becoming search, export, PR comments, or cloud sync.
+- CLI Engineer: keep this as a read-only command with text output and no hidden
+  session switching.
+- Verification Engineer: malformed session files should not crash the command.
+- Security Reviewer: artifact paths must stay repo-relative and local-only.
+- Repo Steward: do not add indexing files or mutate historical session JSON.
+
+Implemented locally:
+
+- Added `agentflight history` to list recent local sessions newest first.
+- History output shows the current-session marker, task, branch, verification
+  pass/fail counts, and existing local report/replay paths.
+- Malformed session files are counted and skipped rather than crashing output.
+- The command does not generate artifacts, switch sessions, upload data, or
+  write an index.
+
+Verification so far:
+
+- Red core test failed because `listSessionSummaries` did not exist.
+- Added `listSessionSummaries` in `src/core/session.ts`; green result:
+  `npm test -- tests/core/session.test.ts` passed: 1 file / 4 tests.
+- Red command test failed because `src/commands/history.ts` did not exist.
+- Added `runHistoryCommand`; after fixing an un-awaited formatter bug,
+  `npm test -- tests/commands/history.test.ts` passed: 1 file / 3 tests.
+- CLI wiring red test failed until `history` was registered in `src/cli.ts`;
+  focused result passed: 3 files / 12 tests.
+- Bug pass: built CLI `agentflight history --limit 3` in this repo listed the
+  current session, recent report/replay artifacts, and missing artifacts using
+  repo-relative paths.
+- Bug pass: temp Git smoke created two sessions, corrupted one archived session
+  JSON file, and `agentflight history --limit 5` still completed while reporting
+  `Skipped: 1 malformed session file.`
+- ProjScan initially flagged `src/core/session.ts:listSessionSummaries` as a new
+  high-complexity function. The helper was split into directory-read,
+  per-session-load, sorting, and limit-normalization helpers; the follow-up
+  `projscan review --format json` reported no risky functions.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/core/session.test.ts tests/commands/history.test.ts tests/cli-entrypoint.test.ts`
+  passed: 3 files / 12 tests.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 156 tests, plus typecheck, lint, and build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0` and included
+  `dist/commands/history.js`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale manual signoff caution: 106 changed
+  files against `origin/main`, maximum changed-file risk score `188.6`, and no
+  concrete blockers.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-01-47-verification-report.md`.
+
 ### First-Run Runtime Git Noise
 
 Dogfood finding:

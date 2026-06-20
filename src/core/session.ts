@@ -1,3 +1,4 @@
+import { readdir, readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { writeJsonFileSafe, writeTextFileSafe } from "./fs-safe.js";
 import { resolveAgentFlightPaths } from "./paths.js";
@@ -33,6 +34,32 @@ export interface StartSessionResult {
   sessionPath: string;
   currentSessionPath: string;
   handoffPath: string;
+}
+
+export interface SessionSummary {
+  id: string;
+  taskTitle: string;
+  startedAt: string;
+  branch: string | null;
+  commit: string | null;
+  dirty: boolean;
+  verificationPassed: number;
+  verificationFailed: number;
+  sessionPath: string;
+}
+
+export interface SkippedSessionFile {
+  path: string;
+  reason: string;
+}
+
+export interface ListSessionSummariesOptions {
+  limit?: number | undefined;
+}
+
+export interface ListSessionSummariesResult {
+  sessions: SessionSummary[];
+  skipped: SkippedSessionFile[];
 }
 
 export interface SessionEventInput {
@@ -107,6 +134,93 @@ export async function startSession(options: StartSessionOptions): Promise<StartS
 
 export function getVerificationRuns(session: AgentFlightSession): VerificationRun[] {
   return session.verificationRuns ?? [];
+}
+
+export async function listSessionSummaries(
+  repoRoot: string,
+  options: ListSessionSummariesOptions = {}
+): Promise<ListSessionSummariesResult> {
+  const sessionFiles = await listSessionFiles(resolveAgentFlightPaths(repoRoot).sessions);
+  const loadedSessions = await Promise.all(sessionFiles.map(loadSessionSummary));
+  const sessions = loadedSessions
+    .flatMap((result) => (result.summary ? [result.summary] : []))
+    .sort(compareSessionSummaries);
+  const skipped = loadedSessions.flatMap((result) => (result.skipped ? [result.skipped] : []));
+  const limit = normalizeSessionLimit(options.limit, sessions.length);
+
+  return {
+    sessions: sessions.slice(0, limit),
+    skipped
+  };
+}
+
+interface SessionDirEntry {
+  name: string;
+  isFile(): boolean;
+}
+
+type LoadedSessionSummary =
+  | {
+      summary: SessionSummary;
+      skipped?: undefined;
+    }
+  | {
+      summary?: undefined;
+      skipped: SkippedSessionFile;
+    };
+
+async function listSessionFiles(sessionsPath: string): Promise<string[]> {
+  const entries = await readSessionDir(sessionsPath);
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+    .map((entry) => `${sessionsPath}/${entry.name}`);
+}
+
+async function readSessionDir(sessionsPath: string): Promise<SessionDirEntry[]> {
+  try {
+    return await readdir(sessionsPath, { withFileTypes: true });
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function loadSessionSummary(sessionPath: string): Promise<LoadedSessionSummary> {
+  try {
+    const session = JSON.parse(await readFile(sessionPath, "utf8")) as AgentFlightSession;
+    return { summary: summarizeSession(session, sessionPath) };
+  } catch (error) {
+    return {
+      skipped: {
+        path: sessionPath,
+        reason: error instanceof Error ? error.message : String(error)
+      }
+    };
+  }
+}
+
+function summarizeSession(session: AgentFlightSession, sessionPath: string): SessionSummary {
+  const runs = getVerificationRuns(session);
+  return {
+    id: session.id,
+    taskTitle: session.task.title,
+    startedAt: session.startedAt,
+    branch: session.git.branch ?? null,
+    commit: session.git.commit ?? null,
+    dirty: session.git.dirty,
+    verificationPassed: runs.filter((run) => run.status === "passed").length,
+    verificationFailed: runs.filter((run) => run.status === "failed").length,
+    sessionPath
+  };
+}
+
+function compareSessionSummaries(left: SessionSummary, right: SessionSummary): number {
+  const timeDelta = Date.parse(right.startedAt) - Date.parse(left.startedAt);
+  return timeDelta !== 0 ? timeDelta : right.id.localeCompare(left.id);
+}
+
+function normalizeSessionLimit(limit: number | undefined, fallback: number): number {
+  return limit !== undefined && Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : fallback;
 }
 
 export function getSessionEvents(session: AgentFlightSession): SessionEvent[] {
@@ -242,6 +356,10 @@ function normalizeEventTimestamp(timestamp: Date | string | undefined): string {
   if (timestamp instanceof Date) return timestamp.toISOString();
   if (typeof timestamp === "string") return timestamp;
   return new Date().toISOString();
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
 }
 
 function renderInitialHandoff(session: AgentFlightSession): string {

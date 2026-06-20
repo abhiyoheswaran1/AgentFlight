@@ -21,6 +21,7 @@ AgentFlight helps you:
 - generate a proof report
 - generate a local replay timeline
 - generate a local review handoff
+- find recent local sessions and their artifacts
 - create a resume prompt for the next agent or reviewer
 
 ![AgentFlight CLI workflow: start, verify, status, and replay](docs/assets/agentflight-terminal-demo.gif)
@@ -37,6 +38,7 @@ npx agentflight@latest verify -- npm test
 npx agentflight@latest snapshot --note "Initial implementation verified"
 npx agentflight@latest status
 npx agentflight@latest handoff
+npx agentflight@latest history
 ```
 
 What you get:
@@ -50,6 +52,7 @@ What you get:
 - `replay` writes a local HTML timeline you can open in a browser.
 - `resume` writes a Codex/Claude-ready prompt for the next safe step.
 - `handoff` generates the local review packet: readiness, proof gaps, failed excerpts, and report/replay/resume artifact paths.
+- `history` lists recent local sessions and points to existing report/replay artifacts without uploading, syncing, or switching sessions.
 
 ## Watch The Flow
 
@@ -264,6 +267,7 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 - `agentflight replay` generates a local self-contained HTML replay with review focus and proof gaps.
 - `agentflight resume` prints and saves a continuation prompt with the next safest action.
 - `agentflight handoff` generates a local review handoff, report, replay, and resume prompt without posting anywhere. It exits non-zero when verification failures or missing proof make the work not ready to share.
+- `agentflight history` lists recent local sessions, current-session marker, proof counts, and existing local report/replay paths.
 - `agentflight doctor` checks local setup, scripts, tools, config, and current session state.
 
 Future placeholders exist for `upgrade`, `license`, and `login`; AgentFlight Pro/Team is not available yet.

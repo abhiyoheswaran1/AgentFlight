@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
@@ -7,6 +7,7 @@ import {
   buildSessionRecord,
   getSessionEvents,
   getVerificationRuns,
+  listSessionSummaries,
   startSession
 } from "../../src/core/session.js";
 
@@ -89,5 +90,51 @@ describe("session records", () => {
     await expect(
       readFile(join(repoRoot, ".agentflight", "current", "handoff.md"), "utf8")
     ).resolves.toContain("Suggested proof");
+  });
+
+  it("lists valid session summaries newest first and reports malformed files", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T12:00:00.000Z") });
+
+    const older = await startSession({
+      repoRoot,
+      task: "Older task",
+      now: new Date("2026-06-13T10:00:00.000Z"),
+      git: { branch: "main", commit: "older", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const newer = await startSession({
+      repoRoot,
+      task: "Newer task",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "feature/history", commit: "newer", dirty: true, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    await writeFile(join(repoRoot, ".agentflight", "sessions", "broken.json"), "{", "utf8");
+
+    const history = await listSessionSummaries(repoRoot);
+
+    expect(history.sessions.map((session) => session.id)).toEqual([
+      newer.session.id,
+      older.session.id
+    ]);
+    expect(history.sessions[0]).toMatchObject({
+      taskTitle: "Newer task",
+      startedAt: "2026-06-13T11:00:00.000Z",
+      branch: "feature/history",
+      verificationPassed: 0,
+      verificationFailed: 0
+    });
+    expect(history.skipped).toHaveLength(1);
+    expect(history.skipped[0]?.path).toContain("broken.json");
   });
 });
