@@ -15,11 +15,15 @@ These files are evidence and generated session data. Including them would make A
 
 `.agentflight/config.json` stays visible because it is user-controlled project configuration and may be intentionally committed.
 
-AgentFlight classifies `.agentflight/config.json` as AgentFlight project config. It remains reviewable without being treated as an unknown file.
+AgentFlight classifies `.agentflight/config.json` and `.agentflight/.gitignore`
+as AgentFlight project config. They remain reviewable without being treated as
+unknown files.
 
 `agentflight init` uses the same framing in its first-run output: `config.json`
 is project configuration, while `sessions/`, `reports/`, `current/`, and
-`evidence/` are local runtime evidence.
+`evidence/` are local runtime evidence. It also writes `.agentflight/.gitignore`
+so those runtime directories stay out of Git while `.agentflight/config.json`
+remains visible.
 
 AgentFlight also excludes local AgentLoopKit evidence when it appears in the
 same worktree:

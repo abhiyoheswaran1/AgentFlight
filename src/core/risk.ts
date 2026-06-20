@@ -19,7 +19,7 @@ export function categorizeFile(file: string): RiskCategory {
   if (/^\.agentloop\//.test(normalized)) {
     return "docs";
   }
-  if (normalized === ".agentflight/config.json") {
+  if (normalized === ".agentflight/config.json" || normalized === ".agentflight/.gitignore") {
     return "agentflight/config";
   }
   if (/(^|\/)(test|tests|__tests__|spec)(\/|$)|\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) {

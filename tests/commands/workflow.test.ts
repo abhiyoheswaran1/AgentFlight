@@ -38,6 +38,7 @@ describe("AgentFlight command workflow", () => {
     expect(init.output).toContain("AgentFlight initialized");
     expect(init.output).toContain(".agentflight/config.json is project config");
     expect(init.output).toContain(".agentflight/sessions/, reports/, evidence/, current/");
+    expect(init.output).toContain(".agentflight/.gitignore keeps runtime evidence out of git");
     expect(init.output).toContain(".projscan-memory/**");
     expect(init.output).toContain("changedFileFilters.ignore");
 

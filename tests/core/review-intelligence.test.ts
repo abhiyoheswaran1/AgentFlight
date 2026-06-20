@@ -143,8 +143,8 @@ describe("review intelligence", () => {
     });
   });
 
-  it("classifies AgentFlight config as project config without high risk scoring", () => {
-    const changedFiles = [".agentflight/config.json", "README.md"];
+  it("classifies AgentFlight config files as project config without high risk scoring", () => {
+    const changedFiles = [".agentflight/config.json", ".agentflight/.gitignore", "README.md"];
     const review = buildReviewIntelligence({
       changedFiles,
       risk: analyzeRisk(changedFiles),
@@ -162,6 +162,11 @@ describe("review intelligence", () => {
     });
     expect(configFocus?.reasons).toContain("AgentFlight project config");
     expect(configFocus?.suggestedReviewerFocus).toContain("AgentFlight session defaults");
+    expect(review.focus.find((item) => item.file === ".agentflight/.gitignore")).toMatchObject({
+      category: "agentflight/config",
+      riskLevel: "medium",
+      proofStatus: "not_required"
+    });
     expect(review.proofGaps.map((gap) => gap.id)).not.toContain("missing-config-proof");
   });
 

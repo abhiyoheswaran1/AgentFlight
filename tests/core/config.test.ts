@@ -68,12 +68,19 @@ describe("AgentFlight config", () => {
       now: new Date("2026-06-13T12:00:00.000Z")
     });
 
+    const gitignorePath = join(root, ".gitignore");
+
     expect(result.paths.config).toBe(configPath);
     expect(result.skipped).toContain(configPath);
+    expect(result.created).toContain(gitignorePath);
     expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual({ version: 99, keep: true });
 
-    await expect(readFile(join(root, "sessions", ".gitkeep"), "utf8")).resolves.toBe("");
-    await expect(readFile(join(root, "reports", ".gitkeep"), "utf8")).resolves.toBe("");
-    await expect(readFile(join(root, "current", ".gitkeep"), "utf8")).resolves.toBe("");
+    await expect(readFile(gitignorePath, "utf8")).resolves.toBe(
+      ["/sessions/", "/reports/", "/evidence/", "/current/", ""].join("\n")
+    );
+    await expect(readFile(join(root, "sessions", ".gitkeep"), "utf8")).rejects.toThrow();
+    await expect(readFile(join(root, "reports", ".gitkeep"), "utf8")).rejects.toThrow();
+    await expect(readFile(join(root, "evidence", ".gitkeep"), "utf8")).rejects.toThrow();
+    await expect(readFile(join(root, "current", ".gitkeep"), "utf8")).rejects.toThrow();
   });
 });

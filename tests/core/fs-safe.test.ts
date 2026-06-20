@@ -5,6 +5,7 @@ import { createTempRepo } from "../helpers/temp.js";
 import {
   ensureDir,
   isPathWritable,
+  readJsonFile,
   writeJsonFileSafe,
   writeTextFileSafe
 } from "../../src/core/fs-safe.js";
@@ -53,5 +54,37 @@ describe("safe file writes", () => {
     } finally {
       await chmod(target, 0o755);
     }
+  });
+
+  it("keeps JSON readable while overwrite writes are in flight", async () => {
+    const repoRoot = await createTempRepo();
+    const target = join(repoRoot, ".agentflight", "current", "session.json");
+
+    await writeJsonFileSafe(target, { version: 0, payload: "a".repeat(512_000) });
+
+    let reading = true;
+    const parseErrors: string[] = [];
+    const reader = (async () => {
+      while (reading) {
+        try {
+          await readJsonFile(target);
+        } catch (error) {
+          parseErrors.push(error instanceof Error ? error.message : String(error));
+        }
+      }
+    })();
+
+    for (let index = 1; index <= 40; index += 1) {
+      await writeJsonFileSafe(
+        target,
+        { version: index, payload: String(index % 10).repeat(1_500_000) },
+        { overwrite: true }
+      );
+    }
+
+    reading = false;
+    await reader;
+
+    expect(parseErrors).toEqual([]);
   });
 });

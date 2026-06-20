@@ -59,6 +59,13 @@ All notable AgentFlight changes are documented here.
   keeping the full command available in the title text.
 - Status and Markdown report verification evidence rows now use compact display
   labels for long run commands while preserving stored command evidence.
+- `agentflight init` now writes `.agentflight/.gitignore` for runtime evidence
+  directories instead of seeding new runtime `.gitkeep` files, reducing
+  first-run Git noise while keeping `.agentflight/config.json` and the local
+  AgentFlight ignore file visible as project config.
+- AgentFlight session JSON writes now use same-directory temp files and atomic
+  rename so concurrent report, replay, resume, and handoff commands do not read
+  partially written session state.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

@@ -1,6 +1,7 @@
 import { constants } from "node:fs";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { basename, dirname, join } from "node:path";
 
 export type SafeWriteStatus = "created" | "overwritten" | "skipped";
 
@@ -52,13 +53,22 @@ export async function writeTextFileSafe(
   value: string,
   options: SafeWriteOptions = {}
 ): Promise<SafeWriteResult> {
-  await mkdir(dirname(path), { recursive: true });
+  const directory = dirname(path);
+  await mkdir(directory, { recursive: true });
 
   const exists = await pathExists(path);
   if (exists && options.overwrite !== true) {
     return { path, status: "skipped" };
   }
 
-  await writeFile(path, value, "utf8");
+  const tempPath = join(directory, `.${basename(path)}.${process.pid}.${randomUUID()}.tmp`);
+  try {
+    await writeFile(tempPath, value, "utf8");
+    await rename(tempPath, path);
+  } catch (error) {
+    await rm(tempPath, { force: true });
+    throw error;
+  }
+
   return { path, status: exists ? "overwritten" : "created" };
 }

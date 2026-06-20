@@ -282,7 +282,7 @@ describe("evidence-aware session outputs", () => {
       })
     ).rejects.toThrow("Unsupported report mode");
 
-    await expect(readdir(join(repoRoot, ".agentflight", "reports"))).resolves.toEqual([".gitkeep"]);
+    await expect(readdir(join(repoRoot, ".agentflight", "reports"))).resolves.toEqual([]);
   });
 
   it("writes a local PR comment draft report mode without posting anywhere", async () => {

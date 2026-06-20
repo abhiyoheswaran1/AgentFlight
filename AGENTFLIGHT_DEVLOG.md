@@ -4,6 +4,88 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### First-Run Runtime Git Noise
+
+Dogfood finding:
+
+- First-run workspace hygiene remains a major trust signal. `agentflight init`
+  already filters runtime evidence from AgentFlight review analysis, but it also
+  created `.gitkeep` files in runtime directories, which could still add Git
+  status noise in fresh repos.
+
+Persona readout:
+
+- Product Maintainer: first-run trials should make the useful project config
+  visible without making generated runtime directories feel like review work.
+- CLI Engineer: keep the behavior local and deterministic; do not mutate the
+  project root `.gitignore`.
+- Repo Steward: avoid creating trackable placeholder files for runtime evidence
+  directories.
+- Security Reviewer: `.agentflight/config.json` must remain visible because it
+  can affect local verification and filtering behavior.
+
+Implemented locally:
+
+- `agentflight init` now writes `.agentflight/.gitignore` with runtime directory
+  rules for `sessions/`, `reports/`, `evidence/`, and `current/`.
+- Fresh init no longer creates runtime `.gitkeep` files.
+- `.agentflight/config.json` remains visible project config.
+- `.projscan-memory/**` remains suggestion-only guidance, not a built-in ignore.
+
+Verification:
+
+- Added config regression coverage for `.agentflight/.gitignore`, preserved
+  existing config files, and absent runtime `.gitkeep` files.
+- Updated workflow coverage for the new first-run init copy.
+- `npm test -- tests/core/config.test.ts tests/commands/workflow.test.ts tests/core/changed-files.test.ts`
+  passed: 3 files / 13 tests.
+- After a stale `.gitkeep` expectation was found in command-output tests,
+  updated the affected invalid-report-mode assertion and reran focused coverage:
+  4 files / 38 tests passed.
+- `npm run verify` passed: 20 files / 149 tests, plus typecheck, lint, and
+  build.
+- `npm run format:check` passed.
+- Built-CLI temp Git smoke passed: fresh `agentflight init` created
+  `.agentflight/.gitignore` and `.agentflight/config.json` without runtime
+  `.gitkeep` files.
+- Added risk/review coverage so `.agentflight/.gitignore` is classified as
+  AgentFlight project config rather than unknown code.
+- Expanded focused AgentFlight proof passed: 6 files / 75 tests.
+- Final `npm run verify` passed: 20 files / 151 tests, plus typecheck, lint,
+  and build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  a manual scale caution: 98 changed files against `origin/main`, maximum
+  changed-file risk score `188.6`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the matching
+  release-scale block signal only: no cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-01-31-verification-report.md`.
+
+Bug pass:
+
+- Running `status`, `report`, `replay`, `resume`, and `handoff` concurrently
+  exposed a real AgentFlight race: `replay` could fail with
+  `Unexpected end of JSON input` while another command was overwriting
+  `.agentflight/current/session.json`.
+- Root cause: `writeJsonFileSafe(..., { overwrite: true })` used direct
+  `writeFile`, so readers could observe a truncated JSON file during an
+  overwrite.
+- Added a regression test that repeatedly overwrites a JSON file while another
+  loop parses it.
+- Red result: `npm test -- tests/core/fs-safe.test.ts` failed with partial JSON
+  parse errors, including `Unexpected end of JSON input`.
+- Fix: `writeTextFileSafe` now writes to a same-directory temporary file and
+  atomically renames it into place.
+- Green result: `npm test -- tests/core/fs-safe.test.ts` passed: 1 file / 4
+  tests.
+- Built CLI concurrent artifact smoke passed: `status`, `report`, `replay`,
+  `resume`, and `handoff` all completed without JSON parse failures.
+
 ### Compact Text Evidence Commands
 
 Dogfood finding:

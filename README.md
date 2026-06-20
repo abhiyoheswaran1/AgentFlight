@@ -214,10 +214,13 @@ AgentFlight creates a local `.agentflight/` directory in your repo:
 - `current/` stores the active session, handoff, and resume prompt.
 - `reports/` stores Markdown proof reports and HTML replays.
 - `evidence/` stores stdout and stderr from captured verification runs.
+- `.gitignore` keeps those runtime directories out of git while leaving
+  `config.json` visible.
 
 Sessions store an `events` timeline with meaningful moments such as session start, verification attempts, snapshots, and generated artifacts. Reports include filenames and summaries by default, not full source diffs.
 
-Runtime session data is ignored by git by default in this repo:
+Runtime session data is ignored by the `.agentflight/.gitignore` created by
+`agentflight init`:
 
 - `.agentflight/sessions/`
 - `.agentflight/reports/`

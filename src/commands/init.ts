@@ -32,6 +32,7 @@ ${formatToolAvailability("ProjScan", result.detections.projscan)}
 Local files:
 .agentflight/config.json is project config. Review or commit it when shared AgentFlight defaults are useful.
 .agentflight/sessions/, reports/, evidence/, current/ are local runtime evidence and are excluded from AgentFlight changed-file analysis.
+.agentflight/.gitignore keeps runtime evidence out of git while leaving config.json visible.
 If .projscan-memory/memory.json appears as generated tool state, add ".projscan-memory/**" to changedFileFilters.ignore in .agentflight/config.json.
 
 Next commands:

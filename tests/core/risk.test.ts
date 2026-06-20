@@ -8,6 +8,7 @@ describe("risk categorisation", () => {
     ["migrations/20260613_add_users.sql", "database/migrations"],
     [".env.example", "security/secrets"],
     [".github/workflows/ci.yml", "config"],
+    [".agentflight/.gitignore", "agentflight/config"],
     [".agentloop/state.json", "docs"],
     [".agentloop/policies/secrets-policy.md", "docs"],
     ["tests/session.test.ts", "tests"],

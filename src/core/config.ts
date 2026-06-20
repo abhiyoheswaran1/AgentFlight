@@ -9,6 +9,8 @@ import {
 import { resolveAgentFlightPaths } from "./paths.js";
 import type { AgentFlightConfig, AgentFlightPaths } from "../types/index.js";
 
+const runtimeGitignore = ["/sessions/", "/reports/", "/evidence/", "/current/", ""].join("\n");
+
 export interface CreateDefaultConfigOptions {
   repoRoot: string;
   now?: Date | undefined;
@@ -74,16 +76,9 @@ export async function initAgentFlight(
   await ensureDir(paths.evidence);
   await ensureDir(paths.current);
 
-  for (const gitkeepPath of [
-    `${paths.sessions}/.gitkeep`,
-    `${paths.reports}/.gitkeep`,
-    `${paths.evidence}/.gitkeep`,
-    `${paths.current}/.gitkeep`
-  ]) {
-    const result = await writeTextFileSafe(gitkeepPath, "");
-    if (result.status === "created") created.push(result.path);
-    if (result.status === "skipped") skipped.push(result.path);
-  }
+  const runtimeIgnoreWrite = await writeTextFileSafe(`${paths.root}/.gitignore`, runtimeGitignore);
+  if (runtimeIgnoreWrite.status === "created") created.push(runtimeIgnoreWrite.path);
+  if (runtimeIgnoreWrite.status === "skipped") skipped.push(runtimeIgnoreWrite.path);
 
   const defaultConfig = createDefaultConfig({ repoRoot: options.repoRoot, now: options.now });
   const configWrite = await writeJsonFileSafe(paths.config, defaultConfig);
