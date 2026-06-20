@@ -30,8 +30,11 @@ ${formatSkipped(history.skipped.length)}
 }
 
 function normalizeLimit(limit: number | undefined): number {
-  if (limit === undefined || !Number.isFinite(limit)) return 10;
-  return Math.max(0, Math.floor(limit));
+  if (limit === undefined) return 10;
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("History limit must be a positive integer.");
+  }
+  return limit;
 }
 
 async function readCurrentSessionId(repoRoot: string): Promise<string | null> {

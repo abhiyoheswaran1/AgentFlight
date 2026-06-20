@@ -4,6 +4,46 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Limit Handling
+
+Dogfood finding:
+
+- After adding `agentflight history`, invalid limits were still too permissive:
+  `--limit nope` fell back to the default and `--limit 0` produced an empty
+  history. CLI flags should fail loudly when the request is invalid.
+
+Implemented locally:
+
+- `agentflight history --limit` now accepts only positive integers.
+- Non-integer, zero, negative, and fractional limits throw
+  `History limit must be a positive integer.`
+
+Verification:
+
+- Red test failed because invalid limits still resolved successfully.
+- `npm test -- tests/commands/history.test.ts tests/cli-entrypoint.test.ts`
+  passed: 2 files / 9 tests.
+- `npm run typecheck` passed.
+- `npm run build` passed.
+- Built CLI bug pass: `agentflight history --limit nope` exited `1` with the
+  expected error, while `agentflight history --limit 1` exited `0` and listed
+  the current session.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/commands/history.test.ts tests/cli-entrypoint.test.ts`
+  passed: 2 files / 9 tests.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 157 tests, plus typecheck, lint, and build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale manual signoff caution: 108 changed
+  files against `origin/main`, maximum changed-file risk score `188.6`, and no
+  concrete blockers.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-01-53-verification-report.md`.
+
 ### Local Session History
 
 Research signal:

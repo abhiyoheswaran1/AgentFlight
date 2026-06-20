@@ -17,6 +17,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight history --limit` now rejects non-integer, zero, and negative
+  values with a clear local error instead of silently falling back or returning
+  an empty history.
 - `agentflight start` now treats AgentLoopKit's `Active task: none pinned.`
   status as no active task instead of falsely reporting task reuse.
 - AgentLoopKit task-link diagnostics now use generic link-check wording instead

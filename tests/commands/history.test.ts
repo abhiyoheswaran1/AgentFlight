@@ -106,4 +106,15 @@ describe("history command", () => {
     expect(history.output).toContain("No AgentFlight sessions recorded yet.");
     expect(history.output).toContain("Run agentflight start --task");
   });
+
+  it("rejects invalid history limits", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    for (const limit of [Number.NaN, 0, -1, 1.5]) {
+      await expect(runHistoryCommand({ repoRoot, limit })).rejects.toThrow(
+        "History limit must be a positive integer."
+      );
+    }
+  });
 });
