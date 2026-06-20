@@ -56,6 +56,9 @@ export async function createAgentLoopTask(
   title: string,
   run: CommandRunner = runCommand
 ): Promise<ToolAdapterResult> {
+  const activeTask = await findActiveAgentLoopTask(cwd, run);
+  if (activeTask) return activeTask;
+
   const result = await runWithFallback(
     run,
     "agentloopkit",
@@ -89,6 +92,35 @@ export async function createAgentLoopTask(
     available: true,
     taskLinked: true,
     summary: result.stdout.trim(),
+    warnings: []
+  };
+}
+
+async function findActiveAgentLoopTask(
+  cwd: string,
+  run: CommandRunner
+): Promise<ToolAdapterResult | null> {
+  const status = await runWithFallback(
+    run,
+    "agentloopkit",
+    "agentloopkit@latest",
+    ["status", "--redact-paths"],
+    cwd,
+    5_000
+  );
+
+  if (status.exitCode !== 0) return null;
+  const activeLine = status.stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.includes("Active task:"));
+
+  if (!activeLine || activeLine.includes("none active")) return null;
+
+  return {
+    available: true,
+    taskLinked: true,
+    summary: `Using active AgentLoopKit task. ${activeLine.replace(/^- /, "")}`,
     warnings: []
   };
 }

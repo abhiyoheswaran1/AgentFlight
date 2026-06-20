@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inspectAgentLoopKit } from "../../src/adapters/agentloopkit.js";
+import { createAgentLoopTask, inspectAgentLoopKit } from "../../src/adapters/agentloopkit.js";
 import type { CommandRunner } from "../../src/core/process.js";
 
 describe("AgentLoopKit adapter", () => {
@@ -99,5 +99,59 @@ describe("AgentLoopKit adapter", () => {
       version: "0.28.7",
       summary: expect.stringContaining("Overall status")
     });
+  });
+
+  it("reuses an active task instead of creating a duplicate", async () => {
+    const calls: string[] = [];
+    const run: CommandRunner = async (_command, args) => {
+      calls.push(args.join(" "));
+      if (args.includes("status")) {
+        return {
+          exitCode: 0,
+          stdout:
+            "Active task: `Reuse active AgentLoop task during AgentFlight start` (`proposed`) - `.agentloop/tasks/reuse.md`\n",
+          stderr: ""
+        };
+      }
+      if (args.includes("create-task")) {
+        return { exitCode: 0, stdout: "duplicate created", stderr: "" };
+      }
+      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
+    };
+
+    await expect(
+      createAgentLoopTask("/repo", "Reuse active AgentLoop task during AgentFlight start", run)
+    ).resolves.toMatchObject({
+      available: true,
+      taskLinked: true,
+      summary: expect.stringContaining("Using active AgentLoopKit task")
+    });
+    expect(calls.some((call) => call.includes("create-task"))).toBe(false);
+  });
+
+  it("creates a task when no active task exists", async () => {
+    const calls: string[] = [];
+    const run: CommandRunner = async (_command, args) => {
+      calls.push(args.join(" "));
+      if (args.includes("status")) {
+        return { exitCode: 0, stdout: "Active task: none active\n", stderr: "" };
+      }
+      if (args.includes("create-task")) {
+        return {
+          exitCode: 0,
+          stdout: "Task contract created: `.agentloop/tasks/new.md`",
+          stderr: ""
+        };
+      }
+      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
+    };
+
+    await expect(createAgentLoopTask("/repo", "New task", run)).resolves.toMatchObject({
+      available: true,
+      taskLinked: true,
+      summary: expect.stringContaining("Task contract created")
+    });
+    expect(calls.some((call) => call.includes("status"))).toBe(true);
+    expect(calls.some((call) => call.includes("create-task"))).toBe(true);
   });
 });

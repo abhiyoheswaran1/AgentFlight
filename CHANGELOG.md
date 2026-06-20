@@ -21,6 +21,8 @@ All notable AgentFlight changes are documented here.
   instead of treating git-status failures as an empty diff.
 - Shortened the optional ProjScan baseline budget during `agentflight start` so
   busy local ProjScan work cannot stall session startup for too long.
+- `agentflight start` now reuses an active AgentLoopKit task instead of creating
+  a duplicate AgentFlight placeholder task.
 
 ## AgentFlight v0.6.0 - 2026-06-19
 
