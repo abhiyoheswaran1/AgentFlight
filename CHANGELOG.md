@@ -26,6 +26,10 @@ Local review ergonomics and automation surfaces for heavier real-world dogfood.
 
 ### Changed
 
+- Clarified first-run workspace hygiene docs: `.projscan-memory/**` can be added
+  to `changedFileFilters.ignore` when ProjScan memory is generated evidence
+  rather than a review target.
+
 - AgentFlight now describes itself as a local-first review layer for AI coding sessions across package metadata, README, and product docs.
 - Long suggested proof commands stay compact in high-density review surfaces while preserving the full suggested action where useful.
 - Local AgentLoopKit evidence paths are filtered from AgentFlight changed-file review surfaces:

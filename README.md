@@ -236,6 +236,13 @@ AgentFlight always excludes its own runtime session/report/current/evidence file
 }
 ```
 
+On a first run, ProjScan fallback state may create `.projscan-memory/memory.json`
+and AgentFlight may surface it in status, report, replay, or handoff output. If
+that memory file is generated evidence rather than something reviewers should
+inspect, add `.projscan-memory/**` to `changedFileFilters.ignore`. AgentFlight
+does not ignore it by default, because some teams may want generated tool state
+to stay visible.
+
 See [docs/development/changed-file-filters.md](docs/development/changed-file-filters.md).
 
 ## Commands
