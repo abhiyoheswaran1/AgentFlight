@@ -4,6 +4,27 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-20
 
+### Proof Command Preference
+
+Dogfood finding:
+
+- When source and test files changed together, the first handoff action could
+  suggest `npm run typecheck` even though `npm test` would clear more review
+  uncertainty.
+
+Implemented locally:
+
+- Review Intelligence now honors the proof-kind preference order defined by
+  each proof-gap rule when choosing a suggested command.
+- Source proof gaps prefer `test`, then `typecheck`, then `build`.
+- Dependency proof gaps now prefer install/build-style proof before typecheck
+  when those commands are configured.
+
+Verification:
+
+- `npm test -- tests/core/review-intelligence.test.ts tests/commands/evidence-output.test.ts`
+  passed: 2 files / 42 tests.
+
 ### Handoff No-Verification Copy
 
 Dogfood finding:

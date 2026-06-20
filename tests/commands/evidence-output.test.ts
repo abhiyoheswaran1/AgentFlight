@@ -436,6 +436,21 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).not.toContain("Share this handoff with the report/replay");
   });
 
+  it("suggests test proof first when source and test files both need proof", async () => {
+    const repoRoot = await startedRepo(["npm run typecheck", "npm test", "npm run build"]);
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["src/core/output.ts", "tests/core/output.test.ts"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(handoff.exitCode).toBe(1);
+    expect(handoff.output).toContain("Readiness: Needs verification");
+    expect(handoff.output).toContain("Run agentflight verify -- npm test");
+    expect(handoff.output).not.toContain("Run agentflight verify -- npm run typecheck");
+  });
+
   it("shows stderr-preferred failure excerpts in blocked local handoffs", async () => {
     const repoRoot = await startedRepo(["npm test"]);
     const scriptPath = join(repoRoot, "failing-handoff.js");

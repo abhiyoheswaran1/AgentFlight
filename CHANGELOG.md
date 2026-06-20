@@ -50,6 +50,9 @@ All notable AgentFlight changes are documented here.
   user-directory paths.
 - Handoff verification details now distinguish zero verification runs from
   passing runs that simply have no failed excerpts.
+- Review Intelligence suggested proof now follows each proof gap's preferred
+  proof-kind order, so source gaps prefer `npm test` when available and
+  dependency gaps prefer build/install-style proof before typecheck.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

@@ -257,7 +257,7 @@ describe("review intelligence", () => {
       category: "source",
       riskLevel: "medium",
       proofStatus: "missing",
-      suggestedCommand: "npm run typecheck"
+      suggestedCommand: "npm test"
     });
     expect(review.focus[0]?.reasons).toContain("source code");
     expect(review.focus[0]?.suggestedReviewerFocus).toContain("core behavior");
@@ -265,10 +265,33 @@ describe("review intelligence", () => {
       expect.objectContaining({
         id: "missing-source-proof",
         severity: "warning",
-        suggestedCommand: "npm run typecheck",
+        suggestedCommand: "npm test",
         relatedFiles: ["src/core/review-intelligence.ts"]
       })
     );
+  });
+
+  it("falls back to typecheck for source proof gaps when no test command is configured", () => {
+    const changedFiles = ["src/core/review-intelligence.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm run typecheck", "npm run build"],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.proofGaps).toContainEqual(
+      expect.objectContaining({
+        id: "missing-source-proof",
+        suggestedCommand: "npm run typecheck"
+      })
+    );
+    expect(review.readiness).toMatchObject({
+      state: "needs_verification",
+      suggestedCommand: "npm run typecheck"
+    });
   });
 
   it("flags package and config changes with targeted proof gaps", () => {
@@ -297,14 +320,14 @@ describe("review intelligence", () => {
         expect.objectContaining({
           id: "missing-dependency-proof",
           severity: "warning",
-          suggestedCommand: "npm run typecheck",
+          suggestedCommand: "npm run build",
           relatedFiles: ["package.json"]
         })
       ])
     );
     expect(review.readiness).toMatchObject({
       state: "needs_verification",
-      suggestedCommand: "npm run typecheck"
+      suggestedCommand: "npm run build"
     });
   });
 

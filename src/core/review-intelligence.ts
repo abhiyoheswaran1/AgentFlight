@@ -219,7 +219,7 @@ function buildProofGaps(input: {
     categories: ["source"],
     id: "missing-source-proof",
     severity: "warning",
-    proofKinds: ["typecheck", "test", "build"],
+    proofKinds: ["test", "typecheck", "build"],
     message: "Source files changed without passing typecheck, test, or build evidence."
   });
   addCategoryGap(gaps, input, filesByCategory, {
@@ -575,9 +575,14 @@ function findSuggestedCommand(
   verificationCommands: string[],
   proofKinds: VerificationProofKind[]
 ): string | undefined {
-  return verificationCommands.find((command) =>
-    proofKinds.includes(classifyVerificationProofKind(command))
-  );
+  for (const proofKind of proofKinds) {
+    const command = verificationCommands.find(
+      (candidate) => classifyVerificationProofKind(candidate) === proofKind
+    );
+    if (command) return command;
+  }
+
+  return undefined;
 }
 
 function riskLevelForCategory(category: RiskCategory): RiskLevel {
