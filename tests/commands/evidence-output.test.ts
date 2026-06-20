@@ -401,6 +401,7 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("Readiness: Ready for review");
     expect(handoff.output).toContain("Open first: replay");
     expect(handoff.output).toContain("Share this handoff with the report/replay");
+    expect(handoff.output).toContain("No failed verification excerpts recorded.");
     expect(handoff.output).not.toContain("Run agentflight handoff");
     expect(handoff.output).toContain("Review first:");
     expect(handoff.output).toContain("docs/development/verification.md");
@@ -427,6 +428,8 @@ describe("evidence-aware session outputs", () => {
 
     expect(handoff.exitCode).toBe(1);
     expect(handoff.output).toContain("Readiness: Needs verification");
+    expect(handoff.output).toContain("No verification runs recorded.");
+    expect(handoff.output).not.toContain("No failed verification excerpts recorded.");
     expect(handoff.output).toContain("Fix before sharing:");
     expect(handoff.output).toContain("agentflight verify -- npm test");
     expect(handoff.output).toContain("Open first: report");

@@ -4,6 +4,27 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-20
 
+### Handoff No-Verification Copy
+
+Dogfood finding:
+
+- A handoff with zero verification runs said `No failed verification excerpts
+recorded`, which is technically true but hides the actual missing-proof
+  state.
+
+Implemented locally:
+
+- Handoff verification details now show `No verification runs recorded.` when
+  no verification has run.
+- Passing handoffs with verification evidence still show that no failed
+  excerpts were recorded.
+- Failed handoffs still show stderr-preferred excerpts.
+
+Verification:
+
+- `npm test -- tests/commands/evidence-output.test.ts` passed: 1 file / 23
+  tests.
+
 ### Repo-Relative Artifact Path Output
 
 Persona readout:

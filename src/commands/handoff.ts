@@ -144,7 +144,7 @@ Reason: ${formatReadinessReason(readiness, input.status.reason)}
 
 Verification:
 ${input.status.verification.passed} passed, ${input.status.verification.failed} failed
-${formatFailedExcerpts(input.status.verification.runs)}
+${formatVerificationDetails(input.status.verification.runs)}
 
 Review first:
 ${formatReviewFocus(input.status.review.focus.slice(0, 3))}
@@ -196,7 +196,9 @@ function formatNextAction(readiness: HandoffReadiness, fallback: string): string
   return compactCommandInText(readiness.nextAction || fallback, readiness.suggestedCommand);
 }
 
-function formatFailedExcerpts(runs: HandoffVerificationRun[]): string {
+function formatVerificationDetails(runs: HandoffVerificationRun[]): string {
+  if (runs.length === 0) return "- No verification runs recorded.";
+
   const failedExcerpts = runs
     .filter((run) => run.status === "failed" && run.outputExcerpt)
     .map((run) => run.outputExcerpt!.trim())

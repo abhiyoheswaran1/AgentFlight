@@ -48,6 +48,8 @@ All notable AgentFlight changes are documented here.
 - Start, report, replay, and handoff terminal output now display local
   `.agentflight/...` artifact paths relative to the repo instead of absolute
   user-directory paths.
+- Handoff verification details now distinguish zero verification runs from
+  passing runs that simply have no failed excerpts.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 
