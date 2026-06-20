@@ -25,6 +25,8 @@ All notable AgentFlight changes are documented here.
   a duplicate AgentFlight placeholder task.
 - `agentflight start` now shows concise ProjScan and AgentLoopKit warning
   summaries when optional tooling is available but degraded.
+- `agentflight start` now inspects ProjScan availability without running the
+  heavier optional `projscan start` baseline on the startup path.
 
 ## AgentFlight v0.6.0 - 2026-06-19
 

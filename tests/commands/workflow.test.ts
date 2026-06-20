@@ -9,7 +9,7 @@ import { runReplayCommand } from "../../src/commands/replay.js";
 import { runReportCommand } from "../../src/commands/report.js";
 import { runResumeCommand } from "../../src/commands/resume.js";
 import { runSnapshotCommand } from "../../src/commands/snapshot.js";
-import { runStartCommand } from "../../src/commands/start.js";
+import { inspectStartTools, runStartCommand } from "../../src/commands/start.js";
 import { runStatusCommand } from "../../src/commands/status.js";
 
 describe("AgentFlight command workflow", () => {
@@ -177,5 +177,51 @@ describe("AgentFlight command workflow", () => {
     );
     expect(start.output).not.toContain("very long diagnostic");
     expect(start.output).not.toContain("detailed create-task output");
+  });
+
+  it("inspects start tooling without the heavy ProjScan baseline", async () => {
+    const calls: string[] = [];
+
+    const tools = await inspectStartTools("/repo", "Reuse active task", {
+      inspectProjScan: async () => {
+        calls.push("inspect-projscan");
+        return {
+          available: true,
+          version: "4.5.0",
+          summary: "ProjScan available for repo intelligence and risk analysis.",
+          warnings: []
+        };
+      },
+      inspectAgentLoopKit: async () => {
+        calls.push("inspect-agentloopkit");
+        return {
+          available: true,
+          version: "0.35.2",
+          summary: "AgentLoopKit available for task discipline.",
+          warnings: []
+        };
+      },
+      createAgentLoopTask: async () => {
+        calls.push("create-agentloop-task");
+        return {
+          available: true,
+          taskLinked: true,
+          summary: "Using active AgentLoopKit task.",
+          warnings: []
+        };
+      }
+    });
+
+    expect(calls).toEqual(["inspect-projscan", "inspect-agentloopkit", "create-agentloop-task"]);
+    expect(tools.projscan).toMatchObject({
+      available: true,
+      version: "4.5.0",
+      warnings: []
+    });
+    expect(tools.agentloopkit).toMatchObject({
+      available: true,
+      version: "0.35.2",
+      taskLinked: true
+    });
   });
 });

@@ -1,5 +1,5 @@
 import { createAgentLoopTask, inspectAgentLoopKit } from "../adapters/agentloopkit.js";
-import { inspectProjScan, runProjScanBaseline } from "../adapters/projscan.js";
+import { inspectProjScan } from "../adapters/projscan.js";
 import { initAgentFlight } from "../core/config.js";
 import { pathExists } from "../core/fs-safe.js";
 import { getGitInfo } from "../core/git.js";
@@ -9,6 +9,12 @@ import { resolveAgentFlightPaths } from "../core/paths.js";
 import { startSession } from "../core/session.js";
 import { detectVerificationCommands } from "../core/verification.js";
 import type { GitInfo, ToolAdapterResult } from "../types/index.js";
+
+interface StartToolInspectors {
+  inspectProjScan: typeof inspectProjScan;
+  inspectAgentLoopKit: typeof inspectAgentLoopKit;
+  createAgentLoopTask: typeof createAgentLoopTask;
+}
 
 export interface StartCommandOptions {
   repoRoot: string;
@@ -45,7 +51,7 @@ export async function runStartCommand(options: StartCommandOptions): Promise<Sta
   const verificationCommands = detectVerificationCommands(packageJson);
   const git = options.git ?? (await getGitInfo(options.repoRoot));
   const packageManager = options.packageManager ?? (await detectPackageManager(options.repoRoot));
-  const tools = options.tools ?? (await inspectTools(options.repoRoot, options.task));
+  const tools = options.tools ?? (await inspectStartTools(options.repoRoot, options.task));
 
   const result = await startSession({
     repoRoot: options.repoRoot,
@@ -85,26 +91,26 @@ Now run your coding agent normally.
   };
 }
 
-async function inspectTools(
+export async function inspectStartTools(
   repoRoot: string,
-  task: string
+  task: string,
+  inspectors: StartToolInspectors = {
+    inspectProjScan,
+    inspectAgentLoopKit,
+    createAgentLoopTask
+  }
 ): Promise<{ projscan: ToolAdapterResult; agentloopkit: ToolAdapterResult }> {
   const [projscanInspection, agentLoopInspection] = await Promise.all([
-    inspectProjScan({ cwd: repoRoot }),
-    inspectAgentLoopKit({ cwd: repoRoot })
+    inspectors.inspectProjScan({ cwd: repoRoot }),
+    inspectors.inspectAgentLoopKit({ cwd: repoRoot })
   ]);
 
-  const [projscanBaseline, agentLoopTask] = await Promise.all([
-    projscanInspection.available
-      ? runProjScanBaseline(repoRoot)
-      : Promise.resolve(projscanInspection),
-    agentLoopInspection.available
-      ? createAgentLoopTask(repoRoot, task)
-      : Promise.resolve(agentLoopInspection)
-  ]);
+  const agentLoopTask = agentLoopInspection.available
+    ? await inspectors.createAgentLoopTask(repoRoot, task)
+    : agentLoopInspection;
 
   return {
-    projscan: mergeToolResults(projscanInspection, projscanBaseline),
+    projscan: projscanInspection,
     agentloopkit: mergeToolResults(agentLoopInspection, agentLoopTask)
   };
 }
