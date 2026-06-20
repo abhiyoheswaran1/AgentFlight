@@ -1,4 +1,4 @@
-import { createAgentLoopTask, inspectAgentLoopKit } from "../adapters/agentloopkit.js";
+import { inspectAgentLoopKit, linkAgentLoopTask } from "../adapters/agentloopkit.js";
 import { inspectProjScan } from "../adapters/projscan.js";
 import { initAgentFlight } from "../core/config.js";
 import { pathExists } from "../core/fs-safe.js";
@@ -13,7 +13,7 @@ import type { GitInfo, ToolAdapterResult } from "../types/index.js";
 interface StartToolInspectors {
   inspectProjScan: typeof inspectProjScan;
   inspectAgentLoopKit: typeof inspectAgentLoopKit;
-  createAgentLoopTask: typeof createAgentLoopTask;
+  linkAgentLoopTask: typeof linkAgentLoopTask;
 }
 
 export interface StartCommandOptions {
@@ -93,11 +93,11 @@ Now run your coding agent normally.
 
 export async function inspectStartTools(
   repoRoot: string,
-  task: string,
+  _task: string,
   inspectors: StartToolInspectors = {
     inspectProjScan,
     inspectAgentLoopKit,
-    createAgentLoopTask
+    linkAgentLoopTask
   }
 ): Promise<{ projscan: ToolAdapterResult; agentloopkit: ToolAdapterResult }> {
   const [projscanInspection, agentLoopInspection] = await Promise.all([
@@ -106,7 +106,7 @@ export async function inspectStartTools(
   ]);
 
   const agentLoopTask = agentLoopInspection.available
-    ? await inspectors.createAgentLoopTask(repoRoot, task)
+    ? await inspectors.linkAgentLoopTask(repoRoot)
     : agentLoopInspection;
 
   return {

@@ -36,6 +36,8 @@ All notable AgentFlight changes are documented here.
   on the startup path while preserving task reuse/linking.
 - `agentflight start` now reuses AgentLoopKit's local active-task state file
   directly instead of parsing `agentloopkit status` output.
+- `agentflight start` now links existing AgentLoopKit task state without
+  creating new AgentLoopKit task contracts automatically.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

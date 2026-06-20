@@ -63,47 +63,14 @@ export async function inspectAgentLoopKit(
   return result;
 }
 
-export async function createAgentLoopTask(
-  cwd: string,
-  title: string,
-  run: CommandRunner = runCommand
-): Promise<ToolAdapterResult> {
+export async function linkAgentLoopTask(cwd: string): Promise<ToolAdapterResult> {
   const activeTask = await readActiveAgentLoopTask(cwd);
   if (activeTask) return activeTask;
 
-  const result = await runToolWithFallback({
-    run,
-    localCommand: "agentloopkit",
-    packageName: "agentloopkit@latest",
-    args: [
-      "create-task",
-      "--title",
-      title,
-      "--type",
-      "feature",
-      "--problem",
-      `AgentFlight session task: ${title}`,
-      "--outcome",
-      "Task is implemented with local verification evidence.",
-      "--constraint",
-      "Keep changes scoped and do not claim completion without proof."
-    ],
-    cwd,
-    timeoutMs: 20_000
-  });
-
-  if (result.exitCode !== 0) {
-    return {
-      available: false,
-      taskLinked: false,
-      warnings: [`AgentLoopKit task creation failed: ${summarizeToolFailure(result)}`]
-    };
-  }
-
   return {
     available: true,
-    taskLinked: true,
-    summary: result.stdout.trim(),
+    taskLinked: false,
+    summary: "No active AgentLoopKit task linked.",
     warnings: []
   };
 }

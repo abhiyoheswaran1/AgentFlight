@@ -201,8 +201,8 @@ describe("AgentFlight command workflow", () => {
           warnings: []
         };
       },
-      createAgentLoopTask: async () => {
-        calls.push("create-agentloop-task");
+      linkAgentLoopTask: async () => {
+        calls.push("link-agentloop-task");
         return {
           available: true,
           taskLinked: true,
@@ -215,7 +215,7 @@ describe("AgentFlight command workflow", () => {
     expect(calls).toEqual([
       "inspect-projscan",
       "inspect-agentloopkit:false",
-      "create-agentloop-task"
+      "link-agentloop-task"
     ]);
     expect(tools.projscan).toMatchObject({
       available: true,

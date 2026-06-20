@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createAgentLoopTask, inspectAgentLoopKit } from "../../src/adapters/agentloopkit.js";
+import { inspectAgentLoopKit, linkAgentLoopTask } from "../../src/adapters/agentloopkit.js";
 import type { CommandRunner } from "../../src/core/process.js";
 import { createTempRepo } from "../helpers/temp.js";
 
@@ -134,23 +134,11 @@ describe("AgentLoopKit adapter", () => {
       })
     );
 
-    const calls: string[] = [];
-    const run: CommandRunner = async (_command, args) => {
-      calls.push(args.join(" "));
-      if (args.includes("create-task")) {
-        return { exitCode: 0, stdout: "duplicate created", stderr: "" };
-      }
-      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
-    };
-
-    await expect(
-      createAgentLoopTask(repoRoot, "Reuse active AgentLoop task during AgentFlight start", run)
-    ).resolves.toMatchObject({
+    await expect(linkAgentLoopTask(repoRoot)).resolves.toMatchObject({
       available: true,
       taskLinked: true,
       summary: expect.stringContaining(".agentloop/tasks/reuse.md")
     });
-    expect(calls).toEqual([]);
   });
 
   it("reuses the active task state file without running AgentLoopKit status", async () => {
@@ -164,45 +152,24 @@ describe("AgentLoopKit adapter", () => {
       })
     );
 
-    const calls: string[] = [];
-    const run: CommandRunner = async (_command, args) => {
-      calls.push(args.join(" "));
-      return { exitCode: 1, stdout: "", stderr: "should not run AgentLoopKit" };
-    };
-
-    await expect(createAgentLoopTask(repoRoot, "Reuse active task", run)).resolves.toMatchObject({
+    await expect(linkAgentLoopTask(repoRoot)).resolves.toMatchObject({
       available: true,
       taskLinked: true,
       summary: expect.stringContaining(".agentloop/tasks/active.md")
     });
-    expect(calls).toEqual([]);
   });
 
-  it("creates a task when no active task exists", async () => {
+  it("does not link a task when no active task state exists", async () => {
     const repoRoot = await createTempRepo("agentflight-agentloop-no-state-");
-    const calls: string[] = [];
-    const run: CommandRunner = async (_command, args) => {
-      calls.push(args.join(" "));
-      if (args.includes("create-task")) {
-        return {
-          exitCode: 0,
-          stdout: "Task contract created: `.agentloop/tasks/new.md`",
-          stderr: ""
-        };
-      }
-      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
-    };
 
-    await expect(createAgentLoopTask(repoRoot, "New task", run)).resolves.toMatchObject({
+    await expect(linkAgentLoopTask(repoRoot)).resolves.toMatchObject({
       available: true,
-      taskLinked: true,
-      summary: expect.stringContaining("Task contract created")
+      taskLinked: false,
+      summary: expect.stringContaining("No active AgentLoopKit task linked")
     });
-    expect(calls.some((call) => call.includes("status"))).toBe(false);
-    expect(calls.some((call) => call.includes("create-task"))).toBe(true);
   });
 
-  it("creates a task when active task state is empty", async () => {
+  it("does not link a task when active task state is empty", async () => {
     const repoRoot = await createTempRepo("agentflight-agentloop-empty-state-");
     await mkdir(join(repoRoot, ".agentloop"), { recursive: true });
     await writeFile(
@@ -213,52 +180,22 @@ describe("AgentLoopKit adapter", () => {
       })
     );
 
-    const calls: string[] = [];
-    const run: CommandRunner = async (_command, args) => {
-      calls.push(args.join(" "));
-      if (args.includes("create-task")) {
-        return {
-          exitCode: 0,
-          stdout: "Task contract created: `.agentloop/tasks/new.md`",
-          stderr: ""
-        };
-      }
-      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
-    };
-
-    await expect(createAgentLoopTask(repoRoot, "New task", run)).resolves.toMatchObject({
+    await expect(linkAgentLoopTask(repoRoot)).resolves.toMatchObject({
       available: true,
-      taskLinked: true,
-      summary: expect.stringContaining("Task contract created")
+      taskLinked: false,
+      summary: expect.stringContaining("No active AgentLoopKit task linked")
     });
-    expect(calls.some((call) => call.includes("status"))).toBe(false);
-    expect(calls.some((call) => call.includes("create-task"))).toBe(true);
   });
 
-  it("creates a task when the active task state is malformed", async () => {
+  it("does not link a task when the active task state is malformed", async () => {
     const repoRoot = await createTempRepo("agentflight-agentloop-bad-state-");
     await mkdir(join(repoRoot, ".agentloop"), { recursive: true });
     await writeFile(join(repoRoot, ".agentloop", "state.json"), "{");
 
-    const calls: string[] = [];
-    const run: CommandRunner = async (_command, args) => {
-      calls.push(args.join(" "));
-      if (args.includes("create-task")) {
-        return {
-          exitCode: 0,
-          stdout: "Task contract created: `.agentloop/tasks/new.md`",
-          stderr: ""
-        };
-      }
-      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
-    };
-
-    await expect(createAgentLoopTask(repoRoot, "New task", run)).resolves.toMatchObject({
+    await expect(linkAgentLoopTask(repoRoot)).resolves.toMatchObject({
       available: true,
-      taskLinked: true,
-      summary: expect.stringContaining("Task contract created")
+      taskLinked: false,
+      summary: expect.stringContaining("No active AgentLoopKit task linked")
     });
-    expect(calls.some((call) => call.includes("status"))).toBe(false);
-    expect(calls.some((call) => call.includes("create-task"))).toBe(true);
   });
 });
