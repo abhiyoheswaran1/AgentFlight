@@ -56,7 +56,7 @@ export async function runReplayCommand(
     verificationEvidence: verification.runs,
     reviewReadiness: review.readiness.label,
     review,
-    recommendation: `${review.readiness.label}. ${buildReplayNextAction(review.readiness.label, review.readiness.nextAction)}`
+    recommendation: `${review.readiness.label}. ${review.readiness.nextAction}`
   });
 
   await writeTextFileSafe(replayPath, html, { overwrite: true });
@@ -68,11 +68,4 @@ ${replayPath}
 `,
     replayPath
   };
-}
-
-function buildReplayNextAction(readiness: string, fallback: string): string {
-  if (readiness === "Ready for review") {
-    return "Use this replay for review and handoff; continue only scoped follow-up work.";
-  }
-  return fallback;
 }

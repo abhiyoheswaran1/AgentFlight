@@ -12,6 +12,12 @@ All notable AgentFlight changes are documented here.
   workspace hygiene, replay ergonomics, proof guidance, and explainable ranking
   as the priority order.
 
+### Changed
+
+- Kept ready-review report, replay, resume, examples, and demo copy aligned with
+  the `agentflight handoff` golden path while keeping report/replay/resume as
+  supporting local artifacts.
+
 ## AgentFlight v0.6.0 - 2026-06-19
 
 Local review ergonomics and automation surfaces for heavier real-world dogfood.

@@ -58,7 +58,7 @@ export async function runResumeCommand(
     readiness: review.readiness,
     latestSnapshotNote: latestSnapshot?.message,
     verificationState: `${verification.passed} passed, ${verification.failed} failed`,
-    nextAction: buildResumeNextAction(review.readiness.label, review.readiness.nextAction)
+    nextAction: review.readiness.nextAction
   });
   const resumePath = resolveAgentFlightPaths(options.repoRoot).currentResumePrompt;
 
@@ -69,11 +69,4 @@ export async function runResumeCommand(
     output: prompt,
     resumePath
   };
-}
-
-function buildResumeNextAction(readiness: string, fallback: string): string {
-  if (readiness === "Ready for review") {
-    return "Use the generated report or replay if available, then hand off for review or continue only scoped follow-up work.";
-  }
-  return fallback;
 }

@@ -94,7 +94,7 @@ Changed files:
 3
 
 Risk: medium
-- Dependency, backend, or unknown files changed.
+- Application source files changed.
 
 Verification Evidence:
 1 passed, 0 failed

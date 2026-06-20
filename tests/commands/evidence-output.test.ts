@@ -332,8 +332,39 @@ describe("evidence-aware session outputs", () => {
     expect(resume.output).toContain("Verification State");
     expect(resume.output).toContain("1 passed, 0 failed");
     expect(resume.output).toContain("Review Focus");
-    expect(resume.output).toContain("Use the generated report or replay");
+    expect(resume.output).toContain("Run agentflight handoff to generate the local review packet");
     expect(resume.output).not.toContain("Generate a report and");
+    expect(resume.output).not.toContain("Use the generated report or replay");
+  });
+
+  it("points ready report and replay recommendations to the handoff packet", async () => {
+    const command = `${process.execPath} -e "console.log('proof ok')"`;
+    const repoRoot = await startedRepo([command]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('proof ok')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const report = await runReportCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"]
+    });
+    const markdown = await readFile(report.reportPath, "utf8");
+
+    expect(markdown).toContain("Ready for review");
+    expect(markdown).toContain("Run agentflight handoff to generate the local review packet");
+    expect(markdown).not.toContain("Share this report with the reviewer");
+
+    const replay = await runReplayCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"]
+    });
+    const html = await readFile(replay.replayPath, "utf8");
+
+    expect(html).toContain("Ready for review");
+    expect(html).toContain("Run agentflight handoff to generate the local review packet");
+    expect(html).not.toContain("Use this replay for review and handoff");
   });
 
   it("generates a local review handoff when proof is complete", async () => {

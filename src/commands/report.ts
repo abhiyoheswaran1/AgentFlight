@@ -61,7 +61,7 @@ export async function runReportCommand(
       verificationEvidence: verification.runs,
       verificationGaps: verification.gaps,
       recommendation: review.readiness.label,
-      nextAction: buildReportNextAction(review.readiness.label, review.readiness.nextAction),
+      nextAction: review.readiness.nextAction,
       review,
       tooling: session.tools
     },
@@ -91,11 +91,4 @@ function normalizeReportMode(mode: string | undefined): MarkdownReportMode {
 function reportPathSuffix(mode: MarkdownReportMode): string {
   if (mode === "pr-comment") return "-pr-comment.md";
   return mode === "compact" ? "-proof-compact.md" : "-proof.md";
-}
-
-function buildReportNextAction(readiness: string, fallback: string): string {
-  if (readiness === "Ready for review") {
-    return "Share this report with the reviewer and keep follow-up scoped to the risk areas above.";
-  }
-  return fallback;
 }

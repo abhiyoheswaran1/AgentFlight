@@ -92,10 +92,10 @@
     <text class="muted" x="44" y="296">Changed areas:</text>
     <text class="text" x="70" y="342">docs: docs/password-reset.md</text>
     <text class="text" x="70" y="386">tests: tests/password-reset.test.js</text>
-    <text class="text" x="70" y="430">unknown: src/password-reset.ts</text>
+    <text class="text" x="70" y="430">source: src/password-reset.ts</text>
     <text class="warn" x="44" y="498">Risk: medium</text>
     <text class="ok" x="44" y="548">Verification Evidence: 1 passed, 0 failed</text>
     <text class="ok" x="44" y="598">Review readiness: Ready for review</text>
-    <text class="cmd cursor" x="44" y="642">Next action: agentflight report</text>
+    <text class="cmd cursor" x="44" y="642">Next action: agentflight handoff</text>
   </g>
 </svg>

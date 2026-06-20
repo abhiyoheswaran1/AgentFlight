@@ -85,10 +85,10 @@ Changed files:
 Changed areas:
 - docs: docs/password-reset.md
 - tests: tests/password-reset.test.ts
-- unknown: src/password-reset.ts
+- source: src/password-reset.ts
 
 Risk: medium
-- Dependency, backend, or unknown files changed.
+- Application source files changed.
 
 Verification Evidence:
 1 passed, 0 failed
@@ -101,17 +101,20 @@ Latest snapshot:
 Review readiness: Ready for review
 
 Next action:
-Generate a proof report with agentflight report
+Run agentflight handoff to generate the local review packet.
 ```
 
-## 6. Generate Review Artifacts
+## 6. Generate The Local Handoff
 
 ```bash
-npx agentflight@latest report
-npx agentflight@latest replay
+npx agentflight@latest handoff
 ```
 
-The Markdown report gives a reviewer the task, session metadata, changed files, risk summary, timeline, verification evidence, and recommendation.
+The handoff tells you whether the work is ready, what to review first, what proof exists, and what proof is still missing. It also generates the supporting local artifacts:
+
+- Markdown proof report
+- HTML replay ledger
+- resume prompt
 
 The HTML replay gives a browser-friendly timeline:
 
@@ -124,7 +127,7 @@ report_generated
 replay_generated
 ```
 
-Both artifacts stay local under `.agentflight/reports/`.
+The report and replay stay local under `.agentflight/reports/`. The current handoff and resume prompt stay local under `.agentflight/current/`.
 
 ## 7. Resume Safely
 

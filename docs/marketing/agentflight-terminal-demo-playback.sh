@@ -73,14 +73,16 @@ plain  ''
 printf 'Review readiness: %sReady for review%s\n' "$GREEN" "$RESET"
 plain  ''
 label  'Next action:'
-plain  'Generate a proof report with agentflight report'
+plain  'Run agentflight handoff to generate the local review packet.'
 sleep 1.3
 
 printf '\n'
-prompt 'npx agentflight replay'
+prompt 'npx agentflight handoff'
 sleep 0.7
-label  'Replay generated:'
-plain  '.agentflight/reports/af-7d3f-replay.html'
+label  'AgentFlight handoff'
+plain  'Readiness: Ready for review'
+plain  'Open first: replay'
+plain  'Artifacts: report, replay, resume'
 plain  ''
-note '# Open the replay to review changes, risk, and proof'
+note '# Share the local handoff packet for scoped review'
 sleep 2.4
