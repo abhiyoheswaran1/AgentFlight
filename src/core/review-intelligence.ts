@@ -31,6 +31,7 @@ const baseScores: Record<RiskCategory, number> = {
   config: 75,
   "backend/api": 70,
   dependencies: 65,
+  source: 60,
   unknown: 50,
   "agentflight/config": 35,
   frontend: 35,
@@ -50,10 +51,23 @@ const reviewerFocusByCategory = new Map<RiskCategory, string>([
   ["config", "Check build, CI, and runtime configuration impact first."],
   ["backend/api", "Check request handling, validation, and error paths first."],
   ["dependencies", "Check install/build impact and dependency risk first."],
+  ["source", "Check core behavior, command flow, and edge cases first."],
   ["frontend", "Check user-facing behavior and build evidence first."],
   ["tests", "Check whether tests cover the changed behavior."],
   ["docs", "Check accuracy and scope of documentation changes."],
   ["unknown", "Inspect manually because AgentFlight could not classify this file."]
+]);
+
+const categoryLabels = new Map<RiskCategory, string>([
+  ["auth", "identity/session path"],
+  ["billing/payments", "payment-sensitive path"],
+  ["security/secrets", "credential-handling path"],
+  ["database/migrations", "database schema or migration path"],
+  ["backend/api", "backend/API file"],
+  ["dependencies", "dependency metadata changed"],
+  ["source", "source code"],
+  ["agentflight/config", "AgentFlight project config"],
+  ["config", "configuration or CI path"]
 ]);
 
 const generatedGuidanceFiles = new Set([".projscan-memory/memory.json"]);
@@ -200,6 +214,13 @@ function buildProofGaps(input: {
     severity: "warning",
     proofKinds: ["build", "test"],
     message: "Frontend files changed without passing build or test evidence."
+  });
+  addCategoryGap(gaps, input, filesByCategory, {
+    categories: ["source"],
+    id: "missing-source-proof",
+    severity: "warning",
+    proofKinds: ["typecheck", "test", "build"],
+    message: "Source files changed without passing typecheck, test, or build evidence."
   });
   addCategoryGap(gaps, input, filesByCategory, {
     categories: ["tests"],
@@ -522,15 +543,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function categoryLabel(category: RiskCategory): string {
-  if (category === "auth") return "identity/session path";
-  if (category === "billing/payments") return "payment-sensitive path";
-  if (category === "security/secrets") return "credential-handling path";
-  if (category === "database/migrations") return "database schema or migration path";
-  if (category === "backend/api") return "backend/API file";
-  if (category === "dependencies") return "dependency metadata changed";
-  if (category === "agentflight/config") return "AgentFlight project config";
-  if (category === "config") return "configuration or CI path";
-  return `${category} file`;
+  return categoryLabels.get(category) ?? `${category} file`;
 }
 
 function groupFilesByCategory(files: string[]): Map<RiskCategory, string[]> {
@@ -564,6 +577,7 @@ function riskLevelForCategory(category: RiskCategory): RiskLevel {
   if (
     category === "backend/api" ||
     category === "dependencies" ||
+    category === "source" ||
     category === "unknown" ||
     category === "agentflight/config"
   ) {

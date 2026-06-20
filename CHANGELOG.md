@@ -35,6 +35,9 @@ Local review ergonomics and automation surfaces for heavier real-world dogfood.
 - Lowered generated ProjScan memory priority in Review Intelligence so
   `.projscan-memory/memory.json` remains visible but no longer outranks real
   first-run review targets such as `.agentflight/config.json` or docs changes.
+- Classified first-party TypeScript/JavaScript source files under `src/` as
+  source changes so review focus gives clearer guidance and proof gaps than the
+  previous unknown-file fallback.
 
 - AgentFlight now describes itself as a local-first review layer for AI coding sessions across package metadata, README, and product docs.
 - Long suggested proof commands stay compact in high-density review surfaces while preserving the full suggested action where useful.

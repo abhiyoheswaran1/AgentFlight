@@ -13,7 +13,9 @@ describe("risk categorisation", () => {
     ["tests/session.test.ts", "tests"],
     ["docs/roadmap.md", "docs"],
     ["src/components/LoginForm.tsx", "frontend"],
-    ["src/api/users.ts", "backend/api"]
+    ["src/api/users.ts", "backend/api"],
+    ["src/core/review-intelligence.ts", "source"],
+    ["src/commands/handoff.ts", "source"]
   ] as const)("categorises %s as %s", (file, category) => {
     expect(categorizeFile(file)).toBe(category);
   });
@@ -40,7 +42,7 @@ describe("risk categorisation", () => {
   });
 
   it("scores dependency and backend changes as medium risk", () => {
-    expect(analyzeRisk(["package.json", "src/api/users.ts"])).toMatchObject({
+    expect(analyzeRisk(["package.json", "src/api/users.ts", "src/core/risk.ts"])).toMatchObject({
       level: "medium"
     });
   });

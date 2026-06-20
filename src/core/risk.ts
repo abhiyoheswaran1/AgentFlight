@@ -8,7 +8,7 @@ const highRiskCategories = new Set<RiskCategory>([
   "config"
 ]);
 
-const mediumRiskCategories = new Set<RiskCategory>(["backend/api", "dependencies"]);
+const mediumRiskCategories = new Set<RiskCategory>(["backend/api", "dependencies", "source"]);
 
 export function categorizeFile(file: string): RiskCategory {
   const normalized = file.replaceAll("\\", "/").toLowerCase();
@@ -57,6 +57,9 @@ export function categorizeFile(file: string): RiskCategory {
   }
   if (/(^|\/)(api|routes|controllers|server|backend)(\/|$)/.test(normalized)) {
     return "backend/api";
+  }
+  if (/^src\/.+\.[cm]?[jt]s$/.test(normalized)) {
+    return "source";
   }
 
   return "unknown";
@@ -122,6 +125,7 @@ function buildReasons(categories: RiskCategorySummary[], level: RiskLevel): stri
   if (present.has("config")) reasons.push("Configuration or CI files changed.");
   if (present.has("backend/api")) reasons.push("Backend or API files changed.");
   if (present.has("dependencies")) reasons.push("Dependency or package metadata changed.");
+  if (present.has("source")) reasons.push("Application source files changed.");
 
   if (reasons.length === 0) {
     reasons.push(

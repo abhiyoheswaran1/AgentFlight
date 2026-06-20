@@ -235,6 +235,36 @@ describe("review intelligence", () => {
     });
   });
 
+  it("uses source-specific guidance and proof gaps for first-party source changes", () => {
+    const changedFiles = ["src/core/review-intelligence.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm run typecheck", "npm test"],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.focus[0]).toMatchObject({
+      file: "src/core/review-intelligence.ts",
+      category: "source",
+      riskLevel: "medium",
+      proofStatus: "missing",
+      suggestedCommand: "npm run typecheck"
+    });
+    expect(review.focus[0]?.reasons).toContain("source code");
+    expect(review.focus[0]?.suggestedReviewerFocus).toContain("core behavior");
+    expect(review.proofGaps).toContainEqual(
+      expect.objectContaining({
+        id: "missing-source-proof",
+        severity: "warning",
+        suggestedCommand: "npm run typecheck",
+        relatedFiles: ["src/core/review-intelligence.ts"]
+      })
+    );
+  });
+
   it("flags package and config changes with targeted proof gaps", () => {
     const changedFiles = ["package.json", ".github/workflows/release.yml"];
     const review = buildReviewIntelligence({

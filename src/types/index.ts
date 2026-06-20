@@ -97,6 +97,7 @@ export type RiskCategory =
   | "frontend"
   | "backend/api"
   | "dependencies"
+  | "source"
   | "unknown";
 
 export type RiskLevel = "low" | "medium" | "high" | "unknown";
