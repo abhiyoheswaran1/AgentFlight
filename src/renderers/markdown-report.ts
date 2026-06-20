@@ -1,5 +1,6 @@
 import {
   compactCommandInText,
+  formatCommandForDisplay,
   formatToolForReport,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
@@ -163,7 +164,8 @@ function renderVerification(input: MarkdownReportInput): string {
 
   const evidence = input.verificationEvidence
     .map((run) => {
-      const base = `- ${run.command}: ${run.status} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)\n  - stdout: ${run.stdoutPath}\n  - stderr: ${run.stderrPath}`;
+      const command = formatCommandForDisplay(run.command);
+      const base = `- ${command}: ${run.status} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)\n  - stdout: ${run.stdoutPath}\n  - stderr: ${run.stderrPath}`;
       if (run.status === "failed" && run.outputExcerpt) {
         return `${base}\n  - Output excerpt:\n\n${renderExcerptFence(run.outputExcerpt)}`;
       }

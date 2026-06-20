@@ -39,6 +39,37 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).toContain("- none");
   });
 
+  it("compacts long verification evidence commands in status without changing stored evidence", async () => {
+    const longScript = `${"console.log('status command noise'); ".repeat(10)}process.exit(0);`;
+    const repoRoot = await startedRepo([]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", longScript],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const [run] = session.verificationRuns;
+    const fullCommand = run.command;
+    const stdoutEvidence = await readFile(join(repoRoot, run.stdoutPath), "utf8");
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["src/core/verification.ts"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(fullCommand).toContain("status command noise");
+    expect(stdoutEvidence).toContain("status command noise");
+    expect(status.output).toContain("Verification Evidence:");
+    expect(status.output).toContain("- passed:");
+    expect(status.output).toContain("status command noise");
+    expect(status.output).toContain("…");
+    expect(status.output).not.toContain(fullCommand);
+  });
+
   it("emits parseable local JSON status for scripts", async () => {
     const command = `${process.execPath} -e "console.log('proof ok')"`;
     const repoRoot = await startedRepo([command]);

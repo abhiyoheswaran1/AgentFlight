@@ -57,6 +57,8 @@ All notable AgentFlight changes are documented here.
   to keep future proof guidance changes easier to review.
 - HTML replay verification ledgers now display long run commands compactly while
   keeping the full command available in the title text.
+- Status and Markdown report verification evidence rows now use compact display
+  labels for long run commands while preserving stored command evidence.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

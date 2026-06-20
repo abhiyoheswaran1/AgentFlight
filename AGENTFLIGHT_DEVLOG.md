@@ -4,6 +4,58 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Compact Text Evidence Commands
+
+Dogfood finding:
+
+- After replay ledger commands were compacted, `agentflight status` still showed
+  a full long passing verification command in the evidence list. That kept the
+  terminal status dense and noisy for a run that was otherwise ready for review.
+
+Persona readout:
+
+- Product Maintainer: status and report should stay fast to scan because they
+  are the first artifacts developers read before deciding what to open.
+- CLI Engineer: compact display must not mutate `verificationRuns[].command` or
+  stdout/stderr evidence paths.
+- Docs and DX Writer: short commands should remain unchanged; only genuinely
+  long evidence labels should collapse.
+- Security Reviewer: this must remain local display formatting, not hidden
+  evidence rewriting.
+
+Implemented locally:
+
+- Status verification evidence rows now use the shared compact command display
+  helper for long run commands.
+- Markdown report verification evidence rows use the same compact display helper
+  for long run commands.
+- Stored verification run commands and raw evidence files remain unchanged.
+
+Verification:
+
+- Added command/output regression coverage for compact status evidence labels,
+  unchanged stored commands, and preserved stdout evidence.
+- Added Markdown renderer coverage for compact verification evidence labels.
+- `npm test -- tests/commands/evidence-output.test.ts tests/renderers/markdown-report.test.ts`
+  passed: 2 files / 32 tests.
+- Adjacent bug pass with evidence output, Markdown report, HTML replay, and
+  Review Intelligence tests passed: 4 files / 56 tests.
+- `npm run verify` passed: 20 files / 149 tests, plus typecheck, lint, and
+  build.
+- `npm run format:check` passed after formatting the new Markdown report test.
+- AgentFlight captured `npm run verify` as passing evidence for this session.
+- Dogfooded harmless long passing `agentflight verify` commands and regenerated
+  status/report: the genuinely long verification command rendered compactly in
+  both text surfaces while evidence paths remained visible.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found 0 vulnerabilities.
+- `npx projscan@latest doctor --format json` passed with score 100/A.
+- ProjScan preflight/review kept the existing accumulated branch-scale manual
+  signoff caution: 90 changed files and max changed-file risk score 188.6, with
+  no concrete cycle, risky-function, dependency, contract, taint, or dataflow
+  blockers reported.
+- `npx agentloopkit@latest verify` passed.
+
 ### Compact Replay Ledger Commands
 
 Persona readout:

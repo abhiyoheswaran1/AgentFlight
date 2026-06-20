@@ -2,7 +2,11 @@ import { listChangedFiles } from "../core/git.js";
 import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
 import { pathExists, readJsonFile } from "../core/fs-safe.js";
-import { compactCommandInText, formatVerifyCommandForDisplay } from "../core/output.js";
+import {
+  compactCommandInText,
+  formatCommandForDisplay,
+  formatVerifyCommandForDisplay
+} from "../core/output.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
@@ -224,7 +228,7 @@ function formatVerificationRuns(runs: VerificationRun[] | undefined): string {
   return runs
     .map(
       (run) =>
-        `- ${run.status}: ${run.command} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)`
+        `- ${run.status}: ${formatCommandForDisplay(run.command)} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)`
     )
     .join("\n");
 }

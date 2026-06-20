@@ -134,6 +134,48 @@ describe("markdown proof report", () => {
     expect(markdown).not.toContain("process.exit(1)");
   });
 
+  it("compacts long verification evidence commands in evidence rows", () => {
+    const longCommand = `node -e "${"console.log('verification evidence command noise'); ".repeat(12)}process.exit(0)"`;
+    const markdown = renderMarkdownReport({
+      task: "Dogfood long evidence command",
+      sessionId: "af-long-evidence-command",
+      startedAt: "2026-06-20T12:00:00.000Z",
+      changedFiles: ["src/renderers/markdown-report.ts"],
+      risk: {
+        level: "medium",
+        changedFiles: 1,
+        categories: [{ category: "source", files: ["src/renderers/markdown-report.ts"] }],
+        reasons: ["Application source files changed."]
+      },
+      verificationCommands: [],
+      verificationEvidence: [
+        {
+          command: longCommand,
+          startedAt: "2026-06-20T12:01:00.000Z",
+          finishedAt: "2026-06-20T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath: ".agentflight/evidence/af-long-evidence-command/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-long-evidence-command/verification-1.stderr.txt"
+        }
+      ],
+      timelineEvents: [],
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("- node -e");
+    expect(markdown).toContain("verification evidence command noise");
+    expect(markdown).toContain("…: passed");
+    expect(markdown).not.toContain("process.exit(0)");
+    expect(markdown).toContain(
+      ".agentflight/evidence/af-long-evidence-command/verification-1.stdout.txt"
+    );
+  });
+
   it("keeps AgentLoopKit tooling diagnostics concise when doctor output is noisy", () => {
     const markdown = renderMarkdownReport({
       task: "Dogfood report",
