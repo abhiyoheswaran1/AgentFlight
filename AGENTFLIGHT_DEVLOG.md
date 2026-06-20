@@ -4,6 +4,29 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-20
 
+### Repo-Relative Artifact Path Output
+
+Persona readout:
+
+- Security Reviewer: shareable handoff text should avoid leaking local usernames
+  or workspace folder names.
+- Docs and DX Writer: repo-relative `.agentflight/...` paths are easier to read
+  and copy.
+- CLI Engineer: command return values should stay absolute for callers that
+  open the generated files programmatically.
+
+Implemented locally:
+
+- Start, report, replay, and handoff terminal output now display generated
+  `.agentflight/...` artifact paths relative to the repository.
+- Command result fields still return the absolute file paths used by local tests
+  and programmatic callers.
+
+Verification:
+
+- `npm test -- tests/commands/workflow.test.ts tests/commands/evidence-output.test.ts`
+  passed: 2 files / 27 tests.
+
 ### Handoff Missing-Proof Gate
 
 Persona readout:

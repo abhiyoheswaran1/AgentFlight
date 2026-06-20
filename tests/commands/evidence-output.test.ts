@@ -408,6 +408,9 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("Report:");
     expect(handoff.output).toContain("Replay:");
     expect(handoff.output).toContain("Resume:");
+    expect(handoff.output).toContain(".agentflight/current/handoff.md");
+    expect(handoff.output).toContain(".agentflight/reports/");
+    expect(handoff.output).not.toContain(repoRoot);
     expect(handoff.output).toContain(
       "Local only: no upload, no telemetry, no automatic PR comment."
     );

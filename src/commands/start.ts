@@ -5,7 +5,7 @@ import { pathExists } from "../core/fs-safe.js";
 import { getGitInfo } from "../core/git.js";
 import { formatToolForReport } from "../core/output.js";
 import { detectPackageManager, readPackageJson } from "../core/project.js";
-import { resolveAgentFlightPaths } from "../core/paths.js";
+import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { startSession } from "../core/session.js";
 import { detectVerificationCommands } from "../core/verification.js";
 import type { GitInfo, ToolAdapterResult } from "../types/index.js";
@@ -82,7 +82,7 @@ Suggested proof:
 ${verificationCommands.length ? verificationCommands.join("\n") : "No proof commands detected yet."}
 
 Handoff saved:
-${result.handoffPath}
+${formatRepoRelativePath(options.repoRoot, result.handoffPath)}
 
 Now run your coding agent normally.
 `,

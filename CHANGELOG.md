@@ -45,6 +45,9 @@ All notable AgentFlight changes are documented here.
 - `agentflight handoff` now treats missing required proof as not ready to share:
   it exits non-zero, uses `Fix before sharing`, and points users to the report
   first.
+- Start, report, replay, and handoff terminal output now display local
+  `.agentflight/...` artifact paths relative to the repo instead of absolute
+  user-directory paths.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

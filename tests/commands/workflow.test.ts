@@ -60,6 +60,8 @@ describe("AgentFlight command workflow", () => {
     expect(start.output).toContain("AgentFlight started");
     expect(start.output).toContain("ProjScan: available");
     expect(start.output).toContain("AgentLoopKit: available 0.28.7 (active task linked)");
+    expect(start.output).toContain("Handoff saved:\n.agentflight/current/handoff.md");
+    expect(start.output).not.toContain(repoRoot);
 
     const status = await runStatusCommand({
       repoRoot,
@@ -74,6 +76,8 @@ describe("AgentFlight command workflow", () => {
       changedFiles: ["src/auth/reset.ts"]
     });
     expect(report.output).toContain(".agentflight/reports/");
+    expect(report.output).not.toContain(repoRoot);
+    expect(report.reportPath).toContain(repoRoot);
     await expect(readFile(report.reportPath, "utf8")).resolves.toContain(
       "# AgentFlight Proof Report"
     );
@@ -83,6 +87,8 @@ describe("AgentFlight command workflow", () => {
       changedFiles: ["src/auth/reset.ts"]
     });
     expect(replay.output).toContain("Replay generated");
+    expect(replay.output).not.toContain(repoRoot);
+    expect(replay.replayPath).toContain(repoRoot);
     await expect(readFile(replay.replayPath, "utf8")).resolves.toContain("<!doctype html>");
 
     const resume = await runResumeCommand({
@@ -100,6 +106,7 @@ describe("AgentFlight command workflow", () => {
     });
     expect(handoff.output).toContain("AgentFlight handoff");
     expect(handoff.output).toContain("Artifacts:");
+    expect(handoff.output).not.toContain(repoRoot);
     expect(handoff.output).toContain(
       "Local only: no upload, no telemetry, no automatic PR comment."
     );

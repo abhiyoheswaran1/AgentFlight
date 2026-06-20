@@ -1,6 +1,6 @@
 import { writeTextFileSafe } from "../core/fs-safe.js";
 import { compactCommandInText } from "../core/output.js";
-import { resolveAgentFlightPaths } from "../core/paths.js";
+import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { runReplayCommand } from "./replay.js";
 import { runReportCommand } from "./report.js";
 import { runResumeCommand } from "./resume.js";
@@ -90,10 +90,10 @@ export async function runHandoffCommand(
   const handoffPath = resolveAgentFlightPaths(options.repoRoot).currentHandoff;
   const output = renderHandoff({
     status,
-    handoffPath,
-    reportPath: report.reportPath,
-    replayPath: replay.replayPath,
-    resumePath: resume.resumePath
+    handoffPath: formatRepoRelativePath(options.repoRoot, handoffPath),
+    reportPath: formatRepoRelativePath(options.repoRoot, report.reportPath),
+    replayPath: formatRepoRelativePath(options.repoRoot, replay.replayPath),
+    resumePath: formatRepoRelativePath(options.repoRoot, resume.resumePath)
   });
   await writeTextFileSafe(handoffPath, output, { overwrite: true });
 

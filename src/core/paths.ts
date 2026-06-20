@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import type { AgentFlightPaths } from "../types/index.js";
 
 export function resolveAgentFlightPaths(repoRoot: string): AgentFlightPaths {
@@ -15,4 +15,11 @@ export function resolveAgentFlightPaths(repoRoot: string): AgentFlightPaths {
     currentHandoff: join(root, "current", "handoff.md"),
     currentResumePrompt: join(root, "current", "resume-prompt.md")
   };
+}
+
+export function formatRepoRelativePath(repoRoot: string, targetPath: string): string {
+  const relativePath = relative(repoRoot, targetPath);
+  if (relativePath === "") return ".";
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) return targetPath;
+  return relativePath.split(sep).join("/");
 }

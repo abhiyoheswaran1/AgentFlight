@@ -2,7 +2,7 @@ import { writeTextFileSafe } from "../core/fs-safe.js";
 import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
-import { resolveAgentFlightPaths } from "../core/paths.js";
+import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { addSessionEvent, getSessionTimelineEvents, saveSession } from "../core/session.js";
@@ -75,7 +75,7 @@ export async function runReportCommand(
 
   return {
     output: `Report generated:
-${reportPath}
+${formatRepoRelativePath(options.repoRoot, reportPath)}
 `,
     reportPath
   };
