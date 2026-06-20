@@ -371,7 +371,7 @@ function buildReadinessDecision(input: {
   return readinessDecision({
     state: "ready_for_review",
     reason: "Verification evidence matches the observed review risk.",
-    nextAction: "Generate or share the AgentFlight report/replay and request scoped human review.",
+    nextAction: "Run agentflight handoff to generate the local review packet.",
     proofGaps: []
   });
 }

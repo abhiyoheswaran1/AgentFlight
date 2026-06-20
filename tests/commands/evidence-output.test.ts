@@ -71,7 +71,7 @@ describe("evidence-aware session outputs", () => {
       file: "docs/development/verification.md",
       proofStatus: "not_required"
     });
-    expect(payload.nextAction).toContain("Generate or share");
+    expect(payload.nextAction).toContain("agentflight handoff");
     expect(status.output).not.toContain("diff --git");
   });
 
@@ -358,6 +358,8 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("AgentFlight handoff");
     expect(handoff.output).toContain("Readiness: Ready for review");
     expect(handoff.output).toContain("Open first: replay");
+    expect(handoff.output).toContain("Share this handoff with the report/replay");
+    expect(handoff.output).not.toContain("Run agentflight handoff");
     expect(handoff.output).toContain("Review first:");
     expect(handoff.output).toContain("docs/development/verification.md");
     expect(handoff.output).toContain("Artifacts:");

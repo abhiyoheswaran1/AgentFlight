@@ -138,7 +138,8 @@ describe("review intelligence", () => {
     });
     expect(review.readiness).toMatchObject({
       state: "ready_for_review",
-      label: "Ready for review"
+      label: "Ready for review",
+      nextAction: "Run agentflight handoff to generate the local review packet."
     });
   });
 

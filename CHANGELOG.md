@@ -38,6 +38,9 @@ Local review ergonomics and automation surfaces for heavier real-world dogfood.
 - Classified first-party TypeScript/JavaScript source files under `src/` as
   source changes so review focus gives clearer guidance and proof gaps than the
   previous unknown-file fallback.
+- Aligned ready-review next actions with the handoff golden path: status,
+  report, replay, and resume now point users toward `agentflight handoff`, while
+  the handoff artifact itself tells users to share the generated local packet.
 
 - AgentFlight now describes itself as a local-first review layer for AI coding sessions across package metadata, README, and product docs.
 - Long suggested proof commands stay compact in high-density review surfaces while preserving the full suggested action where useful.

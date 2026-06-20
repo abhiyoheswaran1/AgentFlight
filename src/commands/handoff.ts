@@ -177,6 +177,9 @@ function formatNextAction(readiness: HandoffReadiness, fallback: string): string
   if (readiness.state === "blocked_by_failed_verification") {
     return "Fix the failed command, rerun verification, then regenerate this handoff.";
   }
+  if (readiness.state === "ready_for_review") {
+    return "Share this handoff with the report/replay and request scoped human review.";
+  }
   return compactCommandInText(readiness.nextAction || fallback, readiness.suggestedCommand);
 }
 
