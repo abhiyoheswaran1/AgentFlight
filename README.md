@@ -260,7 +260,7 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 - `agentflight report --mode pr-comment` writes a local PR-comment draft without posting anywhere.
 - `agentflight replay` generates a local self-contained HTML replay with review focus and proof gaps.
 - `agentflight resume` prints and saves a continuation prompt with the next safest action.
-- `agentflight handoff` generates a local review handoff, report, replay, and resume prompt without posting anywhere. It exits non-zero when failed verification blocks review.
+- `agentflight handoff` generates a local review handoff, report, replay, and resume prompt without posting anywhere. It exits non-zero when verification failures or missing proof make the work not ready to share.
 - `agentflight doctor` checks local setup, scripts, tools, config, and current session state.
 
 Future placeholders exist for `upgrade`, `license`, and `login`; AgentFlight Pro/Team is not available yet.

@@ -413,6 +413,23 @@ describe("evidence-aware session outputs", () => {
     );
   });
 
+  it("blocks local handoffs when required proof is missing", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["src/auth/reset.ts"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(handoff.exitCode).toBe(1);
+    expect(handoff.output).toContain("Readiness: Needs verification");
+    expect(handoff.output).toContain("Fix before sharing:");
+    expect(handoff.output).toContain("agentflight verify -- npm test");
+    expect(handoff.output).toContain("Open first: report");
+    expect(handoff.output).not.toContain("Share this handoff with the report/replay");
+  });
+
   it("shows stderr-preferred failure excerpts in blocked local handoffs", async () => {
     const repoRoot = await startedRepo(["npm test"]);
     const scriptPath = join(repoRoot, "failing-handoff.js");
@@ -444,6 +461,7 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("stderr handoff failure excerpt");
     expect(handoff.output).not.toContain("stdout noise for handoff");
     expect(handoff.output).toContain("Fix before sharing:");
+    expect(handoff.output).toContain("Open first: report");
     expect(stdoutEvidence).toContain("stdout noise for handoff");
     expect(stderrEvidence).toContain("stderr handoff failure excerpt");
   });

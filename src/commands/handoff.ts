@@ -99,7 +99,7 @@ export async function runHandoffCommand(
 
   return {
     output,
-    exitCode: status.review.readiness.state === "blocked_by_failed_verification" ? 1 : 0,
+    exitCode: isReadyForSharing(status.review.readiness) ? 0 : 1,
     handoffPath,
     reportPath: report.reportPath,
     replayPath: replay.replayPath,
@@ -125,7 +125,8 @@ function renderHandoff(input: {
   resumePath: string;
 }): string {
   const readiness = input.status.review.readiness;
-  const blocked = readiness.state === "blocked_by_failed_verification";
+  const ready = isReadyForSharing(readiness);
+  const needsFix = needsFixBeforeSharing(readiness);
 
   return `AgentFlight handoff
 
@@ -151,10 +152,10 @@ ${formatReviewFocus(input.status.review.focus.slice(0, 3))}
 Proof gaps:
 ${formatProofGaps(input.status.review.proofGaps)}
 
-${blocked ? "Fix before sharing" : "Next action"}:
+${needsFix ? "Fix before sharing" : "Next action"}:
 ${formatNextAction(readiness, input.status.nextAction)}
 
-Open first: ${blocked ? "report" : "replay"}
+Open first: ${ready ? "replay" : "report"}
 
 Artifacts:
 - Handoff: ${input.handoffPath}
@@ -164,6 +165,18 @@ Artifacts:
 
 Local only: no upload, no telemetry, no automatic PR comment.
 `;
+}
+
+function isReadyForSharing(readiness: HandoffReadiness): boolean {
+  return readiness.state === "ready_for_review";
+}
+
+function needsFixBeforeSharing(readiness: HandoffReadiness): boolean {
+  return (
+    readiness.state === "blocked_by_failed_verification" ||
+    readiness.state === "needs_verification" ||
+    readiness.state === "not_ready_for_review"
+  );
 }
 
 function formatReadinessReason(readiness: HandoffReadiness, fallback: string): string {

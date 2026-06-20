@@ -42,6 +42,9 @@ All notable AgentFlight changes are documented here.
   creating new AgentLoopKit task contracts automatically.
 - Start output and Markdown tooling rows now show whether AgentLoopKit has an
   active task linked when that local state is known.
+- `agentflight handoff` now treats missing required proof as not ready to share:
+  it exits non-zero, uses `Fix before sharing`, and points users to the report
+  first.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

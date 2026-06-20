@@ -4,6 +4,33 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-20
 
+### Handoff Missing-Proof Gate
+
+Persona readout:
+
+- Product Maintainer: the local handoff should not sound share-ready when
+  Review Intelligence says proof is missing.
+- CLI Engineer: the handoff exit code should be a trustworthy local readiness
+  gate for scripts.
+- Docs and DX Writer: missing-proof handoffs should point to the report first,
+  not the replay, because the report is the fastest fix list.
+- Security Reviewer: keep the command local-only and avoid automatic posting or
+  hidden upload behavior.
+
+Implemented locally:
+
+- `agentflight handoff` now treats any non-ready Review Intelligence state as a
+  non-zero handoff result.
+- Missing-proof handoffs use `Fix before sharing`, retain the suggested
+  `agentflight verify -- ...` command, and point users to the report first.
+- Ready handoffs still exit `0` and open replay first. Failed verification
+  handoffs still show stderr-preferred excerpts and open report first.
+
+Verification:
+
+- `npm test -- tests/commands/evidence-output.test.ts` passed: 1 file / 23
+  tests.
+
 ### AgentLoopKit Linked-State Polish
 
 Dogfood finding:
