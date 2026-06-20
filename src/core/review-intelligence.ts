@@ -277,13 +277,21 @@ function buildReviewFocus(input: {
     const category = categorizeFile(file);
     const relatedGaps = input.proofGaps.filter((gap) => gap.relatedFiles.includes(file));
     const projscanHint = projscanHints.get(normalizeFilePath(file));
+    const generatedGuidanceFile = isGeneratedGuidanceFile(file);
     const proofStatus = determineProofStatus({
       category,
       relatedGaps,
+      generatedGuidanceFile,
       hasFailedVerification,
       proofKinds: input.proofKinds
     });
-    const reasons = buildFocusReasons(category, proofStatus, relatedGaps, projscanHint);
+    const reasons = buildFocusReasons({
+      category,
+      proofStatus,
+      relatedGaps,
+      projscanHint,
+      generatedGuidanceFile
+    });
     const score =
       scoreFocusItem(file, category, proofStatus, relatedGaps, hasFailedVerification) +
       scoreProjScanHint(projscanHint);
@@ -296,7 +304,9 @@ function buildReviewFocus(input: {
       riskLevel: riskLevelForCategory(category),
       score,
       reasons,
-      suggestedReviewerFocus: suggestedReviewerFocus(category),
+      suggestedReviewerFocus: generatedGuidanceFile
+        ? "Review only if generated ProjScan memory is meant to be tracked; otherwise add .projscan-memory/** to changedFileFilters.ignore."
+        : suggestedReviewerFocus(category),
       proofStatus,
       ...(suggestedCommand ? { suggestedCommand } : {}),
       relatedProofGapIds: relatedGaps.map((gap) => gap.id)
@@ -311,9 +321,11 @@ function buildReviewFocus(input: {
 function determineProofStatus(input: {
   category: RiskCategory;
   relatedGaps: ProofGap[];
+  generatedGuidanceFile?: boolean;
   hasFailedVerification: boolean;
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
 }): ReviewProofStatus {
+  if (input.generatedGuidanceFile) return "not_required";
   if (input.hasFailedVerification && input.category !== "docs") return "failed";
   const actionableGaps = input.relatedGaps.filter((gap) => gap.severity !== "info");
   if (actionableGaps.length > 0) return "missing";
@@ -448,12 +460,16 @@ function scoreProjScanHint(hint: NormalizedProjScanHint | undefined): number {
   return Math.round(hint.riskScore * 0.6);
 }
 
-function buildFocusReasons(
-  category: RiskCategory,
-  proofStatus: ReviewProofStatus,
-  relatedGaps: ProofGap[],
-  projscanHint?: NormalizedProjScanHint | undefined
-): string[] {
+function buildFocusReasons(input: {
+  category: RiskCategory;
+  proofStatus: ReviewProofStatus;
+  relatedGaps: ProofGap[];
+  projscanHint?: NormalizedProjScanHint | undefined;
+  generatedGuidanceFile?: boolean;
+}): string[] {
+  const { category, proofStatus, relatedGaps, projscanHint, generatedGuidanceFile } = input;
+  if (generatedGuidanceFile) return ["generated tool state"];
+
   const reasons = [categoryLabel(category)];
   if (proofStatus === "failed") reasons.push("verification failed");
   if (relatedGaps.some((gap) => gap.message.toLowerCase().includes("test"))) {

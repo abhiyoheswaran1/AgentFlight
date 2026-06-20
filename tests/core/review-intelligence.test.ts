@@ -207,9 +207,14 @@ describe("review intelligence", () => {
     expect(review.focus.find((item) => item.file === ".projscan-memory/memory.json")).toMatchObject(
       {
         category: "unknown",
-        proofStatus: "unknown"
+        proofStatus: "not_required",
+        suggestedReviewerFocus:
+          "Review only if generated ProjScan memory is meant to be tracked; otherwise add .projscan-memory/** to changedFileFilters.ignore."
       }
     );
+    expect(
+      review.focus.find((item) => item.file === ".projscan-memory/memory.json")?.reasons
+    ).toContain("generated tool state");
   });
 
   it("requires build proof for frontend changes and suggests the configured build command", () => {

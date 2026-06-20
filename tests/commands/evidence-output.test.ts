@@ -699,6 +699,11 @@ describe("evidence-aware session outputs", () => {
     expect(handoffReviewFirst.indexOf("README.md")).toBeLessThan(
       handoffReviewFirst.indexOf(".projscan-memory/memory.json")
     );
+    expect(handoffReviewFirst).toContain("generated tool state");
+    expect(handoffReviewFirst).toContain("add .projscan-memory/** to changedFileFilters.ignore");
+    expect(handoffReviewFirst).not.toContain(
+      "Inspect manually because AgentFlight could not classify this file."
+    );
 
     const resume = await runResumeCommand({ repoRoot, changedFiles });
     expect(resume.output).toContain(".projscan-memory/memory.json");
