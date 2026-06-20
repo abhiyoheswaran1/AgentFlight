@@ -4,6 +4,29 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-20
 
+### AgentLoopKit Linked-State Polish
+
+Dogfood finding:
+
+- After `agentflight start` stopped creating AgentLoopKit task contracts
+  automatically, the terminal and report tooling rows still showed only
+  AgentLoopKit availability. That hid whether an active task was actually
+  linked.
+- One stale diagnostic path still used task-creation wording, which no longer
+  matches the product behavior.
+
+Implemented locally:
+
+- Shared tooling output now shows concise AgentLoopKit task state when known:
+  `active task linked` or `no active task linked`.
+- AgentLoopKit task-link diagnostics now use generic link-check wording instead
+  of stale automatic task-creation wording.
+
+Verification:
+
+- `npm test -- tests/commands/workflow.test.ts tests/renderers/markdown-report.test.ts`
+  passed: 2 files / 10 tests.
+
 ### Local Handoff Research And Worktree Cleanup
 
 Research synthesis:

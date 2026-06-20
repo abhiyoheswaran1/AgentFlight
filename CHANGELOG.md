@@ -16,6 +16,8 @@ All notable AgentFlight changes are documented here.
 
 - `agentflight start` now treats AgentLoopKit's `Active task: none pinned.`
   status as no active task instead of falsely reporting task reuse.
+- AgentLoopKit task-link diagnostics now use generic link-check wording instead
+  of stale automatic task-creation copy.
 
 ### Changed
 
@@ -38,6 +40,8 @@ All notable AgentFlight changes are documented here.
   directly instead of parsing `agentloopkit status` output.
 - `agentflight start` now links existing AgentLoopKit task state without
   creating new AgentLoopKit task contracts automatically.
+- Start output and Markdown tooling rows now show whether AgentLoopKit has an
+  active task linked when that local state is known.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
 

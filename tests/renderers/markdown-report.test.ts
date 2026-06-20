@@ -167,6 +167,30 @@ describe("markdown proof report", () => {
     expect(markdown).not.toContain("Template manifest");
   });
 
+  it("shows whether AgentLoopKit has an active task linked", () => {
+    const markdown = renderMarkdownReport({
+      task: "Review linked task state",
+      sessionId: "af-tooling-linked",
+      startedAt: "2026-06-17T12:00:00.000Z",
+      changedFiles: ["src/commands/start.ts"],
+      risk: {
+        level: "medium",
+        changedFiles: 1,
+        categories: [{ category: "source", files: ["src/commands/start.ts"] }],
+        reasons: ["Source files changed."]
+      },
+      verificationCommands: [],
+      verificationEvidence: [],
+      timelineEvents: [],
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, version: "0.35.2", taskLinked: false, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("- AgentLoopKit: available 0.35.2 (no active task linked)");
+  });
+
   it("renders a compact report without timeline or tooling sections", () => {
     const markdown = renderMarkdownReport(
       {

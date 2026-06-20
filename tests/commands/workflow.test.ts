@@ -59,6 +59,7 @@ describe("AgentFlight command workflow", () => {
     });
     expect(start.output).toContain("AgentFlight started");
     expect(start.output).toContain("ProjScan: available");
+    expect(start.output).toContain("AgentLoopKit: available 0.28.7 (active task linked)");
 
     const status = await runStatusCommand({
       repoRoot,
@@ -164,7 +165,7 @@ describe("AgentFlight command workflow", () => {
           available: true,
           version: "0.28.7",
           taskLinked: false,
-          warnings: ["AgentLoopKit task creation failed: detailed create-task output"]
+          warnings: ["AgentLoopKit task link check failed: detailed status output"]
         }
       }
     });
@@ -173,10 +174,11 @@ describe("AgentFlight command workflow", () => {
       "ProjScan: available 4.3.1 (ProjScan baseline skipped; run projscan start for details.)"
     );
     expect(start.output).toContain(
-      "AgentLoopKit: available 0.28.7 (AgentLoopKit task creation failed; run agentloopkit status for details.)"
+      "AgentLoopKit: available 0.28.7 (no active task linked; AgentLoopKit task link check needs attention; run agentloopkit status for details.)"
     );
     expect(start.output).not.toContain("very long diagnostic");
-    expect(start.output).not.toContain("detailed create-task output");
+    expect(start.output).not.toContain("detailed status output");
+    expect(start.output).not.toContain("task creation failed");
   });
 
   it("inspects start tooling without the heavy ProjScan baseline", async () => {

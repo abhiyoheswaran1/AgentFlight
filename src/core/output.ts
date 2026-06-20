@@ -38,9 +38,19 @@ export function compactCommandInText(text: string, command: string | undefined):
 export function formatToolForReport(label: string, result: ToolAdapterResult): string {
   const status = result.available ? "available" : "unavailable";
   const version = result.version ? ` ${result.version}` : "";
+  const stateDetails = summarizeToolState(label, result);
   const warnings = result.warnings.map((warning) => summarizeToolWarning(label, warning));
-  const warningText = warnings.length ? ` (${warnings.join("; ")})` : "";
-  return `${status}${version}${warningText}`;
+  const details = [...stateDetails, ...warnings];
+  const detailText = details.length ? ` (${details.join("; ")})` : "";
+  return `${status}${version}${detailText}`;
+}
+
+function summarizeToolState(label: string, result: ToolAdapterResult): string[] {
+  if (label !== "AgentLoopKit" || !result.available || result.taskLinked === undefined) {
+    return [];
+  }
+
+  return [result.taskLinked ? "active task linked" : "no active task linked"];
 }
 
 function summarizeToolWarning(label: string, warning: string): string {
@@ -60,8 +70,11 @@ function summarizeToolWarning(label: string, warning: string): string {
     if (warning.startsWith("AgentLoopKit unavailable:")) {
       return "AgentLoopKit unavailable; run npx agentloopkit@latest doctor for details.";
     }
-    if (warning.startsWith("AgentLoopKit task creation failed:")) {
-      return "AgentLoopKit task creation failed; run agentloopkit status for details.";
+    if (
+      warning.startsWith("AgentLoopKit task creation failed:") ||
+      warning.startsWith("AgentLoopKit task link check failed:")
+    ) {
+      return "AgentLoopKit task link check needs attention; run agentloopkit status for details.";
     }
   }
 
