@@ -2,7 +2,7 @@
 
 - Created date: 2026-06-17
 - Task type: release
-- Status: in-progress
+- Status: done
 
 ## Problem Statement
 AgentFlight v0.5.1 patch candidate is implemented locally and needs audit sign-off, version bump, verification, commit, push, tag, and post-release validation.

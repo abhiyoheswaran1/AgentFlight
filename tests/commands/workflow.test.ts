@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { runDoctorCommand } from "../../src/commands/doctor.js";
+import { runHandoffCommand } from "../../src/commands/handoff.js";
 import { runInitCommand } from "../../src/commands/init.js";
 import { runReplayCommand } from "../../src/commands/replay.js";
 import { runReportCommand } from "../../src/commands/report.js";
@@ -91,6 +92,19 @@ describe("AgentFlight command workflow", () => {
     await expect(
       readFile(join(repoRoot, ".agentflight", "current", "resume-prompt.md"), "utf8")
     ).resolves.toContain("Do not start unrelated work.");
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["src/auth/reset.ts"]
+    });
+    expect(handoff.output).toContain("AgentFlight handoff");
+    expect(handoff.output).toContain("Artifacts:");
+    expect(handoff.output).toContain(
+      "Local only: no upload, no telemetry, no automatic PR comment."
+    );
+    await expect(
+      readFile(join(repoRoot, ".agentflight", "current", "handoff.md"), "utf8")
+    ).resolves.toContain("AgentFlight handoff");
 
     const doctor = await runDoctorCommand({
       repoRoot,

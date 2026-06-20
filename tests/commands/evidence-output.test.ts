@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
 import { startSession } from "../../src/core/session.js";
+import { runHandoffCommand } from "../../src/commands/handoff.js";
 import { runReplayCommand } from "../../src/commands/replay.js";
 import { runReportCommand } from "../../src/commands/report.js";
 import { runResumeCommand } from "../../src/commands/resume.js";
@@ -333,6 +334,74 @@ describe("evidence-aware session outputs", () => {
     expect(resume.output).toContain("Review Focus");
     expect(resume.output).toContain("Use the generated report or replay");
     expect(resume.output).not.toContain("Generate a report and");
+  });
+
+  it("generates a local review handoff when proof is complete", async () => {
+    const command = `${process.execPath} -e "console.log('proof ok')"`;
+    const repoRoot = await startedRepo([command]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('proof ok')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(handoff.exitCode).toBe(0);
+    expect(handoff.reportPath).toContain("-proof.md");
+    expect(handoff.replayPath).toContain("-replay.html");
+    expect(handoff.resumePath).toContain(".agentflight/current/resume-prompt.md");
+    expect(handoff.output).toContain("AgentFlight handoff");
+    expect(handoff.output).toContain("Readiness: Ready for review");
+    expect(handoff.output).toContain("Open first: replay");
+    expect(handoff.output).toContain("Review first:");
+    expect(handoff.output).toContain("docs/development/verification.md");
+    expect(handoff.output).toContain("Artifacts:");
+    expect(handoff.output).toContain("Report:");
+    expect(handoff.output).toContain("Replay:");
+    expect(handoff.output).toContain("Resume:");
+    expect(handoff.output).toContain(
+      "Local only: no upload, no telemetry, no automatic PR comment."
+    );
+  });
+
+  it("shows stderr-preferred failure excerpts in blocked local handoffs", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    const scriptPath = join(repoRoot, "failing-handoff.js");
+    await writeFile(
+      scriptPath,
+      "console.log('stdout noise for handoff'); console.error('stderr handoff failure excerpt'); process.exit(1);"
+    );
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, scriptPath],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["src/api/users.ts"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const [run] = session.verificationRuns;
+    const stdoutEvidence = await readFile(join(repoRoot, run.stdoutPath), "utf8");
+    const stderrEvidence = await readFile(join(repoRoot, run.stderrPath), "utf8");
+
+    expect(handoff.exitCode).toBe(1);
+    expect(handoff.output).toContain("Readiness: Blocked by failed verification");
+    expect(handoff.output).toContain("Failed verification excerpt:");
+    expect(handoff.output).toContain("stderr handoff failure excerpt");
+    expect(handoff.output).not.toContain("stdout noise for handoff");
+    expect(handoff.output).toContain("Fix before sharing:");
+    expect(stdoutEvidence).toContain("stdout noise for handoff");
+    expect(stderrEvidence).toContain("stderr handoff failure excerpt");
   });
 
   it("includes verification gaps and the exact next command in resume prompts", async () => {

@@ -2,6 +2,13 @@
 
 All notable AgentFlight changes are documented here.
 
+## Unreleased
+
+### Added
+
+- Added `agentflight handoff`, a local-only review handoff command that generates the report, replay, and resume artifacts and summarizes readiness, proof gaps, review focus, and failed verification excerpts.
+- Added post-v0.6.0 user-research findings and a v0.6.0 website update prompt focused on the local handoff workflow.
+
 ## AgentFlight v0.6.0 - 2026-06-19
 
 Local review ergonomics and automation surfaces for heavier real-world dogfood.

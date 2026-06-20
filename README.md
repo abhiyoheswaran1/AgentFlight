@@ -20,6 +20,7 @@ AgentFlight helps you:
 - create snapshots during the session
 - generate a proof report
 - generate a local replay timeline
+- generate a local review handoff
 - create a resume prompt for the next agent or reviewer
 
 ![AgentFlight CLI workflow: start, verify, status, and replay](docs/assets/agentflight-terminal-demo.gif)
@@ -35,9 +36,7 @@ npx agentflight@latest start --task "Add password reset flow"
 npx agentflight@latest verify -- npm test
 npx agentflight@latest snapshot --note "Initial implementation verified"
 npx agentflight@latest status
-npx agentflight@latest report
-npx agentflight@latest replay
-npx agentflight@latest resume
+npx agentflight@latest handoff
 ```
 
 What you get:
@@ -50,6 +49,7 @@ What you get:
 - `report` writes a Markdown proof report for review.
 - `replay` writes a local HTML timeline you can open in a browser.
 - `resume` writes a Codex/Claude-ready prompt for the next safe step.
+- `handoff` generates the local review packet: readiness, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 
 ## Watch The Flow
 
@@ -59,7 +59,7 @@ AgentFlight turns a loose AI-agent session into a local proof trail:
 2. Capture real verification output with `agentflight verify`.
 3. Snapshot meaningful checkpoints.
 4. Read `status` to see changed files, risk, proof, gaps, and next action.
-5. Generate `report`, `replay`, and `resume` when the work is ready to review or hand off.
+5. Run `handoff` when the work is ready to review or when you need a clear fix-before-sharing summary.
 
 The replay artifact is a self-contained local HTML file. It leads with the review verdict, then lays out risk, review focus, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record:
 
@@ -186,6 +186,7 @@ The current AgentFlight release supports:
 - snapshots with `agentflight snapshot --note "..."`
 - Markdown proof reports
 - self-contained HTML replay timelines
+- local review handoffs that point to the report, replay, and resume artifacts
 - resume prompts for Codex, Claude Code, or a human reviewer
 - doctor checks for local setup
 - defensive ProjScan and AgentLoopKit adapters
@@ -252,6 +253,7 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 - `agentflight report --mode pr-comment` writes a local PR-comment draft without posting anywhere.
 - `agentflight replay` generates a local self-contained HTML replay with review focus and proof gaps.
 - `agentflight resume` prints and saves a continuation prompt with the next safest action.
+- `agentflight handoff` generates a local review handoff, report, replay, and resume prompt without posting anywhere. It exits non-zero when failed verification blocks review.
 - `agentflight doctor` checks local setup, scripts, tools, config, and current session state.
 
 Future placeholders exist for `upgrade`, `license`, and `login`; AgentFlight Pro/Team is not available yet.

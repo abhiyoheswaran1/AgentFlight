@@ -1,0 +1,310 @@
+import { writeTextFileSafe } from "../core/fs-safe.js";
+import { compactCommandInText } from "../core/output.js";
+import { resolveAgentFlightPaths } from "../core/paths.js";
+import { runReplayCommand } from "./replay.js";
+import { runReportCommand } from "./report.js";
+import { runResumeCommand } from "./resume.js";
+import { runStatusCommand } from "./status.js";
+
+export interface HandoffCommandOptions {
+  repoRoot: string;
+  changedFiles?: string[] | undefined;
+  now?: Date | undefined;
+}
+
+export interface HandoffCommandResult {
+  output: string;
+  exitCode: number;
+  handoffPath: string;
+  reportPath: string;
+  replayPath: string;
+  resumePath: string;
+}
+
+interface HandoffStatus {
+  taskTitle: string;
+  sessionId: string;
+  riskLevel: string;
+  changedFileCount: number;
+  verification: {
+    passed: number;
+    failed: number;
+    runs: HandoffVerificationRun[];
+  };
+  review: {
+    focus: HandoffFocusItem[];
+    proofGaps: HandoffProofGap[];
+    readiness: HandoffReadiness;
+  };
+  reason: string;
+  nextAction: string;
+}
+
+interface HandoffVerificationRun {
+  status: string;
+  outputExcerpt?: string;
+}
+
+interface HandoffFocusItem {
+  rank: number;
+  file: string;
+  reasons: string[];
+  suggestedReviewerFocus: string;
+}
+
+interface HandoffProofGap {
+  id: string;
+  severity: string;
+  message: string;
+  suggestedCommand?: string;
+}
+
+interface HandoffReadiness {
+  state: string;
+  label: string;
+  reason: string;
+  nextAction: string;
+  suggestedCommand?: string;
+}
+
+export async function runHandoffCommand(
+  options: HandoffCommandOptions
+): Promise<HandoffCommandResult> {
+  const status = await readHandoffStatus(options);
+  const report = await runReportCommand({
+    repoRoot: options.repoRoot,
+    changedFiles: options.changedFiles,
+    now: options.now
+  });
+  const replay = await runReplayCommand({
+    repoRoot: options.repoRoot,
+    changedFiles: options.changedFiles,
+    now: options.now
+  });
+  const resume = await runResumeCommand({
+    repoRoot: options.repoRoot,
+    changedFiles: options.changedFiles,
+    now: options.now
+  });
+
+  const handoffPath = resolveAgentFlightPaths(options.repoRoot).currentHandoff;
+  const output = renderHandoff({
+    status,
+    handoffPath,
+    reportPath: report.reportPath,
+    replayPath: replay.replayPath,
+    resumePath: resume.resumePath
+  });
+  await writeTextFileSafe(handoffPath, output, { overwrite: true });
+
+  return {
+    output,
+    exitCode: status.review.readiness.state === "blocked_by_failed_verification" ? 1 : 0,
+    handoffPath,
+    reportPath: report.reportPath,
+    replayPath: replay.replayPath,
+    resumePath: resume.resumePath
+  };
+}
+
+async function readHandoffStatus(options: HandoffCommandOptions): Promise<HandoffStatus> {
+  const status = await runStatusCommand({
+    repoRoot: options.repoRoot,
+    changedFiles: options.changedFiles,
+    now: options.now,
+    format: "json"
+  });
+  return parseHandoffStatus(JSON.parse(status.output) as Record<string, unknown>);
+}
+
+function renderHandoff(input: {
+  status: HandoffStatus;
+  handoffPath: string;
+  reportPath: string;
+  replayPath: string;
+  resumePath: string;
+}): string {
+  const readiness = input.status.review.readiness;
+  const blocked = readiness.state === "blocked_by_failed_verification";
+
+  return `AgentFlight handoff
+
+Task:
+${input.status.taskTitle}
+
+Session:
+${input.status.sessionId}
+
+Changed files: ${input.status.changedFileCount}
+Risk: ${input.status.riskLevel}
+
+Readiness: ${readiness.label}
+Reason: ${formatReadinessReason(readiness, input.status.reason)}
+
+Verification:
+${input.status.verification.passed} passed, ${input.status.verification.failed} failed
+${formatFailedExcerpts(input.status.verification.runs)}
+
+Review first:
+${formatReviewFocus(input.status.review.focus.slice(0, 3))}
+
+Proof gaps:
+${formatProofGaps(input.status.review.proofGaps)}
+
+${blocked ? "Fix before sharing" : "Next action"}:
+${formatNextAction(readiness, input.status.nextAction)}
+
+Open first: ${blocked ? "report" : "replay"}
+
+Artifacts:
+- Handoff: ${input.handoffPath}
+- Report: ${input.reportPath}
+- Replay: ${input.replayPath}
+- Resume: ${input.resumePath}
+
+Local only: no upload, no telemetry, no automatic PR comment.
+`;
+}
+
+function formatReadinessReason(readiness: HandoffReadiness, fallback: string): string {
+  if (readiness.state === "blocked_by_failed_verification") {
+    return "A verification command failed and must be fixed or rerun successfully.";
+  }
+  return compactCommandInText(readiness.reason || fallback, readiness.suggestedCommand);
+}
+
+function formatNextAction(readiness: HandoffReadiness, fallback: string): string {
+  if (readiness.state === "blocked_by_failed_verification") {
+    return "Fix the failed command, rerun verification, then regenerate this handoff.";
+  }
+  return compactCommandInText(readiness.nextAction || fallback, readiness.suggestedCommand);
+}
+
+function formatFailedExcerpts(runs: HandoffVerificationRun[]): string {
+  const failedExcerpts = runs
+    .filter((run) => run.status === "failed" && run.outputExcerpt)
+    .map((run) => run.outputExcerpt!.trim())
+    .filter(Boolean);
+
+  if (failedExcerpts.length === 0) return "- No failed verification excerpts recorded.";
+
+  return failedExcerpts
+    .map(
+      (
+        excerpt,
+        index
+      ) => `Failed verification excerpt${failedExcerpts.length > 1 ? ` ${index + 1}` : ""}:
+${excerpt}`
+    )
+    .join("\n\n");
+}
+
+function formatReviewFocus(items: HandoffFocusItem[]): string {
+  if (items.length === 0) return "- No changed files to review.";
+  return items
+    .map(
+      (item) =>
+        `${item.rank}. ${item.file}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}`
+    )
+    .join("\n");
+}
+
+function formatProofGaps(gaps: HandoffProofGap[]): string {
+  if (gaps.length === 0) return "- none";
+  return gaps.map(formatProofGap).join("\n");
+}
+
+function formatProofGap(gap: HandoffProofGap): string {
+  if (gap.id === "failed-verification") {
+    return `- ${gap.severity}: A verification command failed and must be fixed or rerun successfully.`;
+  }
+
+  const message = compactCommandInText(gap.message, gap.suggestedCommand);
+  return `- ${gap.severity}: ${message}`;
+}
+
+function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
+  const task = readObject(payload.task);
+  const session = readObject(payload.session);
+  const risk = readObject(payload.risk);
+  const verification = readObject(payload.verification);
+  const review = readObject(payload.review);
+  const readiness = parseReadiness(readObject(review.readiness));
+
+  return {
+    taskTitle: readString(task.title, "Untitled task"),
+    sessionId: readString(session.id, "unknown"),
+    riskLevel: readString(risk.level, "unknown"),
+    changedFileCount: readNumber(payload.changedFileCount, 0),
+    verification: {
+      passed: readNumber(verification.passed, 0),
+      failed: readNumber(verification.failed, 0),
+      runs: readArray(verification.runs).map(parseVerificationRun)
+    },
+    review: {
+      focus: readArray(review.focus).map(parseFocusItem),
+      proofGaps: readArray(review.proofGaps).map(parseProofGap),
+      readiness
+    },
+    reason: readString(payload.reason, readiness.reason),
+    nextAction: readString(payload.nextAction, readiness.nextAction)
+  };
+}
+
+function parseReadiness(value: Record<string, unknown>): HandoffReadiness {
+  return {
+    state: readString(value.state, "unknown"),
+    label: readString(value.label, "Unknown"),
+    reason: readString(value.reason, "No readiness reason recorded."),
+    nextAction: readString(value.nextAction, "Review the generated AgentFlight artifacts."),
+    ...(typeof value.suggestedCommand === "string"
+      ? { suggestedCommand: value.suggestedCommand }
+      : {})
+  };
+}
+
+function parseVerificationRun(value: unknown): HandoffVerificationRun {
+  const run = readObject(value);
+  return {
+    status: readString(run.status, "unknown"),
+    ...(typeof run.outputExcerpt === "string" ? { outputExcerpt: run.outputExcerpt } : {})
+  };
+}
+
+function parseFocusItem(value: unknown): HandoffFocusItem {
+  const item = readObject(value);
+  return {
+    rank: readNumber(item.rank, 0),
+    file: readString(item.file, "unknown"),
+    reasons: readArray(item.reasons).map((reason) => readString(reason, "unknown")),
+    suggestedReviewerFocus: readString(item.suggestedReviewerFocus, "Inspect manually.")
+  };
+}
+
+function parseProofGap(value: unknown): HandoffProofGap {
+  const gap = readObject(value);
+  return {
+    id: readString(gap.id, "proof-gap"),
+    severity: readString(gap.severity, "info"),
+    message: readString(gap.message, "Proof gap recorded."),
+    ...(typeof gap.suggestedCommand === "string" ? { suggestedCommand: gap.suggestedCommand } : {})
+  };
+}
+
+function readObject(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function readString(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}

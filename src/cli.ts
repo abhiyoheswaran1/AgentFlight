@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { getRepositoryRoot } from "./core/git.js";
 import { runDoctorCommand } from "./commands/doctor.js";
+import { runHandoffCommand } from "./commands/handoff.js";
 import { runInitCommand } from "./commands/init.js";
 import { runReplayCommand } from "./commands/replay.js";
 import { runReportCommand } from "./commands/report.js";
@@ -110,6 +111,13 @@ export function createCli(): Command {
     .description("Generate a prompt to continue the current session safely.")
     .action(async () => {
       await printResult(runResumeCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
+    });
+
+  program
+    .command("handoff")
+    .description("Generate a local review handoff for the current session.")
+    .action(async () => {
+      await printResult(runHandoffCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
     });
 
   program

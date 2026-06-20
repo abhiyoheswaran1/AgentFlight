@@ -2,6 +2,46 @@
 
 This log records setup, dogfooding, and verification evidence for the AgentFlight MVP.
 
+## 2026-06-20
+
+### Local Handoff Research And Worktree Cleanup
+
+Research synthesis:
+
+- Persona review found that AgentFlight's next usefulness gap was not another
+  distribution surface. It was a single local end-of-session handoff loop.
+- First-time developers need one command that tells them what to do after
+  verification.
+- Reviewers need a clear "open this first" artifact pointer rather than a list
+  of unrelated outputs.
+- Security and release personas require the workflow to stay local-only, with no
+  hidden network calls, telemetry, cloud upload, or automatic PR posting.
+
+Implemented locally:
+
+- Added `agentflight handoff` as a local-only command that composes existing
+  status, report, replay, and resume behavior.
+- The handoff summary writes `.agentflight/current/handoff.md`, points to the
+  generated report/replay/resume artifacts, and shows readiness, changed-file
+  count, risk, review focus, proof gaps, and failed verification excerpts.
+- Blocked handoffs exit non-zero when failed verification blocks review.
+- Raw stdout/stderr evidence remains preserved.
+
+Verification:
+
+- `npm test -- tests/commands/evidence-output.test.ts tests/commands/workflow.test.ts`
+  passed: 2 files / 22 tests.
+- `npm run verify` passed: typecheck, lint, 19 test files / 123 tests, build.
+- `npm run format:check` passed.
+- Local built-CLI smoke passed for blocked handoff behavior.
+- `npx --yes projscan@latest doctor --format json` passed with score `100` and
+  grade `A`.
+- `npx --yes projscan@latest review --format json` reported no concrete
+  blockers: no cycles, risky functions, dependency changes, contract changes,
+  taint flows, or dataflow risks. The remaining ProjScan result was a manual
+  scale/risk caution caused by dirty local evidence and high-scoring touched
+  modules.
+
 ## 2026-06-19
 
 ### v0.6.0 Local Review Ergonomics Release Pass
