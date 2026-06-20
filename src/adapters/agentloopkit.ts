@@ -1,7 +1,7 @@
-import { join } from "node:path";
 import type { CommandRunner } from "../core/process.js";
 import { runCommand } from "../core/process.js";
 import type { ToolAdapterResult } from "../types/index.js";
+import { normalizeCliVersion, runToolWithFallback, summarizeToolFailure } from "./tool-runner.js";
 
 export interface InspectAgentLoopKitOptions {
   cwd?: string;
@@ -15,47 +15,47 @@ export async function inspectAgentLoopKit(
 ): Promise<ToolAdapterResult> {
   const run = options.run ?? runCommand;
   const command = options.command ?? "agentloopkit";
-  const version = await runWithFallback(
+  const version = await runToolWithFallback({
     run,
-    command,
-    "agentloopkit@latest",
-    ["--version"],
-    options.cwd
-  );
+    localCommand: command,
+    packageName: "agentloopkit@latest",
+    args: ["--version"],
+    cwd: options.cwd
+  });
 
   if (version.exitCode !== 0) {
     return {
       available: false,
-      warnings: [`AgentLoopKit unavailable: ${summarizeFailure(version)}`]
+      warnings: [`AgentLoopKit unavailable: ${summarizeToolFailure(version)}`]
     };
   }
 
   if (options.includeDoctor === false) {
     return {
       available: true,
-      version: normalizeVersion(version.stdout),
+      version: normalizeCliVersion(version.stdout),
       summary: "AgentLoopKit available for task discipline.",
       warnings: []
     };
   }
 
-  const doctor = await runWithFallback(
+  const doctor = await runToolWithFallback({
     run,
-    command,
-    "agentloopkit@latest",
-    ["doctor"],
-    options.cwd,
-    20_000
-  );
+    localCommand: command,
+    packageName: "agentloopkit@latest",
+    args: ["doctor"],
+    cwd: options.cwd,
+    timeoutMs: 20_000
+  });
   const result: ToolAdapterResult = {
     available: true,
-    version: normalizeVersion(version.stdout),
+    version: normalizeCliVersion(version.stdout),
     summary: doctor.stdout.trim() || "AgentLoopKit available for task discipline.",
     warnings: []
   };
 
   if (doctor.exitCode !== 0) {
-    result.warnings.push(`AgentLoopKit doctor reported issues: ${summarizeFailure(doctor)}`);
+    result.warnings.push(`AgentLoopKit doctor reported issues: ${summarizeToolFailure(doctor)}`);
   }
 
   return result;
@@ -69,11 +69,11 @@ export async function createAgentLoopTask(
   const activeTask = await findActiveAgentLoopTask(cwd, run);
   if (activeTask) return activeTask;
 
-  const result = await runWithFallback(
+  const result = await runToolWithFallback({
     run,
-    "agentloopkit",
-    "agentloopkit@latest",
-    [
+    localCommand: "agentloopkit",
+    packageName: "agentloopkit@latest",
+    args: [
       "create-task",
       "--title",
       title,
@@ -87,14 +87,14 @@ export async function createAgentLoopTask(
       "Keep changes scoped and do not claim completion without proof."
     ],
     cwd,
-    20_000
-  );
+    timeoutMs: 20_000
+  });
 
   if (result.exitCode !== 0) {
     return {
       available: false,
       taskLinked: false,
-      warnings: [`AgentLoopKit task creation failed: ${summarizeFailure(result)}`]
+      warnings: [`AgentLoopKit task creation failed: ${summarizeToolFailure(result)}`]
     };
   }
 
@@ -110,14 +110,14 @@ async function findActiveAgentLoopTask(
   cwd: string,
   run: CommandRunner
 ): Promise<ToolAdapterResult | null> {
-  const status = await runWithFallback(
+  const status = await runToolWithFallback({
     run,
-    "agentloopkit",
-    "agentloopkit@latest",
-    ["status", "--redact-paths"],
+    localCommand: "agentloopkit",
+    packageName: "agentloopkit@latest",
+    args: ["status", "--redact-paths"],
     cwd,
-    5_000
-  );
+    timeoutMs: 5_000
+  });
 
   if (status.exitCode !== 0) return null;
   const activeLine = status.stdout
@@ -133,48 +133,4 @@ async function findActiveAgentLoopTask(
     summary: `Using active AgentLoopKit task. ${activeLine.replace(/^- /, "")}`,
     warnings: []
   };
-}
-
-function summarizeFailure(result: { stdout: string; stderr: string }): string {
-  return (result.stderr || result.stdout || "no output").trim();
-}
-
-async function runWithFallback(
-  run: CommandRunner,
-  localCommand: string,
-  packageName: string,
-  args: string[],
-  cwd?: string,
-  timeoutMs = 10_000
-) {
-  const localFailures: Array<{ stdout: string; stderr: string }> = [];
-  for (const candidate of repoLocalCommandCandidates(localCommand, cwd)) {
-    const local = await run(candidate, args, { cwd, timeoutMs });
-    if (local.exitCode === 0) return local;
-    localFailures.push(local);
-  }
-
-  const fallback = await run("npx", ["--yes", packageName, ...args], { cwd, timeoutMs });
-  if (fallback.exitCode === 0) return fallback;
-
-  const pathCommand = await run(localCommand, args, { cwd, timeoutMs });
-  if (pathCommand.exitCode === 0) return pathCommand;
-
-  return {
-    exitCode: pathCommand.exitCode,
-    stdout: pathCommand.stdout,
-    stderr: `${localFailures.map(summarizeFailure).join("; ")}; npx fallback failed: ${summarizeFailure(fallback)}; PATH command failed: ${summarizeFailure(pathCommand)}`
-  };
-}
-
-function repoLocalCommandCandidates(command: string, cwd?: string): string[] {
-  if (!cwd || command.includes("/") || command.includes("\\")) return [];
-  const executable = process.platform === "win32" ? `${command}.cmd` : command;
-  return [join(cwd, "node_modules", ".bin", executable)];
-}
-
-function normalizeVersion(output: string): string {
-  const trimmed = output.trim();
-  const match = trimmed.match(/\bv?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\b/);
-  return match?.[1] ?? trimmed;
 }
