@@ -12,6 +12,11 @@ All notable AgentFlight changes are documented here.
   workspace hygiene, replay ergonomics, proof guidance, and explainable ranking
   as the priority order.
 
+### Fixed
+
+- `agentflight start` now treats AgentLoopKit's `Active task: none pinned.`
+  status as no active task instead of falsely reporting task reuse.
+
 ### Changed
 
 - Kept ready-review report, replay, resume, examples, and demo copy aligned with

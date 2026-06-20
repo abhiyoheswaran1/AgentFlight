@@ -125,7 +125,7 @@ async function findActiveAgentLoopTask(
     .map((line) => line.trim())
     .find((line) => line.includes("Active task:"));
 
-  if (!activeLine || activeLine.includes("none active")) return null;
+  if (!activeLine || isNoActiveAgentLoopTaskLine(activeLine)) return null;
 
   return {
     available: true,
@@ -133,4 +133,13 @@ async function findActiveAgentLoopTask(
     summary: `Using active AgentLoopKit task. ${activeLine.replace(/^- /, "")}`,
     warnings: []
   };
+}
+
+function isNoActiveAgentLoopTaskLine(activeLine: string): boolean {
+  const normalized = activeLine.toLowerCase();
+  return (
+    normalized.includes("none active") ||
+    normalized.includes("none pinned") ||
+    normalized.includes("no active task")
+  );
 }

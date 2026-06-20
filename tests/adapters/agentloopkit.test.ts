@@ -173,4 +173,30 @@ describe("AgentLoopKit adapter", () => {
     expect(calls.some((call) => call.includes("status"))).toBe(true);
     expect(calls.some((call) => call.includes("create-task"))).toBe(true);
   });
+
+  it("creates a task when AgentLoopKit reports no pinned active task", async () => {
+    const calls: string[] = [];
+    const run: CommandRunner = async (_command, args) => {
+      calls.push(args.join(" "));
+      if (args.includes("status")) {
+        return { exitCode: 0, stdout: "Active task: none pinned.\n", stderr: "" };
+      }
+      if (args.includes("create-task")) {
+        return {
+          exitCode: 0,
+          stdout: "Task contract created: `.agentloop/tasks/new.md`",
+          stderr: ""
+        };
+      }
+      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
+    };
+
+    await expect(createAgentLoopTask("/repo", "New task", run)).resolves.toMatchObject({
+      available: true,
+      taskLinked: true,
+      summary: expect.stringContaining("Task contract created")
+    });
+    expect(calls.some((call) => call.includes("status"))).toBe(true);
+    expect(calls.some((call) => call.includes("create-task"))).toBe(true);
+  });
 });
