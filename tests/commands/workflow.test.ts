@@ -133,4 +133,49 @@ describe("AgentFlight command workflow", () => {
       "No active AgentFlight session. Run agentflight start --task"
     );
   });
+
+  it("shows concise tool warnings during start", async () => {
+    const repoRoot = await createTempRepo();
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const start = await runStartCommand({
+      repoRoot,
+      task: "Inspect optional tooling",
+      now: new Date("2026-06-13T12:10:00.000Z"),
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: false,
+        changedFiles: []
+      },
+      packageManager: "npm",
+      tools: {
+        projscan: {
+          available: true,
+          version: "4.3.1",
+          warnings: [
+            "ProjScan baseline skipped: timed out while collecting a very long diagnostic that should stay out of the terminal"
+          ]
+        },
+        agentloopkit: {
+          available: true,
+          version: "0.28.7",
+          taskLinked: false,
+          warnings: ["AgentLoopKit task creation failed: detailed create-task output"]
+        }
+      }
+    });
+
+    expect(start.output).toContain(
+      "ProjScan: available 4.3.1 (ProjScan baseline skipped; run projscan start for details.)"
+    );
+    expect(start.output).toContain(
+      "AgentLoopKit: available 0.28.7 (AgentLoopKit task creation failed; run agentloopkit status for details.)"
+    );
+    expect(start.output).not.toContain("very long diagnostic");
+    expect(start.output).not.toContain("detailed create-task output");
+  });
 });

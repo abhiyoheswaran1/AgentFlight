@@ -23,6 +23,8 @@ All notable AgentFlight changes are documented here.
   busy local ProjScan work cannot stall session startup for too long.
 - `agentflight start` now reuses an active AgentLoopKit task instead of creating
   a duplicate AgentFlight placeholder task.
+- `agentflight start` now shows concise ProjScan and AgentLoopKit warning
+  summaries when optional tooling is available but degraded.
 
 ## AgentFlight v0.6.0 - 2026-06-19
 

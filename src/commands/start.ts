@@ -3,7 +3,7 @@ import { inspectProjScan, runProjScanBaseline } from "../adapters/projscan.js";
 import { initAgentFlight } from "../core/config.js";
 import { pathExists } from "../core/fs-safe.js";
 import { getGitInfo } from "../core/git.js";
-import { formatToolAvailability } from "../core/output.js";
+import { formatToolForReport } from "../core/output.js";
 import { detectPackageManager, readPackageJson } from "../core/project.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { startSession } from "../core/session.js";
@@ -69,8 +69,8 @@ ${result.session.id}
 Detected:
 Git branch: ${git.branch ?? "unknown"}
 Package manager: ${packageManager ?? "unknown"}
-${formatToolAvailability("ProjScan", tools.projscan.available)}
-${formatToolAvailability("AgentLoopKit", tools.agentloopkit.available)}
+ProjScan: ${formatToolForReport("ProjScan", tools.projscan)}
+AgentLoopKit: ${formatToolForReport("AgentLoopKit", tools.agentloopkit)}
 
 Suggested proof:
 ${verificationCommands.length ? verificationCommands.join("\n") : "No proof commands detected yet."}

@@ -44,6 +44,15 @@ export function formatToolForReport(label: string, result: ToolAdapterResult): s
 }
 
 function summarizeToolWarning(label: string, warning: string): string {
+  if (label === "ProjScan") {
+    if (warning.startsWith("ProjScan baseline skipped:")) {
+      return "ProjScan baseline skipped; run projscan start for details.";
+    }
+    if (warning.startsWith("ProjScan unavailable:")) {
+      return "ProjScan unavailable; run npx projscan@latest doctor for details.";
+    }
+  }
+
   if (label === "AgentLoopKit") {
     if (warning.startsWith("AgentLoopKit doctor reported issues:")) {
       return "AgentLoopKit doctor reported issues; run agentloopkit doctor for details.";
