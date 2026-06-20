@@ -87,6 +87,17 @@ describe("evidence-aware session outputs", () => {
     ).rejects.toThrow("Unsupported status format");
   });
 
+  it("fails honestly when changed-file detection is unavailable", async () => {
+    const repoRoot = await startedRepo([]);
+
+    await expect(runStatusCommand({ repoRoot })).rejects.toThrow(
+      "Unable to inspect changed files with git status"
+    );
+
+    const status = await runStatusCommand({ repoRoot, changedFiles: [] });
+    expect(status.output).toContain("Changed files:\n0");
+  });
+
   it("shows the latest snapshot in status", async () => {
     const repoRoot = await startedRepo([]);
     await runSnapshotCommand({

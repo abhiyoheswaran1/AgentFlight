@@ -53,6 +53,19 @@ describe("git status parsing", () => {
     ]);
   });
 
+  it("throws an actionable error when git status cannot list changed files", async () => {
+    const run: CommandRunner = async () => ({
+      exitCode: 128,
+      stdout: "",
+      stderr: "fatal: not a git repository"
+    });
+
+    await expect(listChangedFiles("/repo", run)).rejects.toThrow(
+      "Unable to inspect changed files with git status"
+    );
+    await expect(listChangedFiles("/repo", run)).rejects.toThrow("fatal: not a git repository");
+  });
+
   it("treats a repo with only AgentFlight runtime artifacts as clean for session analysis", async () => {
     const run: CommandRunner = async (command, args) => {
       if (args.includes("branch")) {

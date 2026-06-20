@@ -3,6 +3,8 @@ import type { CommandRunner } from "../core/process.js";
 import { runCommand } from "../core/process.js";
 import type { ToolAdapterResult } from "../types/index.js";
 
+const PROJSCAN_BASELINE_TIMEOUT_MS = 1_500;
+
 export interface InspectProjScanOptions {
   cwd?: string;
   run?: CommandRunner;
@@ -54,13 +56,13 @@ export async function runProjScanBaseline(
     "projscan@latest",
     ["start", "--intent", "Build AgentFlight, a local-first review layer for AI coding sessions"],
     cwd,
-    20_000
+    PROJSCAN_BASELINE_TIMEOUT_MS
   );
 
   if (result.exitCode !== 0) {
     return {
-      available: false,
-      warnings: [`ProjScan baseline failed: ${summarizeFailure(result)}`]
+      available: true,
+      warnings: [`ProjScan baseline skipped: ${summarizeFailure(result)}`]
     };
   }
 

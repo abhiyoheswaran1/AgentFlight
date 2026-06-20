@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inspectProjScan } from "../../src/adapters/projscan.js";
+import { inspectProjScan, runProjScanBaseline } from "../../src/adapters/projscan.js";
 import type { CommandRunner } from "../../src/core/process.js";
 
 describe("ProjScan adapter", () => {
@@ -108,5 +108,19 @@ describe("ProjScan adapter", () => {
       version: "4.3.1",
       summary: expect.stringContaining("ProjScan available")
     });
+  });
+
+  it("keeps the optional start baseline on a short timeout budget", async () => {
+    let observedTimeout: number | undefined;
+    const run: CommandRunner = async (_command, _args, options) => {
+      observedTimeout = options?.timeoutMs;
+      return { exitCode: 1, stdout: "", stderr: "timed out" };
+    };
+
+    await expect(runProjScanBaseline("/repo", run)).resolves.toMatchObject({
+      available: true,
+      warnings: [expect.stringContaining("timed out")]
+    });
+    expect(observedTimeout).toBeLessThanOrEqual(1_500);
   });
 });

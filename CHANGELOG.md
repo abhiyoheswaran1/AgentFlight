@@ -17,6 +17,10 @@ All notable AgentFlight changes are documented here.
 - Kept ready-review report, replay, resume, examples, and demo copy aligned with
   the `agentflight handoff` golden path while keeping report/replay/resume as
   supporting local artifacts.
+- Changed-file review surfaces now fail with an actionable git-status error
+  instead of treating git-status failures as an empty diff.
+- Shortened the optional ProjScan baseline budget during `agentflight start` so
+  busy local ProjScan work cannot stall session startup for too long.
 
 ## AgentFlight v0.6.0 - 2026-06-19
 

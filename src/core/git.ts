@@ -40,7 +40,12 @@ export async function listChangedFiles(
     cwd: repoRoot,
     timeoutMs: 10_000
   });
-  return result.exitCode === 0 ? filterBuiltInRuntimePaths(parseGitStatusFiles(result.stdout)) : [];
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `Unable to inspect changed files with git status: ${formatGitStatusFailure(result)}`
+    );
+  }
+  return filterBuiltInRuntimePaths(parseGitStatusFiles(result.stdout));
 }
 
 export function parseGitStatusFiles(output: string): string[] {
@@ -54,4 +59,8 @@ export function parseGitStatusFiles(output: string): string[] {
       return pathPart;
     })
     .filter(Boolean);
+}
+
+function formatGitStatusFailure(result: { stdout: string; stderr: string }): string {
+  return (result.stderr || result.stdout || "git status exited without output").trim();
 }
