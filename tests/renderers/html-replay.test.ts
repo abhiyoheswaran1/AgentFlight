@@ -329,4 +329,64 @@ describe("HTML replay", () => {
     expect(html).toContain("First failed run");
     expect(html).toContain("Jump to first failed run");
   });
+
+  it("keeps resolved historical failed runs in the ledger without urgent navigation", () => {
+    const html = renderHtmlReplay({
+      task: "Resolved failure navigation",
+      sessionId: "af-resolved-failed-nav",
+      startedAt: "2026-06-21T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/core/verification.ts"],
+      riskBadges: ["medium"],
+      verificationEvidence: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-21T12:01:00.000Z",
+          finishedAt: "2026-06-21T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-resolved-failed-nav/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-resolved-failed-nav/verification-1.stderr.txt",
+          outputExcerpt: "historical failure excerpt"
+        },
+        {
+          command: "npm test",
+          startedAt: "2026-06-21T12:02:00.000Z",
+          finishedAt: "2026-06-21T12:02:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath: ".agentflight/evidence/af-resolved-failed-nav/verification-2.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-resolved-failed-nav/verification-2.stderr.txt"
+        }
+      ],
+      verificationSummary: {
+        passed: 1,
+        failed: 1,
+        unresolvedFailed: 0,
+        resolvedFailed: 1
+      },
+      reviewReadiness: "Ready for review",
+      review: {
+        focus: [],
+        proofGaps: [],
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Verification evidence matches the observed review risk.",
+          nextAction: "Run agentflight handoff to generate the local review packet.",
+          proofGaps: []
+        }
+      },
+      recommendation: "Ready for review."
+    });
+
+    expect(html).toContain("1 passed / 0 unresolved failed / 1 historical failed");
+    expect(html).toContain('<div class="entry entry--failed" id="verification-run-1">');
+    expect(html).toContain("historical failure excerpt");
+    expect(html).not.toContain('class="nav-urgent"');
+    expect(html).not.toContain("First failed run");
+    expect(html).not.toContain("Jump to first failed run");
+  });
 });

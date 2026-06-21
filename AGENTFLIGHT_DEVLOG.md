@@ -4,6 +4,60 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Replay Resolved Failure Tone
+
+Research signal:
+
+- After unresolved/resolved verification counts landed, HTML replay still showed
+  urgent failed-run navigation whenever any historical failed run existed. That
+  kept the evidence discoverable, but made ready sessions feel more blocked than
+  the Review Intelligence verdict indicated.
+
+Persona readout:
+
+- Product Maintainer: historical failures should stay visible as trust-building
+  evidence, not as current blockers.
+- CLI Engineer: use the already-computed verification summary; do not mutate or
+  rewrite stored verification evidence.
+- Verification Engineer: keep unresolved-failure replay behavior unchanged.
+- Docs and DX Writer: keep the label burden low; the summary already says
+  unresolved versus historical.
+
+Implemented locally:
+
+- HTML replay now shows urgent failed-run jump links only when the verification
+  summary reports unresolved failed runs.
+- Historical failed verification runs remain anchored and visible in the replay
+  ledger with their stored excerpts.
+
+Verification so far:
+
+- Red replay regression failed because resolved historical failures still
+  emitted urgent failed-run navigation.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/renderers/html-replay.test.ts` passed: 1 file / 7 tests.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/renderers/html-replay.test.ts tests/commands/evidence-output.test.ts`
+  passed: 2 files / 34 tests.
+- Built CLI smoke: `agentflight replay` on this dogfood session showed
+  `3 passed / 0 unresolved failed / 1 historical failed`, kept the failed
+  ledger entry, and emitted no actual urgent failed-run anchor.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 165 tests, plus build.
+- `npm run format:check` passed after a narrow Prettier write on
+  `src/renderers/html-replay.ts`.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 119 changed files, maximum
+  changed-file risk score `199.1`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-02-38-verification-report.md`.
+
 ### Unresolved Verification Failure Clarity
 
 Research signal:

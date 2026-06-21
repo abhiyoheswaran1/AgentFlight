@@ -39,6 +39,9 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
   const firstFailedRunIndex = input.verificationEvidence.findIndex(
     (item) => item.status === "failed"
   );
+  const urgentFailedRunIndex = shouldShowUrgentFailedRunShortcut(input, firstFailedRunIndex)
+    ? firstFailedRunIndex
+    : -1;
   const recommendation = compactCommandInText(
     input.recommendation,
     input.review?.readiness.suggestedCommand
@@ -425,9 +428,9 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
     ${renderSummary(input)}
 
-    ${renderJumpNav(input, firstFailedRunIndex)}
+    ${renderJumpNav(input, urgentFailedRunIndex)}
 
-    ${renderReview(input.review, firstFailedRunIndex)}
+    ${renderReview(input.review, urgentFailedRunIndex)}
 
     <section class="section" id="timeline">
       <div class="section-head"><h2 class="label">Timeline</h2><span class="count">${escapeHtml(String(input.timeline.length))} events</span></div>
@@ -462,6 +465,15 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 </body>
 </html>
 `;
+}
+
+function shouldShowUrgentFailedRunShortcut(
+  input: HtmlReplayInput,
+  firstFailedRunIndex: number
+): boolean {
+  if (firstFailedRunIndex < 0) return false;
+  if (!input.verificationSummary) return true;
+  return input.verificationSummary.unresolvedFailed > 0;
 }
 
 function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): string {
