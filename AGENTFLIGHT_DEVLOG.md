@@ -4,6 +4,40 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Public Positioning Reference Cleanup
+
+Product note:
+
+- After the current positioning copy was updated, older public docs and
+  changelog entries still used stale assistant-style phrasing. Those files can
+  still be read from the repo or package context, so they should follow the same
+  `coding agent sessions` language.
+
+Implemented locally:
+
+- Cleaned remaining public references in CHANGELOG, dogfooding docs, v0.4
+  roadmap planning docs, and v0.3 launch-note draft copy.
+- Left devlog transcripts and archived task contracts unchanged because they
+  are historical evidence, not current product positioning.
+
+Verification:
+
+- Targeted public-doc scan passed with no matches for `AI coding`, `AI-agent`,
+  or `coding assistant` in README, CHANGELOG, PRODUCT.md, package metadata,
+  docs/development, docs/roadmap, docs/marketing, docs/assets, src, or tests.
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm run verify` passed with 21 files / 198 tests plus
+  build.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  258 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-10-55-verification-report.md`.
+
 ### Coding Agent Positioning Copy
 
 Product note:

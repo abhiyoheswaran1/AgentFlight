@@ -12,7 +12,7 @@ Commands discovered and used:
 npx projscan@latest --help
 npx projscan@latest --version
 npx projscan@latest init
-npx projscan@latest start --intent "Build AgentFlight, a local-first flight recorder for AI coding agents"
+npx projscan@latest start --intent "Build AgentFlight, a local-first review layer for coding agent sessions"
 npx projscan@latest coordinate --format json
 npx projscan@latest preflight --mode before_edit --format json
 npx projscan@latest privacy-check --offline

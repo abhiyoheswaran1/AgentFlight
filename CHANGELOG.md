@@ -115,7 +115,7 @@ All notable AgentFlight changes are documented here.
 ### Changed
 
 - Current product copy now uses `coding agent sessions` and agentic engineering
-  language instead of `AI coding` positioning.
+  language instead of assistant-style positioning.
 - Idempotent `agentflight init` now shows a concrete detected proof command
   when existing config verification commands are empty.
 - First-run `agentflight init` now points seeded configs at no-arg
@@ -212,7 +212,7 @@ Local review ergonomics and automation surfaces for heavier real-world dogfood.
   report, replay, and resume now point users toward `agentflight handoff`, while
   the handoff artifact itself tells users to share the generated local packet.
 
-- AgentFlight now describes itself as a local-first review layer for AI coding sessions across package metadata, README, and product docs.
+- AgentFlight now describes itself as a local-first review layer for coding agent sessions across package metadata, README, and product docs.
 - Long suggested proof commands stay compact in high-density review surfaces while preserving the full suggested action where useful.
 - Local AgentLoopKit evidence paths are filtered from AgentFlight changed-file review surfaces:
   - `.agentloop/state.json`
@@ -344,7 +344,7 @@ Review Intelligence trust patch focused on v0.4.0 dogfood findings.
 
 ### Added
 
-- Added deterministic Review Intelligence for AI coding sessions.
+- Added deterministic Review Intelligence for coding agent sessions.
 - Added review focus ranking to highlight the files developers should inspect first.
 - Added proof gap detection for missing or failed verification evidence.
 - Added clearer readiness states and next-best-action guidance.
