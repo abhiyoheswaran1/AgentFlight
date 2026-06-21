@@ -135,6 +135,7 @@ describe("AgentFlight command workflow", () => {
     });
     expect(doctor.output).toContain("AgentFlight Doctor");
     expect(doctor.output).toContain("OK");
+    expect(doctor.output).not.toContain(repoRoot);
   });
 
   it("lists skipped files on repeated init", async () => {

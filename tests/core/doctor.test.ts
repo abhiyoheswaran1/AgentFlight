@@ -59,6 +59,63 @@ describe("doctor checks", () => {
     );
   });
 
+  it("uses path-safe wording when repository root is detected", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      repoRoot: "/Users/alice/local/private-app",
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: true,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      scripts: { test: true, build: true, typecheck: true, lint: true }
+    });
+
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "repository root",
+        status: "ok",
+        message: "Repository root detected."
+      })
+    );
+    expect(result.checks).not.toContainEqual(
+      expect.objectContaining({
+        name: "repository root",
+        message: "/Users/alice/local/private-app"
+      })
+    );
+  });
+
+  it("keeps missing repository root errors actionable", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: false,
+      packageManager: "npm",
+      repoRoot: null,
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: true,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      scripts: { test: true, build: true, typecheck: true, lint: true }
+    });
+
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "repository root",
+        status: "error",
+        message: "Unable to determine repository root.",
+        suggestedFix: "Run AgentFlight from inside a git repository or project directory."
+      })
+    );
+  });
+
   it("warns when generated ProjScan memory is present but not filtered", () => {
     const result = evaluateDoctorChecks({
       nodeVersion: "v20.11.0",

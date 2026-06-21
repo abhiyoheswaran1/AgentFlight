@@ -74,6 +74,8 @@ All notable AgentFlight changes are documented here.
   through `changedFileFilters.ignore`.
 - `agentflight history` now labels stored review metadata as
   `Recorded readiness:` so it is not confused with live worktree readiness.
+- `agentflight doctor` no longer prints the absolute repository root in the
+  successful repository-root check.
 
 ### Changed
 

@@ -4,6 +4,54 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Doctor Path-Safe Repository Root Output
+
+Dogfood finding:
+
+- `agentflight doctor` printed the absolute local repository root. That is
+  useful for local debugging but too easy to paste into a handoff, issue, or
+  support thread with a username or private folder structure.
+
+Persona readout:
+
+- Security Reviewer: successful doctor output should avoid local path leakage
+  when the path is not required to act.
+- Docs and DX Writer: the useful success signal is "repo root detected"; the
+  absolute path is extra noise.
+- CLI Engineer: preserve repository-root detection and the missing-root error;
+  change only the successful check text.
+
+Implemented locally:
+
+- The successful `repository root` doctor check now prints
+  `Repository root detected.`.
+- The missing-root error still says AgentFlight could not determine a
+  repository root and tells users to run inside a git repository or project
+  directory.
+
+Verification:
+
+- Red focused test failed because doctor still returned the absolute root path.
+- AgentFlight-captured focused verification now passes:
+  `npm test -- tests/core/doctor.test.ts tests/commands/workflow.test.ts`
+  passed: 2 files / 13 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 182 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: maximum changed-file risk score `207.9`, no
+  risky functions, no dependency changes, no contract changes, and no dataflow
+  risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-05-29-verification-report.md`.
+- Built CLI doctor smoke passed: the output contained
+  `Repository root detected.` and did not contain the local repo root path.
+
 ### AgentFlight Repo ProjScan Memory Filter
 
 Dogfood finding:

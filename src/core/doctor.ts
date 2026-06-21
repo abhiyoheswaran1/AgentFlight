@@ -54,7 +54,7 @@ export function evaluateDoctorChecks(input: DoctorEvaluationInput): DoctorResult
 
   checks.push(
     input.repoRoot
-      ? ok("repository root", input.repoRoot)
+      ? ok("repository root", "Repository root detected.")
       : error(
           "repository root",
           "Unable to determine repository root.",
