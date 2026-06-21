@@ -12,6 +12,8 @@ export interface DoctorEvaluationInput {
   currentSessionExists: boolean;
   projscanAvailable: boolean;
   agentloopkitAvailable: boolean;
+  projscanMemoryPresent?: boolean | undefined;
+  projscanMemoryIgnored?: boolean | undefined;
   scripts: {
     test: boolean;
     build: boolean;
@@ -129,6 +131,21 @@ export function evaluateDoctorChecks(input: DoctorEvaluationInput): DoctorResult
           "Install agentloopkit locally or allow AgentFlight to use npx agentloopkit@latest."
         )
   );
+
+  if (input.projscanMemoryPresent) {
+    checks.push(
+      input.projscanMemoryIgnored
+        ? ok(
+            "generated tool state",
+            ".projscan-memory/memory.json is filtered by changedFileFilters.ignore."
+          )
+        : warning(
+            "generated tool state",
+            ".projscan-memory/memory.json is present and remains reviewable.",
+            'If ProjScan memory is generated evidence in this repo, add ".projscan-memory/**" to changedFileFilters.ignore in .agentflight/config.json.'
+          )
+    );
+  }
 
   for (const script of ["test", "build", "typecheck", "lint"] as const) {
     checks.push(

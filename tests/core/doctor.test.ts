@@ -58,4 +58,62 @@ describe("doctor checks", () => {
       })
     );
   });
+
+  it("warns when generated ProjScan memory is present but not filtered", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      repoRoot: "/repo",
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: true,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      projscanMemoryPresent: true,
+      projscanMemoryIgnored: false,
+      scripts: { test: true, build: true, typecheck: true, lint: true }
+    });
+
+    expect(result.status).toBe("warning");
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "generated tool state",
+        status: "warning",
+        message: ".projscan-memory/memory.json is present and remains reviewable.",
+        suggestedFix:
+          'If ProjScan memory is generated evidence in this repo, add ".projscan-memory/**" to changedFileFilters.ignore in .agentflight/config.json.'
+      })
+    );
+  });
+
+  it("reports OK when generated ProjScan memory is already filtered", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      repoRoot: "/repo",
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: true,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      projscanMemoryPresent: true,
+      projscanMemoryIgnored: true,
+      scripts: { test: true, build: true, typecheck: true, lint: true }
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "generated tool state",
+        status: "ok",
+        message: ".projscan-memory/memory.json is filtered by changedFileFilters.ignore."
+      })
+    );
+  });
 });

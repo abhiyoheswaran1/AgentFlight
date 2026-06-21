@@ -79,6 +79,12 @@ visible. Treat the suggestion as a local repo-policy decision: add the filter
 only when ProjScan memory is generated evidence rather than a file reviewers
 should inspect.
 
+`agentflight doctor` uses the same policy. If `.projscan-memory/memory.json`
+exists locally and is not filtered, doctor warns that the file remains
+reviewable and suggests adding `.projscan-memory/**` when that matches repo
+policy. If the filter is already configured, doctor reports the generated tool
+state as OK.
+
 ## Supported Pattern Shape
 
 The MVP filter supports:

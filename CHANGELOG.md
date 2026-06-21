@@ -69,6 +69,9 @@ All notable AgentFlight changes are documented here.
   while verification is still in progress.
 - `agentflight init` now lists created and skipped files by repo-relative path
   instead of only showing counts.
+- `agentflight doctor` now warns when `.projscan-memory/memory.json` exists
+  without a matching project filter and reports OK once the repo filters it
+  through `changedFileFilters.ignore`.
 
 ### Changed
 

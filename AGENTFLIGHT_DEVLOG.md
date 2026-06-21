@@ -4,6 +4,59 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Doctor Generated Artifact Guidance
+
+Dogfood finding:
+
+- First-run workspace hygiene keeps coming up in research and dogfood:
+  `.projscan-memory/memory.json` should remain visible unless the project opts
+  out, but users need a direct setup-health surface to explain what to do when
+  that generated state appears.
+
+Persona readout:
+
+- First-Time Developer: doctor should answer "is this setup okay?" without
+  requiring a separate docs search.
+- Product Maintainer: keep `.projscan-memory/**` suggestion-only; do not hide
+  repo policy decisions behind defaults.
+- CLI Engineer: add a dynamic doctor check rather than another review renderer.
+- Security Reviewer: read local paths and config only; do not mutate config or
+  upload anything.
+
+Implemented locally:
+
+- `agentflight doctor` now checks for `.projscan-memory/memory.json`.
+- When the file exists and remains reviewable, doctor prints a concise warning
+  suggesting `.projscan-memory/**` in `changedFileFilters.ignore`.
+- When the repo already filters it, doctor reports the generated tool state as
+  OK.
+- Built-in changed-file filters remain unchanged; `.projscan-memory/**` is not
+  hardcoded as ignored.
+
+Verification:
+
+- Red targeted test failed because doctor did not include generated tool state.
+- AgentFlight-captured targeted verification now passes:
+  `npm test -- tests/core/doctor.test.ts tests/commands/workflow.test.ts`
+  passed: 2 files / 11 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 180 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: maximum changed-file risk score `207.9`, no
+  risky functions, no dependency changes, no contract changes, and no dataflow
+  risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-05-06-verification-report.md`.
+- Built CLI smoke in a temp repo showed `agentflight doctor` warning when
+  `.projscan-memory/memory.json` remained reviewable, then reporting OK after
+  `.projscan-memory/**` was added to `changedFileFilters.ignore`.
+
 ### Init Created/Skipped File Lists
 
 Dogfood finding:

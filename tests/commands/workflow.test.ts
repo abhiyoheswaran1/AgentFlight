@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
@@ -158,6 +158,64 @@ describe("AgentFlight command workflow", () => {
     expect(second.output).toContain("Created files:\n- none");
     expect(second.output).toContain("Skipped existing files:\n- .agentflight/config.json");
     expect(second.output).toContain("- .agentflight/.gitignore");
+  });
+
+  it("guides first-run users when generated ProjScan memory is present", async () => {
+    const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            test: "vitest run",
+            build: "tsc -p tsconfig.build.json",
+            typecheck: "tsc --noEmit",
+            lint: "eslint ."
+          }
+        },
+        null,
+        2
+      )
+    );
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z")
+    });
+    await mkdir(join(repoRoot, ".projscan-memory"), { recursive: true });
+    await writeFile(join(repoRoot, ".projscan-memory", "memory.json"), "{}\n");
+
+    const visible = await runDoctorCommand({
+      repoRoot,
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      projscanAvailable: true,
+      agentloopkitAvailable: true
+    });
+    expect(visible.output).toContain("Warning generated tool state");
+    expect(visible.output).toContain(".projscan-memory/memory.json is present");
+    expect(visible.output).toContain('add ".projscan-memory/**"');
+    expect(visible.output).toContain("changedFileFilters.ignore");
+
+    const configPath = join(repoRoot, ".agentflight", "config.json");
+    const config = JSON.parse(await readFile(configPath, "utf8")) as {
+      changedFileFilters: { ignore: string[] };
+    };
+    config.changedFileFilters.ignore = [".projscan-memory/**"];
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    const filtered = await runDoctorCommand({
+      repoRoot,
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      projscanAvailable: true,
+      agentloopkitAvailable: true
+    });
+    expect(filtered.output).toContain("OK generated tool state");
+    expect(filtered.output).toContain(".projscan-memory/memory.json is filtered");
   });
 
   it("summarizes unavailable init tools with the same guidance as start/report surfaces", async () => {

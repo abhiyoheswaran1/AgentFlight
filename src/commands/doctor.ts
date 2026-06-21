@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { inspectAgentLoopKit } from "../adapters/agentloopkit.js";
 import { inspectProjScan } from "../adapters/projscan.js";
+import { filterChangedFiles } from "../core/changed-files.js";
+import { loadConfig } from "../core/config.js";
 import { evaluateDoctorChecks } from "../core/doctor.js";
 import { isPathWritable, pathExists } from "../core/fs-safe.js";
 import { getRepositoryRoot } from "../core/git.js";
@@ -50,6 +52,16 @@ export async function runDoctorCommand(
       ? Promise.resolve({ available: options.agentloopkitAvailable })
       : inspectAgentLoopKit({ cwd: options.repoRoot })
   ]);
+  const configValid = await isConfigValid(paths.config);
+  const projscanMemoryPresent = await pathExists(
+    join(options.repoRoot, ".projscan-memory", "memory.json")
+  );
+  const config = configValid ? await loadConfig(options.repoRoot) : null;
+  const projscanMemoryIgnored =
+    projscanMemoryPresent &&
+    filterChangedFiles([".projscan-memory/memory.json"], {
+      ignore: config?.changedFileFilters?.ignore
+    }).length === 0;
 
   const result = evaluateDoctorChecks({
     nodeVersion: options.nodeVersion ?? process.version,
@@ -60,11 +72,13 @@ export async function runDoctorCommand(
     packageManager,
     repoRoot,
     agentFlightExists: await pathExists(paths.root),
-    configValid: await isConfigValid(paths.config),
+    configValid,
     writable: await isPathWritable(paths.root),
     currentSessionExists: await pathExists(paths.currentSession),
     projscanAvailable: projscan.available,
     agentloopkitAvailable: agentloopkit.available,
+    projscanMemoryPresent,
+    projscanMemoryIgnored,
     scripts: {
       test: Boolean(scripts.test),
       build: Boolean(scripts.build),
