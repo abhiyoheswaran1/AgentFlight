@@ -219,6 +219,54 @@ describe("history command", () => {
     );
   });
 
+  it("guides the current latest session to handoff when no artifacts exist yet", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    const older = await startSession({
+      repoRoot,
+      task: "Older with replay",
+      now: new Date("2026-06-13T10:00:00.000Z"),
+      git: { branch: "main", commit: "older", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await writeReportReviewSummary(repoRoot, older.session.id, {
+      state: "ready_for_review",
+      label: "Ready for review"
+    });
+    await writeArtifact(repoRoot, older.session.id, "replay.html", "<!doctype html>");
+    const current = await startSession({
+      repoRoot,
+      task: "Current no artifacts",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "current", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const history = await runHistoryCommand({ repoRoot, limit: 2 });
+    const latestBlock = history.output.slice(
+      history.output.indexOf("Latest action:"),
+      history.output.indexOf("Recent sessions:")
+    );
+
+    expect(latestBlock).toContain("Open first: none yet");
+    expect(latestBlock).toContain("Next: run agentflight handoff");
+    expect(latestBlock).toContain("Task: Current no artifacts");
+    expect(latestBlock).not.toContain(older.session.id);
+    expect(history.output).toContain(
+      `Open first: replay .agentflight/reports/${older.session.id}-replay.html`
+    );
+    expect(history.output).toContain(`[current] ${current.session.task.title}`);
+  });
+
   it("summarizes malformed session files without crashing", async () => {
     const repoRoot = await createTempRepo();
     await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });

@@ -60,7 +60,11 @@ async function formatSessions(
     return formatEmptyHistory();
   }
 
-  const latestAction = await formatLatestAction(repoRoot, latestSession);
+  const latestAction = await formatLatestAction(
+    repoRoot,
+    latestSession,
+    latestSession.id === currentSessionId
+  );
   const lines = await Promise.all(
     sessions.map(async (session) =>
       formatSession(repoRoot, session, session.id === currentSessionId)
@@ -80,11 +84,17 @@ Next action:
 Run agentflight start --task "Describe the task" to begin a local session.`;
 }
 
-async function formatLatestAction(repoRoot: string, session: SessionSummary): Promise<string> {
+async function formatLatestAction(
+  repoRoot: string,
+  session: SessionSummary,
+  isCurrent: boolean
+): Promise<string> {
   const artifacts = await readHistoryArtifacts(repoRoot, session.id);
+  const openFirst = chooseOpenFirstArtifact(session, artifacts);
+  const nextAction = isCurrent && openFirst === "none yet" ? "\nNext: run agentflight handoff" : "";
 
   return `Latest action:
-Open first: ${chooseOpenFirstArtifact(session, artifacts)}
+Open first: ${openFirst}${nextAction}
 Task: ${session.taskTitle}`;
 }
 

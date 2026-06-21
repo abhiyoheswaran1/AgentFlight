@@ -4,6 +4,66 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Latest Action Before Artifacts
+
+Dogfood finding:
+
+- After adding the top-level `Latest action:` block, a freshly started current
+  session with no generated handoff/report/replay artifacts showed
+  `Open first: none yet`. That is accurate but leaves the user without the
+  handoff golden-path step.
+
+Persona readout:
+
+- Product Maintainer: keep the newest session as the anchor, but tell users how
+  to create the review packet when no artifact exists yet.
+- CLI Engineer: history must remain read-only; it should never generate the
+  handoff itself.
+- Docs and DX Writer: keep `Open first: none yet` for honesty, then add one
+  concise next action.
+- Security Reviewer: no upload, no telemetry, no hidden mutation.
+
+Implemented locally:
+
+- The top-level `Latest action:` block now appends
+  `Next: run agentflight handoff` only when the newest session is also the
+  current session and no primary artifact exists yet.
+- Sessions with existing artifacts keep the previous top-level latest-action
+  output with no extra next-action line.
+- Per-session history rows remain unchanged.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because the next-action line was
+  not rendered yet.
+- A second focused run still failed because the test helper saved the older
+  session after starting the current session, which rewrote the current pointer.
+  The fixture now finalizes the older replay session first and starts the
+  current no-artifact session last.
+- Green AgentFlight-captured focused test passed:
+  `npm test -- tests/commands/history.test.ts` passed with 1 file / 6 tests.
+- AgentFlight-captured `npm run format:check` passed after formatting the plan.
+- AgentFlight-captured `npm run verify` passed with 21 files / 190 tests,
+  plus build.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found
+  `0 vulnerabilities`.
+- AgentFlight-captured `npx projscan@latest doctor --format json` passed with
+  health `100/A`.
+- AgentFlight-captured
+  `npx projscan@latest preflight --mode before_commit --format json` returned
+  the known accumulated branch scale caution: 219 changed files and maximum
+  changed-file risk score `212.1 >= 80`.
+- AgentFlight-captured `npx projscan@latest review --format json` exited `0`
+  but returned a scale-only `block` verdict for manual release signoff. Saved
+  evidence reported risky functions `0`, dependency changes `0`, contract
+  changes `0`, and dataflow risks `0`.
+- Final AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-08-19-verification-report.md`.
+- Built CLI smoke passed: before handoff, `node dist/cli.js history --limit 2`
+  printed `Next: run agentflight handoff`; after handoff, it printed the
+  current session replay path instead.
+
 ### History Latest Action
 
 Dogfood finding:
