@@ -211,7 +211,11 @@ function buildVerificationCommandsSuggestedFix(commands: string[] | undefined): 
     return "Add commands under verification.commands or run agentflight verify -- <command> explicitly.";
   }
 
-  return `Try one of: ${suggestions.join("; ")}. To make this the default, add commands under verification.commands.`;
+  return [
+    "Try one of:",
+    ...suggestions.map((suggestion) => `- ${suggestion}`),
+    "To make one command the default, add it under verification.commands."
+  ].join("\n");
 }
 
 function parseNodeMajor(version: string): number {

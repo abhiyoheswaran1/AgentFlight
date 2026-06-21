@@ -141,9 +141,16 @@ Overall: ${renderStatus(result.status)}
 
 ${result.checks
   .map((check) => {
-    const fix = check.suggestedFix ? `\n  Suggested fix: ${check.suggestedFix}` : "";
+    const fix = check.suggestedFix ? `\n${renderSuggestedFix(check.suggestedFix)}` : "";
     return `- ${renderStatus(check.status)} ${check.name}: ${check.message}${fix}`;
   })
   .join("\n")}
 `;
+}
+
+function renderSuggestedFix(suggestedFix: string): string {
+  const lines = suggestedFix.split("\n");
+  if (lines.length === 1) return `  Suggested fix: ${suggestedFix}`;
+
+  return ["  Suggested fix:", ...lines.map((line) => `  ${line}`)].join("\n");
 }

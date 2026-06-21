@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight doctor` now renders multiple detected proof-command suggestions
+  as an indented list instead of one long semicolon-separated line.
 - `agentflight history` now prefers useful review-ready or blocked artifact
   metadata over later clean-worktree artifact metadata, while preserving
   clean-only session history.

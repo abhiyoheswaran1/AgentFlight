@@ -4,6 +4,43 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Readable Doctor Proof Suggestions
+
+Dogfood finding:
+
+- `agentflight doctor` suggested detected proof commands in one long
+  semicolon-separated sentence when `.agentflight/config.json` had no
+  configured verification commands. The commands were correct, but the warning
+  was noisy.
+
+Implemented locally:
+
+- Doctor now keeps the full command text but formats multiple detected proof
+  suggestions as an indented list.
+- Multiline suggested fixes render under the relevant check instead of running
+  across one terminal line.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/core/doctor.test.ts
+tests/commands/workflow.test.ts` failed on the old one-line suggestion.
+- Green AgentFlight-captured `npm test -- tests/core/doctor.test.ts
+tests/commands/workflow.test.ts` passed with 2 files / 21 tests.
+- AgentFlight-captured `npm run verify` passed with 21 files / 201 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on
+  `AGENTFLIGHT_DEVLOG.md`; Prettier fixed the devlog wrapping, and the rerun
+  passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  270 changed files and maximum changed-file risk score `212.1 >= 80`.
+- ProjScan review returned the known scale-only `block` verdict with 46 current
+  changed files; it reported no risky functions, dependency changes, contract
+  changes, new cycles, taint flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-11-43-verification-report.md`.
+
 ### Prefer Review-Ready History Artifacts
 
 Dogfood finding:

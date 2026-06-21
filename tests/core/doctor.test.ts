@@ -27,7 +27,7 @@ describe("doctor checks", () => {
         message:
           ".agentflight/config.json has no configured verification commands, but package proof scripts are available.",
         suggestedFix:
-          "Try one of: agentflight verify -- npm run typecheck; agentflight verify -- npm test. To make this the default, add commands under verification.commands."
+          "Try one of:\n- agentflight verify -- npm run typecheck\n- agentflight verify -- npm test\nTo make one command the default, add it under verification.commands."
       })
     );
   });
