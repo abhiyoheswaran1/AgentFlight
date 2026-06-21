@@ -1,0 +1,5 @@
+ AGENTFLIGHT_DEVLOG.md                  | 42 ++++++++++++++++++++++++++++++++++
+ CHANGELOG.md                           |  4 ++++
+ src/core/review-intelligence.ts        |  8 +++++++
+ tests/core/review-intelligence.test.ts | 34 +++++++++++++++++++++++++++
+ 4 files changed, 88 insertions(+)

@@ -127,6 +127,40 @@ describe("review intelligence", () => {
     );
   });
 
+  it.each(["agentflight replay", "node dist/cli.js replay"])(
+    "does not promote incomplete artifact command %s as proof guidance",
+    (command) => {
+      const changedFiles = ["src/core/review-intelligence.ts"];
+      const review = buildReviewIntelligence({
+        changedFiles,
+        risk: analyzeRisk(changedFiles),
+        session: testSession({
+          verificationCommands: ["npm test"],
+          verificationRuns: [],
+          events: [
+            event("session_started", "Session started", "2026-06-14T12:00:00.000Z"),
+            event("verification_started", "Verification started", "2026-06-14T12:01:00.000Z", {
+              command
+            })
+          ]
+        })
+      });
+
+      expect(review.proofGaps.map((gap) => gap.id)).not.toContain("incomplete-verification");
+      expect(review.proofGaps).toContainEqual(
+        expect.objectContaining({
+          id: "missing-source-proof",
+          suggestedCommand: "npm test"
+        })
+      );
+      expect(review.readiness).toMatchObject({
+        state: "needs_verification",
+        suggestedCommand: "npm test"
+      });
+      expect(review.readiness.nextAction).toBe("Run agentflight verify -- npm test");
+    }
+  );
+
   it("does not mark a started verification as incomplete after a later successful run", () => {
     const changedFiles = ["src/auth/session.ts"];
     const review = buildReviewIntelligence({

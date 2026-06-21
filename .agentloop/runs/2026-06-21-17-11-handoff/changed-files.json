@@ -1,0 +1,30 @@
+[
+  {
+    "status": "M",
+    "path": "AGENTFLIGHT_DEVLOG.md"
+  },
+  {
+    "status": "M",
+    "path": "CHANGELOG.md"
+  },
+  {
+    "status": "M",
+    "path": "src/core/review-intelligence.ts"
+  },
+  {
+    "status": "M",
+    "path": "tests/core/review-intelligence.test.ts"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-21-17-10-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-21-keep-artifact-commands-out-of-proof-guidance.md"
+  },
+  {
+    "status": "??",
+    "path": "docs/superpowers/plans/2026-06-21-agentflight-artifact-commands-proof-guidance.md"
+  }
+]

@@ -32,6 +32,10 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Review Intelligence now ignores unfinished AgentFlight readout/artifact
+  commands such as `agentflight replay` and `node dist/cli.js replay` when
+  computing incomplete proof gaps, so readiness guidance keeps pointing at
+  meaningful verification commands.
 - Incomplete verification guidance now says a command may still be running and
   suggests waiting before rerunning, avoiding false lost-evidence alarms when
   status is checked during parallel verification.

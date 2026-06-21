@@ -4,6 +4,48 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Keep Artifact Commands Out Of Proof Guidance
+
+Dogfood finding:
+
+- A replay generated from inside an outer `agentflight verify -- node
+dist/cli.js replay` can see that outer artifact command as still in flight
+  while the replay is being written. Review Intelligence then promoted the
+  artifact command as an incomplete proof gap, which made the replay suggest
+  rerunning an artifact view instead of the configured proof command.
+
+Implemented locally:
+
+- Review Intelligence now treats unfinished AgentFlight readout/artifact
+  commands such as `agentflight replay` and `node dist/cli.js replay` as
+  captured evidence, not readiness-blocking proof gaps.
+- Failed verification runs and unfinished real proof commands still use the
+  existing blocking proof-gap path.
+- Captured stdout/stderr evidence and verification history remain unchanged.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/core/review-intelligence.test.ts`
+  failed because incomplete `agentflight replay` and `node dist/cli.js replay`
+  commands were still reported as `incomplete-verification` proof gaps.
+- Green AgentFlight-captured
+  `npm test -- tests/core/review-intelligence.test.ts` passed with 1 file / 26
+  tests.
+- Final AgentFlight-captured `npm run verify` passed with 23 files / 220 tests
+  plus build.
+- AgentFlight-captured `npm run format:check` initially caught formatting in
+  the new plan doc; after formatting, it passed.
+- AgentFlight-captured `npm pack --dry-run` passed and kept the local package
+  version at `0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found 0
+  vulnerabilities.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight returned `caution` for manual review
+  sign-off. Full ProjScan review returned the known manual release sign-off
+  block: maximum changed-file risk score 219.6 >= 80, with no concrete cycle,
+  risky-function, contract, taint, or dataflow defect reported.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Add Replay Review Path Guidance
 
 User-research direction:

@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-21-17-11-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-21-17-11",
+  "createdAtEpochMs": 1782054687422,
+  "task": {
+    "path": ".agentloop/tasks/archive/2026-06-21-keep-artifact-commands-out-of-proof-guidance.md",
+    "title": "Keep artifact commands out of proof guidance",
+    "status": "done"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-21-17-09-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-21-17-11-pr-summary.md",
+  "changedFileCount": 7
+}

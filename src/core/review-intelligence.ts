@@ -218,6 +218,13 @@ export function classifyVerificationProofKind(command: string): VerificationProo
   return "unknown";
 }
 
+function isAgentFlightReadoutCommand(command: string): boolean {
+  const normalized = normalizeCommand(command).toLowerCase().replaceAll("\\", "/");
+  return /(?:^|\s)(?:agentflight(?:@[^\s]+)?|node\s+(?:\.\/)?dist\/cli\.js)\s+(?:status|report|replay|resume|handoff|history|doctor)\b/.test(
+    normalized
+  );
+}
+
 function summarizeProofKinds(runs: VerificationRun[]): {
   passed: Set<VerificationProofKind>;
   failed: Set<VerificationProofKind>;
@@ -680,6 +687,7 @@ function detectIncompleteVerificationAttempts(
       command: readEventCommand(event.metadata) ?? "unknown verification command",
       startedAt: event.timestamp
     }))
+    .filter((attempt) => !isAgentFlightReadoutCommand(attempt.command))
     .filter((attempt) => !hasLaterCompletion(attempt, events, runs));
 }
 
