@@ -100,7 +100,7 @@ export type RiskCategory =
   | "source"
   | "unknown";
 
-export type RiskLevel = "low" | "medium" | "high" | "unknown";
+export type RiskLevel = "none" | "low" | "medium" | "high" | "unknown";
 
 export interface RiskCategorySummary {
   category: RiskCategory;

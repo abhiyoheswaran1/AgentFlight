@@ -54,9 +54,9 @@ describe("risk categorisation", () => {
     });
   });
 
-  it("uses unknown when there are no changed files", () => {
+  it("uses none when there are no changed files", () => {
     expect(analyzeRisk([])).toMatchObject({
-      level: "unknown",
+      level: "none",
       changedFiles: 0
     });
   });

@@ -80,6 +80,8 @@ All notable AgentFlight changes are documented here.
   no unresolved failed runs remain.
 - `agentflight doctor` now treats a missing current session as OK first-run
   guidance instead of warning when the rest of the local setup is healthy.
+- Clean-worktree status now reports `Risk: none` instead of `Risk: unknown`
+  while preserving `unknown` for legacy or genuinely missing metadata.
 
 ### Changed
 

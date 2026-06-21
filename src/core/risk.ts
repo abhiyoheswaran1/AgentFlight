@@ -68,7 +68,7 @@ export function categorizeFile(file: string): RiskCategory {
 export function analyzeRisk(files: string[]): RiskAnalysis {
   if (files.length === 0) {
     return {
-      level: "unknown",
+      level: "none",
       changedFiles: 0,
       categories: [],
       reasons: ["No changed files detected yet."]

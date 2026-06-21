@@ -412,7 +412,7 @@ function readReviewReadinessState(value: unknown): ReviewReadinessState | null {
 }
 
 function readRiskLevel(value: unknown): RiskLevel | null {
-  const levels: readonly RiskLevel[] = ["low", "medium", "high", "unknown"];
+  const levels: readonly RiskLevel[] = ["none", "low", "medium", "high", "unknown"];
   return typeof value === "string" && levels.includes(value as RiskLevel)
     ? (value as RiskLevel)
     : null;

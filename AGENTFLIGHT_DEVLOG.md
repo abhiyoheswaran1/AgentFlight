@@ -4,6 +4,60 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clean Status Risk Wording
+
+Dogfood finding:
+
+- After committing the doctor guidance task, `agentflight status` correctly
+  reported `Readiness: Clean worktree` but still printed `Risk: unknown`. That
+  made a known clean state sound ambiguous.
+
+Persona readout:
+
+- Product Maintainer: clean should be calm and explicit; unknown should mean
+  AgentFlight lacks enough metadata.
+- CLI Engineer: fix the shared risk analysis result so text and JSON agree.
+- Docs and DX Writer: keep the copy short: `Risk: none` is scannable and pairs
+  cleanly with `Changed files: 0`.
+
+Implemented locally:
+
+- Added `none` to the `RiskLevel` model for zero changed files.
+- `analyzeRisk([])` now returns `level: "none"` with the existing
+  `No changed files detected yet.` reason.
+- Historical `unknown` risk metadata remains readable for old artifact events.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because zero changed files still
+  returned `level: "unknown"`.
+- AgentFlight-captured focused verification now passes:
+  `npm test -- tests/core/risk.test.ts tests/commands/evidence-output.test.ts`
+  passed: 2 files / 50 tests.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 184 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 185 changed files and maximum
+  changed-file risk score `207.9`.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: maximum changed-file risk score `207.9`, no risky
+  functions, no dependency changes, no contract changes, no taint flows, no
+  dataflow risks, and no new cycles.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-06-04-verification-report.md`.
+- `npx agentloopkit@latest check-gates` passed with current verification and
+  handoff evidence.
+- Built CLI smoke passed in a clean temp repo: `agentflight status` reported
+  `Risk: none` and `Readiness: Clean worktree`.
+- An earlier smoke attempt wrote `status.txt` inside the temp repo before
+  running status, so AgentFlight correctly saw one changed docs file. The same
+  command was rerun with a temporary git exclude for `status.txt` and passed,
+  resolving that evidence as smoke-script noise.
+
 ### Doctor Current Session Guidance
 
 Dogfood finding:
