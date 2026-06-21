@@ -2,8 +2,11 @@ import {
   compactCommandInText,
   formatCommandForDisplay,
   formatToolForReport,
+  formatVerificationCountLine,
+  formatVerificationFailureContext,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
+import type { VerificationFailureCounts } from "../core/output.js";
 import type {
   ReviewIntelligence,
   RiskAnalysis,
@@ -21,6 +24,7 @@ export interface MarkdownReportInput {
   risk: RiskAnalysis;
   verificationCommands: string[];
   verificationEvidence: VerificationRun[];
+  verificationSummary?: VerificationFailureCounts | undefined;
   verificationGaps?: string[] | undefined;
   recommendation?: string | undefined;
   nextAction?: string | undefined;
@@ -172,12 +176,26 @@ function renderVerification(input: MarkdownReportInput): string {
       return base;
     })
     .join("\n");
+  const summary = input.verificationSummary ?? summarizeVerificationEvidence(input);
+  const failureContext = formatVerificationFailureContext(summary);
+  const summaryText = `${formatVerificationCountLine(summary)}${failureContext ? `\n${failureContext}` : ""}`;
   const gaps =
     !input.review && input.verificationGaps?.length
       ? `\n\nGaps:\n${renderList(input.verificationGaps)}`
       : "";
 
-  return `${evidence}${gaps}`;
+  return `${summaryText}\n${evidence}${gaps}`;
+}
+
+function summarizeVerificationEvidence(input: MarkdownReportInput): VerificationFailureCounts {
+  const passed = input.verificationEvidence.filter((run) => run.status === "passed").length;
+  const failed = input.verificationEvidence.filter((run) => run.status === "failed").length;
+  return {
+    passed,
+    failed,
+    unresolvedFailed: failed,
+    resolvedFailed: 0
+  };
 }
 
 function renderExcerptFence(excerpt: string): string {

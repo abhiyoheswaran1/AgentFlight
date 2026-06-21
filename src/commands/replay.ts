@@ -65,6 +65,12 @@ export async function runReplayCommand(
     changedFileGroups: risk.categories,
     riskBadges: [risk.level, ...risk.categories.map((summary) => summary.category)],
     verificationEvidence: verification.runs,
+    verificationSummary: {
+      passed: verification.passed,
+      failed: verification.failed,
+      unresolvedFailed: verification.unresolvedFailed,
+      resolvedFailed: verification.resolvedFailed
+    },
     reviewReadiness: review.readiness.label,
     review,
     recommendation: `${review.readiness.label}. ${review.readiness.nextAction}`

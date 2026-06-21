@@ -4,11 +4,12 @@ import { join } from "node:path";
 import { createTempRepo } from "../helpers/temp.js";
 import {
   buildOutputExcerpt,
+  buildVerificationSummary,
   detectVerificationCommands,
   parseCommandLine,
   runVerificationCommand
 } from "../../src/core/verification.js";
-import type { AgentFlightSession } from "../../src/types/index.js";
+import type { AgentFlightSession, VerificationRun } from "../../src/types/index.js";
 
 describe("verification command detection", () => {
   it("prefers typecheck, lint, test, and build scripts when present", () => {
@@ -84,6 +85,62 @@ describe("verification command detection", () => {
   });
 });
 
+describe("buildVerificationSummary", () => {
+  it("treats an earlier failed command as resolved when the same command later passes", () => {
+    const session = testSession("/repo", {
+      verificationCommands: ["npm test"],
+      verificationRuns: [
+        verificationRun("npm test", "failed", "2026-06-13T12:00:00.000Z"),
+        verificationRun("npm test", "passed", "2026-06-13T12:03:00.000Z")
+      ]
+    });
+
+    const summary = buildVerificationSummary(session, {
+      changedFilesCount: 1,
+      riskLevel: "medium"
+    });
+
+    expect(summary).toMatchObject({
+      passed: 1,
+      failed: 1,
+      unresolvedFailed: 0,
+      resolvedFailed: 1,
+      readiness: "Ready for review"
+    });
+    expect(summary.unresolvedFailedRuns).toEqual([]);
+    expect(summary.gaps).not.toContain(
+      "A verification command failed and must be fixed or rerun successfully."
+    );
+  });
+
+  it("keeps a command unresolved when its latest run is failed", () => {
+    const session = testSession("/repo", {
+      verificationCommands: ["npm test"],
+      verificationRuns: [
+        verificationRun("npm test", "passed", "2026-06-13T12:00:00.000Z"),
+        verificationRun("npm test", "failed", "2026-06-13T12:03:00.000Z")
+      ]
+    });
+
+    const summary = buildVerificationSummary(session, {
+      changedFilesCount: 1,
+      riskLevel: "medium"
+    });
+
+    expect(summary).toMatchObject({
+      passed: 1,
+      failed: 1,
+      unresolvedFailed: 1,
+      resolvedFailed: 0,
+      readiness: "Blocked"
+    });
+    expect(summary.unresolvedFailedRuns).toHaveLength(1);
+    expect(summary.gaps).toContain(
+      "A verification command failed and must be fixed or rerun successfully."
+    );
+  });
+});
+
 describe("buildOutputExcerpt", () => {
   it("prefers stderr when it has content", () => {
     expect(buildOutputExcerpt("compiled ok", "Error: boom")).toBe("Error: boom");
@@ -110,7 +167,13 @@ describe("buildOutputExcerpt", () => {
   });
 });
 
-function testSession(repoRoot: string): AgentFlightSession {
+function testSession(
+  repoRoot: string,
+  options: {
+    verificationCommands?: string[] | undefined;
+    verificationRuns?: VerificationRun[] | undefined;
+  } = {}
+): AgentFlightSession {
   return {
     id: "af-test",
     task: { title: "Test session" },
@@ -118,11 +181,30 @@ function testSession(repoRoot: string): AgentFlightSession {
     repoRoot,
     git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
     packageManager: "npm",
-    verificationCommands: ["npm test"],
-    verificationRuns: [],
+    verificationCommands: options.verificationCommands ?? ["npm test"],
+    verificationRuns: options.verificationRuns ?? [],
     tools: {
       projscan: { available: false, warnings: [] },
       agentloopkit: { available: false, warnings: [] }
     }
   };
+}
+
+function verificationRun(
+  command: string,
+  status: "passed" | "failed",
+  startedAt: string
+): VerificationRun {
+  const run: VerificationRun = {
+    command,
+    startedAt,
+    finishedAt: startedAt,
+    durationMs: 100,
+    exitCode: status === "passed" ? 0 : 1,
+    status,
+    stdoutPath: ".agentflight/evidence/af-test/verification.stdout.txt",
+    stderrPath: ".agentflight/evidence/af-test/verification.stderr.txt"
+  };
+  if (status === "failed") run.outputExcerpt = "failure excerpt";
+  return run;
 }

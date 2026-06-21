@@ -4,6 +4,13 @@ export interface CommandOutput {
   output: string;
 }
 
+export interface VerificationFailureCounts {
+  passed: number;
+  failed: number;
+  unresolvedFailed: number;
+  resolvedFailed: number;
+}
+
 const DEFAULT_COMMAND_DISPLAY_LENGTH = 96;
 
 export function formatToolAvailability(label: string, available: boolean): string {
@@ -33,6 +40,27 @@ export function formatVerifyCommandForDisplay(command: string): string {
 export function compactCommandInText(text: string, command: string | undefined): string {
   if (!command) return text;
   return text.split(command).join(formatCommandForDisplay(command));
+}
+
+export function formatVerificationCountLine(counts: VerificationFailureCounts): string {
+  const context =
+    counts.failed > 0
+      ? ` (${counts.unresolvedFailed} unresolved, ${counts.resolvedFailed} resolved)`
+      : "";
+  return `${counts.passed} passed, ${counts.failed} failed${context}`;
+}
+
+export function formatVerificationFailureContext(counts: VerificationFailureCounts): string {
+  if (counts.failed === 0) return "";
+
+  const lines: string[] = [];
+  if (counts.unresolvedFailed > 0) {
+    lines.push(`Unresolved failed runs: ${counts.unresolvedFailed}.`);
+  }
+  if (counts.resolvedFailed > 0) {
+    lines.push(`Historical failed runs: ${counts.resolvedFailed} resolved by later passing runs.`);
+  }
+  return lines.join(" ");
 }
 
 export function formatToolForReport(label: string, result: ToolAdapterResult): string {

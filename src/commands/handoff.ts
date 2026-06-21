@@ -1,5 +1,5 @@
 import { writeTextFileSafe } from "../core/fs-safe.js";
-import { compactCommandInText } from "../core/output.js";
+import { compactCommandInText, formatVerificationCountLine } from "../core/output.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { runReplayCommand } from "./replay.js";
 import { runReportCommand } from "./report.js";
@@ -29,6 +29,8 @@ interface HandoffStatus {
   verification: {
     passed: number;
     failed: number;
+    unresolvedFailed: number;
+    resolvedFailed: number;
     runs: HandoffVerificationRun[];
   };
   review: {
@@ -143,7 +145,7 @@ Readiness: ${readiness.label}
 Reason: ${formatReadinessReason(readiness, input.status.reason)}
 
 Verification:
-${input.status.verification.passed} passed, ${input.status.verification.failed} failed
+${formatVerificationCountLine(input.status.verification)}
 ${formatVerificationDetails(
   input.status.verification.runs,
   hasUnresolvedFailedVerification(input.status.review.proofGaps)
@@ -271,6 +273,11 @@ function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
     verification: {
       passed: readNumber(verification.passed, 0),
       failed: readNumber(verification.failed, 0),
+      unresolvedFailed: readNumber(
+        verification.unresolvedFailed,
+        readNumber(verification.failed, 0)
+      ),
+      resolvedFailed: readNumber(verification.resolvedFailed, 0),
       runs: readArray(verification.runs).map(parseVerificationRun)
     },
     review: {

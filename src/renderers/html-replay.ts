@@ -3,6 +3,7 @@ import {
   formatCommandForDisplay,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
+import type { VerificationFailureCounts } from "../core/output.js";
 import type {
   ProofGap,
   ReviewFocusItem,
@@ -26,6 +27,7 @@ export interface HtmlReplayInput {
   changedFileGroups?: RiskCategorySummary[] | undefined;
   riskBadges: string[];
   verificationEvidence: VerificationRun[];
+  verificationSummary?: VerificationFailureCounts | undefined;
   reviewReadiness?: string | undefined;
   review?: ReviewIntelligence | undefined;
   recommendation: string;
@@ -491,15 +493,23 @@ function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): str
 function renderSummary(input: HtmlReplayInput): string {
   const passed = input.verificationEvidence.filter((item) => item.status === "passed").length;
   const failed = input.verificationEvidence.filter((item) => item.status === "failed").length;
+  const proof = input.verificationSummary
+    ? formatReplayProof(input.verificationSummary)
+    : `${passed} passed / ${failed} failed`;
   const risk = input.riskBadges[0] ?? "unknown";
   const readiness = input.reviewReadiness ?? "Unknown";
 
   return `<section class="summary-grid" aria-label="Session summary">
       ${renderReading("Risk", risk, riskTone(risk))}
       ${renderReading("Changed Files", String(input.changedFiles.length))}
-      ${renderReading("Proof", `${passed} passed / ${failed} failed`)}
+      ${renderReading("Proof", proof)}
       ${renderReading("Readiness", readiness)}
     </section>`;
+}
+
+function formatReplayProof(summary: VerificationFailureCounts): string {
+  if (summary.failed === 0) return `${summary.passed} passed / 0 failed`;
+  return `${summary.passed} passed / ${summary.unresolvedFailed} unresolved failed / ${summary.resolvedFailed} historical failed`;
 }
 
 function renderReading(label: string, value: string, tone = ""): string {

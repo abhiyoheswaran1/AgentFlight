@@ -24,6 +24,9 @@ export interface VerificationSummary {
   runs: VerificationRun[];
   passed: number;
   failed: number;
+  unresolvedFailed: number;
+  resolvedFailed: number;
+  unresolvedFailedRuns: VerificationRun[];
   missingCommands: string[];
   gaps: string[];
   readiness: ReviewReadiness;
@@ -193,14 +196,15 @@ export function buildVerificationSummary(
   const runs = getVerificationRuns(session);
   const passedRuns = runs.filter((run) => run.status === "passed");
   const failedRuns = runs.filter((run) => run.status === "failed");
+  const unresolvedFailedRuns = getUnresolvedFailedRuns(runs);
   const passedCommands = new Set(passedRuns.map((run) => normalizeCommandString(run.command)));
   const missingCommands = session.verificationCommands.filter(
     (command) => !passedCommands.has(normalizeCommandString(command))
   );
-  const gaps = buildVerificationGaps(runs, missingCommands);
+  const gaps = buildVerificationGaps(runs, missingCommands, unresolvedFailedRuns);
   const readiness = determineReadiness({
     runs,
-    failed: failedRuns.length,
+    failed: unresolvedFailedRuns.length,
     missingCommands,
     changedFilesCount: options.changedFilesCount ?? null
   });
@@ -209,6 +213,9 @@ export function buildVerificationSummary(
     runs,
     passed: passedRuns.length,
     failed: failedRuns.length,
+    unresolvedFailed: unresolvedFailedRuns.length,
+    resolvedFailed: failedRuns.length - unresolvedFailedRuns.length,
+    unresolvedFailedRuns,
     missingCommands,
     gaps,
     readiness,
@@ -221,6 +228,28 @@ export function normalizeCommandString(command: string): string {
   return parsed.length > 0 ? formatCommand(parsed) : command.trim();
 }
 
+export function getUnresolvedFailedRuns(runs: VerificationRun[]): VerificationRun[] {
+  const laterPassedCommands = new Set<string>();
+  const unresolved: VerificationRun[] = [];
+
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    const run = runs[index];
+    if (!run) continue;
+
+    const command = normalizeCommandString(run.command);
+    if (run.status === "passed") {
+      laterPassedCommands.add(command);
+      continue;
+    }
+
+    if (!laterPassedCommands.has(command)) {
+      unresolved.unshift(run);
+    }
+  }
+
+  return unresolved;
+}
+
 export function formatCommand(args: string[]): string {
   return args.map(formatCommandArg).join(" ");
 }
@@ -230,10 +259,14 @@ function formatCommandArg(arg: string): string {
   return JSON.stringify(arg);
 }
 
-function buildVerificationGaps(runs: VerificationRun[], missingCommands: string[]): string[] {
+function buildVerificationGaps(
+  runs: VerificationRun[],
+  missingCommands: string[],
+  unresolvedFailedRuns: VerificationRun[]
+): string[] {
   const gaps: string[] = [];
 
-  if (runs.some((run) => run.status === "failed")) {
+  if (unresolvedFailedRuns.length > 0) {
     gaps.push("A verification command failed and must be fixed or rerun successfully.");
   }
 

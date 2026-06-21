@@ -69,6 +69,12 @@ export async function runReportCommand(
       risk,
       verificationCommands: session.verificationCommands,
       verificationEvidence: verification.runs,
+      verificationSummary: {
+        passed: verification.passed,
+        failed: verification.failed,
+        unresolvedFailed: verification.unresolvedFailed,
+        resolvedFailed: verification.resolvedFailed
+      },
       verificationGaps: verification.gaps,
       recommendation: review.readiness.label,
       nextAction: review.readiness.nextAction,

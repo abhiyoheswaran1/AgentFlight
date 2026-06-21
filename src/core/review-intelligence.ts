@@ -1,5 +1,6 @@
 import { categorizeFile } from "./risk.js";
 import { getVerificationRuns } from "./session.js";
+import { getUnresolvedFailedRuns } from "./verification.js";
 import type {
   AgentFlightSession,
   ProofGap,
@@ -208,27 +209,6 @@ function summarizeProofKinds(runs: VerificationRun[]): {
   }
 
   return { passed, failed };
-}
-
-function getUnresolvedFailedRuns(runs: VerificationRun[]): VerificationRun[] {
-  const laterPassedCommands = new Set<string>();
-  const unresolved: VerificationRun[] = [];
-
-  for (let index = runs.length - 1; index >= 0; index -= 1) {
-    const run = runs[index];
-    if (!run) continue;
-
-    if (run.status === "passed") {
-      laterPassedCommands.add(run.command);
-      continue;
-    }
-
-    if (!laterPassedCommands.has(run.command)) {
-      unresolved.unshift(run);
-    }
-  }
-
-  return unresolved;
 }
 
 function buildProofGaps(input: {

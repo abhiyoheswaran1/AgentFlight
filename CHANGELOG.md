@@ -23,6 +23,8 @@ All notable AgentFlight changes are documented here.
 - Review Intelligence now treats an earlier failed verification as resolved when
   the same stored command later passes, so TDD red/green and format-fix loops do
   not leave handoffs permanently blocked.
+- Status, report, replay, and handoff now distinguish unresolved failed
+  verification from historical failed runs that later passed.
 - Ready handoffs no longer inline historical failed verification excerpts once
   no unresolved failed-verification proof gap remains; those excerpts stay in
   report/replay evidence.

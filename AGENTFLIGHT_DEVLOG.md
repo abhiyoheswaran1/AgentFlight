@@ -4,6 +4,70 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Unresolved Verification Failure Clarity
+
+Research signal:
+
+- The previous history-readiness dogfood loop fixed readiness blocking for
+  resolved failures, but status/history/handoff could still show total failed
+  run counts beside `Ready for review`. That was technically accurate ledger
+  data, but not clear enough about what still needed action.
+
+Persona readout:
+
+- Product Maintainer: resolved failures should stay visible as evidence, but
+  the product must make the current review state obvious.
+- CLI Engineer: use exact stored command matching; do not rewrite captured
+  verification runs.
+- Verification Engineer: same-command later passes should resolve prior failed
+  runs; a later failure after a pass must remain unresolved.
+- Docs and DX Writer: keep the copy short: unresolved means action, historical
+  means ledger evidence.
+- Security Reviewer: keep all evidence local and preserve failure excerpts in
+  report/replay.
+
+Implemented locally:
+
+- `buildVerificationSummary()` now exposes `unresolvedFailed`,
+  `resolvedFailed`, and `unresolvedFailedRuns`.
+- Review Intelligence now reuses the shared unresolved-failure helper.
+- Status, Markdown report, HTML replay, and handoff output now distinguish
+  unresolved failed verification from historical failed runs that later passed.
+- Ready handoffs keep historical failed excerpts in report/replay instead of
+  inlining them as current blockers.
+
+Verification so far:
+
+- Red core verification summary tests failed because resolved/unresolved fields
+  did not exist and readiness still treated any failed run as blocked.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/core/verification.test.ts tests/core/review-intelligence.test.ts`
+  passed: 2 files / 31 tests.
+- Red command-surface test failed because status/report/replay/handoff did not
+  show resolved/unresolved failure copy.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/core/verification.test.ts tests/core/review-intelligence.test.ts tests/commands/evidence-output.test.ts tests/renderers/markdown-report.test.ts tests/renderers/html-replay.test.ts`
+  passed: 5 files / 71 tests.
+- Built CLI smoke: after rerunning the exact failed commands, `agentflight status`
+  showed `5 passed, 2 failed (0 unresolved, 2 resolved)`, report/replay kept the
+  historical excerpts, and `agentflight handoff` exited `0` with no proof gaps.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 164 tests, plus build.
+- `npm run format:check` passed after Prettier normalized touched TypeScript
+  files.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale manual signoff caution: 116 changed
+  files against `origin/main`, maximum changed-file risk score `194.1`, and no
+  concrete blockers.
+- `npx projscan@latest review --format json` returned the same scale/manual
+  signoff block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-02-26-verification-report.md`.
+
 ### History Readiness Recording
 
 Research signal:

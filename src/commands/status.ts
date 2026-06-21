@@ -5,6 +5,8 @@ import { pathExists, readJsonFile } from "../core/fs-safe.js";
 import {
   compactCommandInText,
   formatCommandForDisplay,
+  formatVerificationCountLine,
+  formatVerificationFailureContext,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
@@ -58,6 +60,7 @@ export async function runStatusCommand(
     review.readiness.nextAction,
     review.readiness.suggestedCommand
   );
+  const verificationFailureContext = formatVerificationFailureContext(verification);
 
   if (format === "json") {
     return {
@@ -98,8 +101,8 @@ Risk: ${risk.level}
 ${risk.reasons.map((reason) => `- ${reason}`).join("\n")}
 
 Verification Evidence:
-${verification.passed} passed, ${verification.failed} failed
-${formatVerificationRuns(verification.runs)}
+${formatVerificationCountLine(verification)}
+${verificationFailureContext ? `${verificationFailureContext}\n` : ""}${formatVerificationRuns(verification.runs)}
 
 Review first:
 ${formatReviewFocus(review.focus.slice(0, 5))}
@@ -152,6 +155,8 @@ function buildStatusJson(input: {
     verification: {
       passed: input.verification.passed,
       failed: input.verification.failed,
+      unresolvedFailed: input.verification.unresolvedFailed,
+      resolvedFailed: input.verification.resolvedFailed,
       runs: input.verification.runs
     },
     review: {

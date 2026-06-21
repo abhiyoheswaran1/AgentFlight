@@ -595,6 +595,33 @@ describe("evidence-aware session outputs", () => {
       now: () => new Date("2026-06-13T12:03:00.000Z")
     });
 
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:04:00.000Z")
+    });
+    expect(status.output).toContain("1 passed, 1 failed (0 unresolved, 1 resolved)");
+    expect(status.output).toContain("Historical failed runs: 1 resolved by later passing runs.");
+
+    const report = await runReportCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:04:30.000Z")
+    });
+    const markdown = await readFile(report.reportPath, "utf8");
+    expect(markdown).toContain("1 passed, 1 failed (0 unresolved, 1 resolved)");
+    expect(markdown).toContain("Historical failed runs: 1 resolved by later passing runs.");
+    expect(markdown).toContain("historical failure excerpt");
+
+    const replay = await runReplayCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:04:45.000Z")
+    });
+    const html = await readFile(replay.replayPath, "utf8");
+    expect(html).toContain("1 passed / 0 unresolved failed / 1 historical failed");
+    expect(html).toContain("historical failure excerpt");
+
     const handoff = await runHandoffCommand({
       repoRoot,
       changedFiles: ["docs/development/verification.md"],
@@ -603,6 +630,7 @@ describe("evidence-aware session outputs", () => {
 
     expect(handoff.exitCode).toBe(0);
     expect(handoff.output).toContain("Readiness: Ready for review");
+    expect(handoff.output).toContain("1 passed, 1 failed (0 unresolved, 1 resolved)");
     expect(handoff.output).toContain(
       "Historical failed verification excerpts remain in report/replay; no unresolved failed verification remains."
     );
