@@ -4,6 +4,56 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clean Risk Reason Wording
+
+Dogfood finding:
+
+- After `Risk: none` landed, clean status still showed the shared risk reason
+  `No changed files detected yet.` That made a post-commit clean worktree sound
+  like work had not started.
+
+Persona readout:
+
+- Product Maintainer: the clean state should feel final and reviewable after a
+  commit, not tentative.
+- CLI Engineer: update the shared risk reason so text and JSON remain aligned.
+- Docs and DX Writer: reuse the existing Review Intelligence wording:
+  `No changed files are currently detected.`
+
+Implemented locally:
+
+- `analyzeRisk([])` now returns the reason
+  `No changed files are currently detected.`
+- Risk levels, categories, and non-empty risk reasons are unchanged.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because the risk reason still
+  contained `No changed files detected yet.`
+- AgentFlight-captured focused verification now passes:
+  `npm test -- tests/core/risk.test.ts tests/commands/evidence-output.test.ts`
+  passed: 2 files / 50 tests.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 184 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 188 changed files and maximum
+  changed-file risk score `207.9`.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: maximum changed-file risk score `207.9`, no risky
+  functions, no dependency changes, no contract changes, no taint flows, no
+  dataflow risks, and no new cycles.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-06-13-verification-report.md`.
+- `npx agentloopkit@latest check-gates` passed with current verification and
+  handoff evidence.
+- Built CLI smoke passed in a clean temp repo: `agentflight status` reported
+  `Risk: none`, used `No changed files are currently detected.`, and did not
+  include the old `No changed files detected yet.` wording.
+
 ### Clean Status Risk Wording
 
 Dogfood finding:

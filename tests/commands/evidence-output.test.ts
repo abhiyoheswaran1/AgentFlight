@@ -204,6 +204,7 @@ describe("evidence-aware session outputs", () => {
 
     expect(status.output).toContain("Changed files:\n0");
     expect(status.output).toContain("Risk: none");
+    expect(status.output).not.toContain("No changed files detected yet.");
     expect(status.output).toContain("Verification Evidence:\n1 passed, 0 failed");
     expect(status.output).toContain(
       "- Verification run details are tucked because the worktree is clean; open report/replay or JSON output for the full ledger."
@@ -226,7 +227,8 @@ describe("evidence-aware session outputs", () => {
 
     expect(payload.risk).toMatchObject({
       level: "none",
-      changedFiles: 0
+      changedFiles: 0,
+      reasons: ["No changed files are currently detected."]
     });
     expect(payload.review.readiness).toMatchObject({
       state: "clean_worktree",

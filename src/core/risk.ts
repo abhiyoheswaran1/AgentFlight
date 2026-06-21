@@ -71,7 +71,7 @@ export function analyzeRisk(files: string[]): RiskAnalysis {
       level: "none",
       changedFiles: 0,
       categories: [],
-      reasons: ["No changed files detected yet."]
+      reasons: ["No changed files are currently detected."]
     };
   }
 

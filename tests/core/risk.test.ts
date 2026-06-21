@@ -57,7 +57,8 @@ describe("risk categorisation", () => {
   it("uses none when there are no changed files", () => {
     expect(analyzeRisk([])).toMatchObject({
       level: "none",
-      changedFiles: 0
+      changedFiles: 0,
+      reasons: ["No changed files are currently detected."]
     });
   });
 });

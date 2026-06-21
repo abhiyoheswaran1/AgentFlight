@@ -82,6 +82,8 @@ All notable AgentFlight changes are documented here.
   guidance instead of warning when the rest of the local setup is healthy.
 - Clean-worktree status now reports `Risk: none` instead of `Risk: unknown`
   while preserving `unknown` for legacy or genuinely missing metadata.
+- Clean-worktree risk reasons now use current-state wording instead of saying
+  no changed files were detected "yet."
 
 ### Changed
 
