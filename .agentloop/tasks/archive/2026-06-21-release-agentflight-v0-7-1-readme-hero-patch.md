@@ -1,30 +1,33 @@
-# Release AgentFlight v0.7.0
+# Release AgentFlight v0.7.1 README hero patch
 
 - Created date: 2026-06-21
 - Task type: release
-- Status: in-progress
+- Status: done
 
 ## Problem Statement
-The published v0.6.0 release is already tagged and on npm, while local main contains the next unreleased minor-release work.
+The README hero GIF still shows the older start, verify, status, replay flow even though the current product flow is handoff-first with history available.
 
 ## Desired Outcome
-Cut AgentFlight v0.7.0 with release audit evidence, passing verification, pushed main, pushed tag, release workflow completion, npm latest confirmation, and published smoke verification.
+Cut AgentFlight v0.7.1 with an accurate README hero asset/caption, reviewed README copy, passing verification, pushed main and v0.7.1 tag, release workflow completion, npm latest confirmation, and website update prompt.
 
 ## Constraints
-- Do not add product features during the release pass.
+- Keep this as a patch release; do not add product features.
+- Preserve local-first positioning and avoid AI coding assistant/session wording.
 - Do not manually publish to npm unless Trusted Publishing fails and manual recovery is explicitly approved.
-- Do not move or reuse the existing v0.6.0 tag.
 
 ## Non-Goals
-- None recorded yet.
+- Do not start v0.8.0 or add new CLI behavior.
 
 ## Assumptions
 - None recorded yet.
 
 ## Likely Files or Areas
+- README.md
+- docs/assets/agentflight-terminal-demo.gif
+- docs/marketing/agentflight-terminal-demo.tape
+- docs/marketing/agentflight-terminal-demo-playback.sh
 - CHANGELOG.md
 - AGENTFLIGHT_DEVLOG.md
-- docs/development/v0.7.0-release-audit.md
 - package.json
 - package-lock.json
 
@@ -32,10 +35,10 @@ Cut AgentFlight v0.7.0 with release audit evidence, passing verification, pushed
 - None recorded yet.
 
 ## Acceptance Criteria
-- package.json and package-lock.json report 0.7.0.
-- node dist/cli.js --version reports 0.7.0 after build.
-- Release audit documents ProjScan caution as manual scale signoff only if it remains.
-- npm view agentflight version reports 0.7.0 after the release workflow.
+- README hero asset and caption accurately show the current handoff-first flow.
+- README is reviewed end-to-end for stale version/product-flow copy.
+- node dist/cli.js --version reports 0.7.1 after build.
+- npm view agentflight version reports 0.7.1 after release workflow.
 
 ## Verification Commands
 - npm run verify
@@ -59,10 +62,7 @@ Cut AgentFlight v0.7.0 with release audit evidence, passing verification, pushed
 - Re-check protected areas before changing migrations, auth, secrets, billing, deployment, or public APIs.
 
 ## Rollback Notes
-Before publishing, revert the release commit or reset the branch to the last
-reviewed commit. After tag creation, do not move `v0.7.0`; if Trusted
-Publishing succeeds and a regression is found, cut a follow-up patch release
-from a reverted or fixed commit.
+Before tag publish, revert the release commit. After npm publish, cut a follow-up patch instead of moving v0.7.1.
 
 ## Handoff Requirements
 - Summarize files changed.

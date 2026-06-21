@@ -1,6 +1,6 @@
 {
   "name": "agentflight",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Local-first review layer for coding agent sessions.",
   "type": "module",
   "main": "./dist/cli.js",

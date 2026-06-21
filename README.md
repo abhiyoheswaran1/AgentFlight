@@ -18,13 +18,12 @@ AgentFlight helps you:
 - capture verification evidence
 - see changed files and risk
 - create snapshots during the session
-- generate a proof report
-- generate a local replay timeline
 - generate a local review handoff
+- generate a proof report and local replay timeline
 - find recent local sessions and their artifacts
 - create a resume prompt for the next agent or reviewer
 
-![AgentFlight CLI workflow: start, verify, status, and replay](docs/assets/agentflight-terminal-demo.gif)
+![AgentFlight CLI workflow: init, start, verify, status, handoff, and history](docs/assets/agentflight-terminal-demo.gif)
 
 ## 60-Second Workflow
 
@@ -32,13 +31,13 @@ AgentFlight helps you:
 npx agentflight@latest init
 npx agentflight@latest start --task "Add password reset flow"
 
-# Run Codex, Claude Code, Cursor, or your coding agent normally
+# Run your coding agent normally
 
 npx agentflight@latest verify
-npx agentflight@latest handoff
-npx agentflight@latest status
 npx agentflight@latest snapshot --note "Initial implementation verified"
-npx agentflight@latest history
+npx agentflight@latest status
+npx agentflight@latest handoff
+npx agentflight@latest history --limit 1
 ```
 
 What you get:
@@ -46,12 +45,12 @@ What you get:
 - `init` creates local `.agentflight/` project files and seeds detected verification commands into `.agentflight/config.json` when package scripts exist.
 - `start` records the task, git branch, commit, dirty state, package manager, and tool availability.
 - `verify` runs configured commands and stores stdout, stderr, exit code, timing, and pass/fail status. Use `verify -- <command>` for one explicit proof command.
-- `handoff` generates the local review packet: readiness, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 - `status` answers what changed, how risky it is, what proof exists, what proof is missing, and what to do next.
 - `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.
+- `handoff` generates the local review packet: readiness, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 - `report` writes a Markdown proof report for review.
 - `replay` writes a local HTML review path and timeline you can open in a browser.
-- `resume` writes a Codex/Claude-ready prompt for the next safe step.
+- `resume` writes a continuation prompt for the next safe step.
 - `history` shows a latest action with recorded readiness, the artifact to open first, and recent local handoff/report/replay/resume paths without uploading, syncing, or switching sessions. Use `history --task <text>` or `history --state ready|blocked|needs_verification|unknown|current` to narrow existing local records.
 
 ## Watch The Flow
@@ -63,6 +62,7 @@ AgentFlight turns a loose coding agent session into a local proof trail:
 3. Snapshot meaningful checkpoints.
 4. Read `status` to see changed files, risk, proof, gaps, and next action.
 5. Run `handoff` when the work is ready to review or when you need a clear fix-before-sharing summary.
+6. Use `history --limit 1` to reopen the latest local handoff, report, replay, or resume artifact.
 
 The replay artifact is a self-contained local HTML file. It leads with the review verdict and a compact review path, then lays out risk, review focus, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record:
 
@@ -104,23 +104,23 @@ Verification Evidence:
 
 Review first:
 1. src/auth/reset.ts
-   Why: identity/session path; no passing test evidence
+   Why: identity/session path
    Focus: Check session, permission, and identity boundaries first.
    Suggested proof: npm test
 
 Proof gaps:
-- blocking: Sensitive auth, payment, or security files changed without passing test evidence.
+- none
 
 Latest snapshot:
 - Note: Initial implementation verified
 - Risk: medium
 - Changed files: 3
 
-Readiness: Needs verification
-Reason: Sensitive auth, payment, or security files changed without passing test evidence.
+Readiness: Ready for review
+Reason: Verification evidence is present and no blocking proof gaps were detected.
 
 Next action:
-Run agentflight verify -- npm test
+Run agentflight handoff to generate the local review packet.
 ```
 
 `agentflight report`:
@@ -130,7 +130,7 @@ Run agentflight verify -- npm test
 
 ## Review First
 1. src/auth/reset.ts
-   - Why: identity/session path; no passing test evidence
+   - Why: identity/session path
 
 ## Verification Evidence
 - passed: npm test
@@ -138,7 +138,25 @@ Run agentflight verify -- npm test
 - stderr: .agentflight/evidence/.../verification-1.stderr.txt
 
 ## Review Readiness
-Needs verification
+Ready for review
+```
+
+`agentflight handoff`:
+
+```text
+AgentFlight handoff
+
+Task:
+Add password reset flow
+
+Readiness: Ready for review
+Open first: handoff .agentflight/reports/af-...-handoff.md
+
+Artifacts:
+- Handoff: .agentflight/reports/af-...-handoff.md
+- Report: .agentflight/reports/af-...-report.md
+- Replay: .agentflight/reports/af-...-replay.html
+- Resume: .agentflight/reports/af-...-resume.md
 ```
 
 `agentflight replay`:
@@ -148,7 +166,22 @@ Replay saved:
 .agentflight/reports/af-...-replay.html
 
 Timeline:
-session_started -> verification_passed -> snapshot_created -> replay_generated
+session_started -> verification_passed -> snapshot_created -> report_generated -> replay_generated
+```
+
+`agentflight history --limit 1`:
+
+```text
+AgentFlight history
+
+Latest action:
+Open first: handoff .agentflight/reports/af-...-handoff.md
+Recorded readiness: Ready for review
+
+Recent sessions:
+1. Add password reset flow
+   Proof: 1 passed, 0 failed
+   Handoff: .agentflight/reports/af-...-handoff.md
 ```
 
 `agentflight resume`:
@@ -184,14 +217,14 @@ The current AgentFlight release supports:
 - config-defined verification profiles for repeated local command groups
 - configurable generated/internal changed-file filters
 - verification evidence capture with `agentflight verify`
-- inline failure excerpts in the replay and report, so failures are visible without opening evidence files
+- inline failure excerpts in terminal output, handoffs, reports, and replays, so failures are visible without opening evidence files
 - session events
 - snapshots with `agentflight snapshot --note "..."`
 - Markdown proof reports
 - self-contained HTML replays with review-path guidance and timelines
 - local review handoffs that point to the report, replay, and resume artifacts
 - local history filters for finding sessions by task text or recorded readiness
-- resume prompts for Codex, Claude Code, or a human reviewer
+- resume prompts for the next agent or reviewer
 - doctor checks for local setup
 - defensive ProjScan and AgentLoopKit adapters
 - no telemetry, cloud sync, or source upload
@@ -292,7 +325,7 @@ Strategic architecture:
 
 ## Example Session
 
-Read [docs/examples/basic-agentflight-session.md](docs/examples/basic-agentflight-session.md) for a short password-reset walkthrough with status, report, replay, and resume artifacts.
+Read [docs/examples/basic-agentflight-session.md](docs/examples/basic-agentflight-session.md) for a short password-reset walkthrough with status, handoff, report, replay, and resume artifacts.
 
 ## Roadmap
 

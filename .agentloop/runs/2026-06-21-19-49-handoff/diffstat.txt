@@ -1,0 +1,10 @@
+ .../tasks/2026-06-21-release-agentflight-v0-7-0.md |  71 --------------------
+ AGENTFLIGHT_DEVLOG.md                              |  31 +++++++++
+ CHANGELOG.md                                       |  14 ++++
+ README.md                                          |  73 +++++++++++++++------
+ docs/assets/agentflight-terminal-demo.gif          | Bin 536408 -> 988756 bytes
+ .../agentflight-terminal-demo-playback.sh          |  36 ++++++++--
+ docs/marketing/agentflight-terminal-demo.tape      |   2 +-
+ package-lock.json                                  |   4 +-
+ package.json                                       |   2 +-
+ 9 files changed, 134 insertions(+), 99 deletions(-)

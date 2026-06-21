@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-21-19-49-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-21-19-49",
+  "createdAtEpochMs": 1782064140394,
+  "task": {
+    "path": ".agentloop/tasks/archive/2026-06-21-release-agentflight-v0-7-1-readme-hero-patch.md",
+    "title": "Release AgentFlight v0.7.1 README hero patch",
+    "status": "done"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-21-19-48-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-21-19-48-pr-summary.md",
+  "changedFileCount": 17
+}

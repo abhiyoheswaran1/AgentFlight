@@ -2,6 +2,20 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.7.1] - 2026-06-21
+
+### Fixed
+
+- Refreshed the README terminal hero GIF so it shows the current
+  handoff-first review flow instead of the older replay-first flow.
+- Updated the README hero caption and sample output to include `handoff` and
+  `history` accurately.
+
+### Changed
+
+- Tightened README workflow copy around the local handoff packet, recent local
+  session history, and current failure-excerpt surfaces.
+
 ## [0.7.0] - 2026-06-21
 
 ### Added

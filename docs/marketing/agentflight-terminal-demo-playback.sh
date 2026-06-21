@@ -18,6 +18,19 @@ label()  { printf '%s%s%s\n' "$DIM" "$1" "$RESET"; }
 clear
 sleep 0.4
 
+prompt 'npx agentflight init'
+sleep 0.6
+plain  'AgentFlight initialized'
+plain  ''
+label  'Created:'
+plain  '- .agentflight/config.json'
+plain  '- .agentflight/.gitignore'
+plain  ''
+label  'Next:'
+plain  'agentflight start --task "Describe the task"'
+sleep 0.9
+
+printf '\n'
 prompt 'npx agentflight start --task "Add password reset flow"'
 sleep 0.7
 plain  'AgentFlight started'
@@ -38,7 +51,7 @@ plain  'Now run your coding agent normally.'
 sleep 1.1
 
 printf '\n'
-note '# Codex, Claude Code, or Cursor edits the repo'
+note '# Your coding agent edits the repo'
 sleep 0.9
 
 prompt 'npx agentflight verify -- npm test'
@@ -81,8 +94,23 @@ prompt 'npx agentflight handoff'
 sleep 0.7
 label  'AgentFlight handoff'
 plain  'Readiness: Ready for review'
-plain  'Open first: replay'
-plain  'Artifacts: report, replay, resume'
+plain  'Open first: handoff .agentflight/reports/af-7d3f-handoff.md'
+plain  'Artifacts: handoff, report, replay, resume'
 plain  ''
 note '# Share the local handoff packet for scoped review'
-sleep 2.4
+sleep 1.0
+
+printf '\n'
+prompt 'npx agentflight history --limit 1'
+sleep 0.7
+plain  'AgentFlight history'
+plain  ''
+label  'Latest action:'
+plain  'Open first: handoff .agentflight/reports/af-7d3f-handoff.md'
+plain  'Recorded readiness: Ready for review'
+plain  ''
+label  'Recent sessions:'
+plain  '1. Add password reset flow'
+plain  '   Proof: 1 passed, 0 failed'
+plain  '   Handoff: .agentflight/reports/af-7d3f-handoff.md'
+sleep 2.2

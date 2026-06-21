@@ -1,0 +1,70 @@
+[
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-21-release-agentflight-v0-7-0.md"
+  },
+  {
+    "status": "M",
+    "path": "AGENTFLIGHT_DEVLOG.md"
+  },
+  {
+    "status": "M",
+    "path": "CHANGELOG.md"
+  },
+  {
+    "status": "M",
+    "path": "README.md"
+  },
+  {
+    "status": "M",
+    "path": "docs/assets/agentflight-terminal-demo.gif"
+  },
+  {
+    "status": "M",
+    "path": "docs/marketing/agentflight-terminal-demo-playback.sh"
+  },
+  {
+    "status": "M",
+    "path": "docs/marketing/agentflight-terminal-demo.tape"
+  },
+  {
+    "status": "M",
+    "path": "package-lock.json"
+  },
+  {
+    "status": "M",
+    "path": "package.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-21-19-43-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-19-43-handoff-2/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-19-43-handoff-2/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-19-43-handoff-2/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-19-43-handoff-2/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-21-release-agentflight-v0-7-0.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-21-release-agentflight-v0-7-1-readme-hero-patch.md"
+  },
+  {
+    "status": "??",
+    "path": "docs/development/v0.7.1-release-audit.md"
+  }
+]

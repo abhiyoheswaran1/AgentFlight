@@ -14,4 +14,4 @@ Set PlaybackSpeed 1.0
 
 Type "bash docs/marketing/agentflight-terminal-demo-playback.sh"
 Enter
-Sleep 12s
+Sleep 16s

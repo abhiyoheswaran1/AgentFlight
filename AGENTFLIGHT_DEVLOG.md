@@ -4,6 +4,37 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Release AgentFlight v0.7.1
+
+Release decision:
+
+- `agentflight@0.7.0` is published, but the README hero GIF still showed the
+  older start -> verify -> status -> replay flow.
+- The fix is patch-release scope because it updates release assets and README
+  copy only; it does not add runtime behavior.
+
+Implemented locally:
+
+- Refreshed the terminal demo source to show `init`, `start`, `verify`,
+  `status`, `handoff`, and `history --limit 1`.
+- Updated the README hero caption and sample outputs to match the current
+  handoff-first review path.
+- Kept product positioning on coding agent sessions and local review handoff
+  language.
+
+Verification so far:
+
+- Built CLI reports `0.7.1`.
+- AgentFlight-captured `npm run verify` passed with 23 files / 222 tests plus
+  build.
+- AgentFlight-captured `npm run format:check`, `npm pack --dry-run`,
+  `npm audit --audit-level=moderate`, ProjScan doctor, and AgentLoopKit
+  verification passed.
+- ProjScan preflight returned `proceed` with no cautionary signals before
+  commit.
+- Local tarball smoke in a temporary git repo passed through version, init,
+  start, verification, status, handoff, history, and doctor.
+
 ### Release AgentFlight v0.7.0
 
 Release decision:
