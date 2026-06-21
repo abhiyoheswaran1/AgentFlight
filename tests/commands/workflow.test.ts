@@ -252,6 +252,51 @@ agentflight handoff`);
     expect(doctor.output).toContain("Run agentflight start --task");
   });
 
+  it("warns when package proof scripts exist but verification config is empty", async () => {
+    const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            test: "vitest run",
+            typecheck: "tsc --noEmit"
+          }
+        },
+        null,
+        2
+      )
+    );
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const configPath = join(repoRoot, ".agentflight", "config.json");
+    const config = JSON.parse(await readFile(configPath, "utf8")) as {
+      verification: { commands: string[] };
+    };
+    config.verification.commands = [];
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    const doctor = await runDoctorCommand({
+      repoRoot,
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      projscanAvailable: true,
+      agentloopkitAvailable: true
+    });
+
+    expect(doctor.output).toContain("Warning verification commands");
+    expect(doctor.output).toContain(
+      ".agentflight/config.json has no configured verification commands"
+    );
+    expect(doctor.output).toContain("agentflight verify -- <command>");
+    expect(doctor.output).not.toContain(repoRoot);
+  });
+
   it("guides first-run users when generated ProjScan memory is present", async () => {
     const repoRoot = await createTempRepo();
     await writeFile(

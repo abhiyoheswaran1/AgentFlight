@@ -57,6 +57,9 @@ export async function runDoctorCommand(
     join(options.repoRoot, ".projscan-memory", "memory.json")
   );
   const config = configValid ? await loadConfig(options.repoRoot) : null;
+  const configuredVerificationCommands = Array.isArray(config?.verification?.commands)
+    ? config.verification.commands.length
+    : undefined;
   const projscanMemoryIgnored =
     projscanMemoryPresent &&
     filterChangedFiles([".projscan-memory/memory.json"], {
@@ -77,6 +80,7 @@ export async function runDoctorCommand(
     currentSessionExists: await pathExists(paths.currentSession),
     projscanAvailable: projscan.available,
     agentloopkitAvailable: agentloopkit.available,
+    configuredVerificationCommands,
     projscanMemoryPresent,
     projscanMemoryIgnored,
     scripts: {

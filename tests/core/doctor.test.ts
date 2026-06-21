@@ -2,6 +2,87 @@ import { describe, expect, it } from "vitest";
 import { evaluateDoctorChecks } from "../../src/core/doctor.js";
 
 describe("doctor checks", () => {
+  it("warns when package proof scripts exist but no verification commands are configured", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      repoRoot: "/repo",
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: true,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      configuredVerificationCommands: 0,
+      scripts: { test: true, build: false, typecheck: false, lint: false }
+    });
+
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "verification commands",
+        status: "warning",
+        message:
+          ".agentflight/config.json has no configured verification commands, but package proof scripts are available.",
+        suggestedFix:
+          "Add commands under verification.commands or run agentflight verify -- <command> explicitly."
+      })
+    );
+  });
+
+  it("reports OK when verification commands are configured", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      repoRoot: "/repo",
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: true,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      configuredVerificationCommands: 1,
+      scripts: { test: true, build: true, typecheck: true, lint: true }
+    });
+
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "verification commands",
+        status: "ok",
+        message: ".agentflight/config.json has 1 configured verification command."
+      })
+    );
+  });
+
+  it("does not warn about empty verification commands when no proof scripts exist", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      repoRoot: "/repo",
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: true,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      configuredVerificationCommands: 0,
+      scripts: { test: false, build: false, typecheck: false, lint: false }
+    });
+
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "verification commands",
+        status: "ok",
+        message: "No configured verification commands and no package proof scripts detected."
+      })
+    );
+  });
+
   it("reports actionable warnings for missing optional proof scripts and tools", () => {
     const result = evaluateDoctorChecks({
       nodeVersion: "v20.11.0",

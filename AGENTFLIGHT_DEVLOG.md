@@ -4,6 +4,62 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Doctor Empty Verification Config Guidance
+
+Dogfood finding:
+
+- This repo's older `.agentflight/config.json` still had an empty
+  `verification.commands` array even though package proof scripts exist. That
+  makes `agentflight verify` without an explicit command fail after doctor
+  reports the scripts themselves as configured.
+
+Persona readout:
+
+- Product Maintainer: first-run and older-config health checks should prevent
+  obvious proof-command dead ends.
+- CLI Engineer: warn only; do not mutate config or introduce migration logic.
+- Docs and DX Writer: give a concise fix that works for explicit-command users
+  and config-command users.
+- Security Reviewer: keep doctor local-only and path-safe.
+
+Implemented locally:
+
+- Core doctor evaluation now reports a `verification commands` check when the
+  command layer supplies the configured command count.
+- `agentflight doctor` warns when no commands are configured while package proof
+  scripts are available, suggesting `verification.commands` or an explicit
+  `agentflight verify -- <command>`.
+- Doctor reports OK when commands are configured, and avoids this warning when
+  no package proof scripts are detected.
+
+Verification:
+
+- Red AgentFlight-captured core doctor tests failed because no
+  `verification commands` check existed.
+- Green AgentFlight-captured core doctor tests passed:
+  `npm test -- tests/core/doctor.test.ts` passed with 1 file / 10 tests.
+- Red AgentFlight-captured workflow test failed because `runDoctorCommand` did
+  not pass configured command count into core doctor evaluation.
+- Green AgentFlight-captured workflow test passed:
+  `npm test -- tests/commands/workflow.test.ts` passed with 1 file / 10 tests.
+- Combined focused run passed:
+  `npm test -- tests/core/doctor.test.ts tests/commands/workflow.test.ts`
+  passed with 2 files / 20 tests.
+- Bug-pass verification passed: `npm run verify` passed with 21 files / 195
+  tests plus build, `npm run format:check` passed, and `npm pack --dry-run`
+  passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight stayed at the known accumulated branch scale caution:
+  234 changed files and maximum changed-file risk score `212.1 >= 80`.
+- ProjScan review returned a scale-only `block` verdict for manual signoff, with
+  no cycles, risky functions, dependency changes, contract changes, taint flows,
+  or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-09-21-verification-report.md`.
+- Built CLI smoke `node dist/cli.js doctor` now reports
+  `Warning verification commands` for this repo's intentionally old empty
+  verification config.
+
 ### History Malformed Session Paths
 
 Dogfood finding:

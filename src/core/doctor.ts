@@ -12,6 +12,7 @@ export interface DoctorEvaluationInput {
   currentSessionExists: boolean;
   projscanAvailable: boolean;
   agentloopkitAvailable: boolean;
+  configuredVerificationCommands?: number | undefined;
   projscanMemoryPresent?: boolean | undefined;
   projscanMemoryIgnored?: boolean | undefined;
   scripts: {
@@ -131,6 +132,10 @@ export function evaluateDoctorChecks(input: DoctorEvaluationInput): DoctorResult
         )
   );
 
+  if (input.configuredVerificationCommands !== undefined) {
+    checks.push(verificationCommandsCheck(input));
+  }
+
   if (input.projscanMemoryPresent) {
     checks.push(
       input.projscanMemoryIgnored
@@ -166,6 +171,33 @@ export function evaluateDoctorChecks(input: DoctorEvaluationInput): DoctorResult
         : "ok",
     checks
   };
+}
+
+function verificationCommandsCheck(input: DoctorEvaluationInput): DoctorCheck {
+  const count = Math.max(0, input.configuredVerificationCommands ?? 0);
+  if (count > 0) {
+    return ok(
+      "verification commands",
+      `.agentflight/config.json has ${count} configured verification ${count === 1 ? "command" : "commands"}.`
+    );
+  }
+
+  if (hasPackageProofScript(input.scripts)) {
+    return warning(
+      "verification commands",
+      ".agentflight/config.json has no configured verification commands, but package proof scripts are available.",
+      "Add commands under verification.commands or run agentflight verify -- <command> explicitly."
+    );
+  }
+
+  return ok(
+    "verification commands",
+    "No configured verification commands and no package proof scripts detected."
+  );
+}
+
+function hasPackageProofScript(input: DoctorEvaluationInput["scripts"]): boolean {
+  return input.test || input.build || input.typecheck || input.lint;
 }
 
 function parseNodeMajor(version: string): number {
