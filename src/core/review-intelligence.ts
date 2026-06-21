@@ -258,7 +258,7 @@ function buildProofGaps(input: {
     gaps.push({
       id: "incomplete-verification",
       severity: "blocking",
-      message: `Verification was started but no completed result was recorded: ${attempt.command}`,
+      message: formatIncompleteVerificationMessage(attempt.command),
       suggestedCommand: attempt.command,
       relatedFiles: input.changedFiles
     });
@@ -395,9 +395,7 @@ function buildReadinessDecision(input: {
     return readinessDecision({
       state,
       reason: firstGap.message,
-      nextAction: suggestedCommand
-        ? `Run agentflight verify -- ${suggestedCommand}`
-        : "Run relevant verification before requesting review.",
+      nextAction: formatGapNextAction(firstGap),
       suggestedCommand,
       proofGaps: input.proofGaps
     });
@@ -455,6 +453,20 @@ function scoreFocusItem(
     failedVerificationScore(category, hasFailedVerification) +
     categoryGapScore(category, relatedGaps, generatedGuidanceFile)
   );
+}
+
+function formatIncompleteVerificationMessage(command: string): string {
+  return `Verification is still running or did not record a completed result: ${command}`;
+}
+
+function formatGapNextAction(gap: ProofGap): string {
+  if (!gap.suggestedCommand) return "Run relevant verification before requesting review.";
+
+  if (gap.id === "incomplete-verification") {
+    return `Wait for the command to finish; if no result appears, rerun agentflight verify -- ${gap.suggestedCommand}`;
+  }
+
+  return `Run agentflight verify -- ${gap.suggestedCommand}`;
 }
 
 function baseFocusScore(category: RiskCategory, generatedGuidanceFile: boolean): number {

@@ -4,6 +4,47 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clarify In-Flight Verification Guidance
+
+Dogfood finding:
+
+- Post-commit verification was run in parallel with a status check. Status saw
+  two verification commands after their start events but before their completed
+  results were recorded, so it reported incomplete verification as if evidence
+  might have been lost.
+- Root-cause check showed the later session JSON did preserve both completed
+  runs and completion events. The persistence layer was intact; the friction was
+  wording that made an in-flight command look like a permanent blocker.
+
+Implemented locally:
+
+- Incomplete verification proof gaps now say the command is still running or did
+  not record a completed result.
+- Review readiness now tells users to wait for the command to finish, then rerun
+  the `agentflight verify -- ...` command only if no result appears.
+
+Verification so far:
+
+- Red AgentFlight-captured
+  `npm test -- tests/core/review-intelligence.test.ts tests/commands/evidence-output.test.ts`
+  failed on the old incomplete-verification wording.
+- The first green attempt exposed one missed Review Intelligence assertion; that
+  expectation was updated to the same copy.
+- Green AgentFlight-captured
+  `npm test -- tests/core/review-intelligence.test.ts tests/commands/evidence-output.test.ts`
+  passed with 2 files / 59 tests.
+- Final AgentFlight-captured `npm run verify` passed with 23 files / 212 tests
+  plus build.
+- Final AgentFlight-captured `npm run format:check` passed.
+- Final AgentFlight-captured `npm pack --dry-run` passed.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight/review still reports the known
+  scale-only release sign-off caution: max changed-file risk score 216.1 >= 80,
+  with no concrete cycle, risky-function, contract, taint, or dataflow blocker.
+- AgentFlight-captured AgentLoopKit verification passed.
+- AgentFlight status after all verification commands completed showed
+  `Proof gaps: none`.
+
 ### Clarify Ready Handoff Sharing Guidance
 
 Dogfood finding:

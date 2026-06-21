@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Incomplete verification guidance now says a command may still be running and
+  suggests waiting before rerunning, avoiding false lost-evidence alarms when
+  status is checked during parallel verification.
 - Ready `agentflight handoff` terminal guidance now tells reviewers to share
   the local handoff packet first, with report/replay as supporting detail
   artifacts.

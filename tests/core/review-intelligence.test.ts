@@ -119,8 +119,12 @@ describe("review intelligence", () => {
       label: "Needs verification",
       suggestedCommand: "npm test"
     });
-    expect(review.readiness.reason).toContain("started but no completed result was recorded");
-    expect(review.readiness.nextAction).toContain("agentflight verify -- npm test");
+    expect(review.readiness.reason).toContain(
+      "Verification is still running or did not record a completed result: npm test"
+    );
+    expect(review.readiness.nextAction).toContain(
+      "Wait for the command to finish; if no result appears, rerun agentflight verify -- npm test"
+    );
   });
 
   it("does not mark a started verification as incomplete after a later successful run", () => {
@@ -569,7 +573,9 @@ describe("review intelligence", () => {
       label: "Needs verification",
       suggestedCommand: "npm test"
     });
-    expect(review.readiness.reason).toContain("Verification was started");
+    expect(review.readiness.reason).toContain(
+      "Verification is still running or did not record a completed result: npm test"
+    );
   });
 
   it("keeps failed verification blocking even when no files are changed", () => {

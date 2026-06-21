@@ -356,7 +356,10 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(status.output).toContain("Changed files:\n0");
     expect(status.output).toContain("Readiness: Needs verification");
     expect(status.output).toContain(
-      "Verification was started but no completed result was recorded"
+      "Verification is still running or did not record a completed result: npm test"
+    );
+    expect(status.output).toContain(
+      "Wait for the command to finish; if no result appears, rerun agentflight verify -- npm test"
     );
     expect(status.output).toContain("agentflight verify -- npm test");
     expect(status.output).not.toContain("Readiness: Clean worktree");
@@ -1161,7 +1164,10 @@ Start a new AgentFlight session when you begin the next task.`);
     });
     expect(status.output).toContain("Readiness: Needs verification");
     expect(status.output).toContain(
-      "Verification was started but no completed result was recorded"
+      "Verification is still running or did not record a completed result: npm test"
+    );
+    expect(status.output).toContain(
+      "Wait for the command to finish; if no result appears, rerun agentflight verify -- npm test"
     );
     expect(status.output).toContain("agentflight verify -- npm test");
 
@@ -1170,7 +1176,12 @@ Start a new AgentFlight session when you begin the next task.`);
       changedFiles: ["src/auth/reset.ts"]
     });
     const markdown = await readFile(report.reportPath, "utf8");
-    expect(markdown).toContain("Verification was started but no completed result was recorded");
+    expect(markdown).toContain(
+      "Verification is still running or did not record a completed result: npm test"
+    );
+    expect(markdown).toContain(
+      "Wait for the command to finish; if no result appears, rerun agentflight verify -- npm test"
+    );
     expect(markdown).toContain("agentflight verify -- npm test");
     expect(markdown).not.toContain("Missing passing verification evidence for");
 
@@ -1179,7 +1190,7 @@ Start a new AgentFlight session when you begin the next task.`);
       changedFiles: ["src/auth/reset.ts"]
     });
     await expect(readFile(replay.replayPath, "utf8")).resolves.toContain(
-      "Verification was started but no completed result was recorded"
+      "Verification is still running or did not record a completed result: npm test"
     );
 
     const resume = await runResumeCommand({
@@ -1187,7 +1198,10 @@ Start a new AgentFlight session when you begin the next task.`);
       changedFiles: ["src/auth/reset.ts"]
     });
     expect(resume.output).toContain(
-      "Verification was started but no completed result was recorded"
+      "Verification is still running or did not record a completed result: npm test"
+    );
+    expect(resume.output).toContain(
+      "Wait for the command to finish; if no result appears, rerun agentflight verify -- npm test"
     );
     expect(resume.output).toContain("agentflight verify -- npm test");
   });
