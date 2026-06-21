@@ -61,6 +61,9 @@ All notable AgentFlight changes are documented here.
 - `agentflight status` now compacts very long terminal verification run lists
   while keeping full verification runs in JSON, report/replay, and local
   evidence files.
+- Clean-worktree `agentflight status` now tucks individual verification run
+  details when there are no unresolved failed runs, while keeping counts and
+  JSON evidence complete.
 
 ### Changed
 

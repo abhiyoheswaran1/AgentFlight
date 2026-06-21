@@ -104,7 +104,12 @@ ${risk.reasons.map((reason) => `- ${reason}`).join("\n")}
 
 Verification Evidence:
 ${formatVerificationCountLine(verification)}
-${verificationFailureContext ? `${verificationFailureContext}\n` : ""}${formatVerificationRuns(verification.runs)}
+${verificationFailureContext ? `${verificationFailureContext}\n` : ""}${formatVerificationRuns(
+      verification.runs,
+      {
+        tuckDetails: changedFiles.length === 0 && verification.unresolvedFailed === 0
+      }
+    )}
 
 Review first:
 ${formatReviewFocus(review.focus.slice(0, 5))}
@@ -230,25 +235,44 @@ function formatChangedAreas(categories: RiskCategorySummary[]): string {
     .join("\n");
 }
 
-function formatVerificationRuns(runs: VerificationRun[] | undefined): string {
+function formatVerificationRuns(
+  runs: VerificationRun[] | undefined,
+  options: { tuckDetails?: boolean } = {}
+): string {
   if (!runs || runs.length === 0) return "- No verification runs recorded.";
+  if (options.tuckDetails) return formatTuckedVerificationRuns();
+
+  return formatVisibleVerificationRuns(runs);
+}
+
+function formatTuckedVerificationRuns(): string {
+  return "- Verification run details are tucked because the worktree is clean; open report/replay or JSON output for the full ledger.";
+}
+
+function formatVisibleVerificationRuns(runs: VerificationRun[]): string {
   const displayRuns =
     runs.length > STATUS_VERIFICATION_RUN_LIMIT ? runs.slice(-STATUS_VERIFICATION_RUN_LIMIT) : runs;
-  const runLines = displayRuns
-    .map(
-      (run) =>
-        `- ${run.status}: ${formatCommandForDisplay(run.command)} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)`
-    )
-    .join("\n");
+  const runLines = displayRuns.map(formatVerificationRunLine).join("\n");
 
   if (displayRuns.length === runs.length) return runLines;
 
-  const omitted = runs.length - displayRuns.length;
-  const runNoun = omitted === 1 ? "run" : "runs";
-  const verb = omitted === 1 ? "remains" : "remain";
-  return `- Showing latest ${displayRuns.length} of ${runs.length} verification runs.
-- ${omitted} earlier verification ${runNoun} ${verb} in report/replay and JSON output.
+  return `${formatOmittedVerificationRunNote(runs.length, displayRuns.length)}
 ${runLines}`;
+}
+
+function formatVerificationRunLine(run: VerificationRun): string {
+  return `- ${run.status}: ${formatCommandForDisplay(run.command)} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)`;
+}
+
+function formatOmittedVerificationRunNote(totalRuns: number, shownRuns: number): string {
+  const omitted = totalRuns - shownRuns;
+  return `- Showing latest ${shownRuns} of ${totalRuns} verification runs.
+- ${formatOmittedVerificationRunCount(omitted)} remain in report/replay and JSON output.`;
+}
+
+function formatOmittedVerificationRunCount(omitted: number): string {
+  const runNoun = omitted === 1 ? "run" : "runs";
+  return `${omitted} earlier verification ${runNoun}`;
 }
 
 function formatReviewFocus(items: ReviewFocusItem[]): string {

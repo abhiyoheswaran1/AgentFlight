@@ -4,6 +4,67 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clean Status Verification Detail Tuck
+
+Dogfood finding:
+
+- After compacting long status verification lists, clean-checkout status still
+  showed the latest 8 verification commands even though there were no files left
+  to review. The count line was useful; the run details were review noise.
+
+Persona readout:
+
+- Product Maintainer: clean status should feel done and short, while still
+  proving that verification exists.
+- CLI Engineer: make this a terminal-only branch keyed to clean worktree plus
+  no unresolved failed verification.
+- Verification Engineer: unresolved failed verification must still print the
+  failed command, and JSON must keep all runs.
+- Security Reviewer: no evidence mutation, no report/replay changes, and no
+  storage shape change.
+
+Implemented locally:
+
+- Clean-worktree status now shows the verification count plus a tucked-details
+  line instead of individual run commands when no unresolved failed verification
+  remains.
+- Dirty-worktree status keeps the recent-run compaction behavior.
+- Clean status with unresolved failed verification still prints failed run
+  details.
+
+Verification:
+
+- Red targeted test failed because clean status did not print the tucked-details
+  line and still exposed individual run details.
+- AgentFlight-captured targeted verification now passes:
+  `npm test -- tests/commands/evidence-output.test.ts` passed: 1 file / 30
+  tests.
+- `npm run format:check` failed during the loop on `src/commands/status.ts`
+  and later on devlog wrapping; `npm run format` applied the mechanical
+  Prettier fixes.
+- ProjScan review then flagged `formatVerificationRuns` as a concrete
+  risky-function blocker after the new branch. The formatter was split into
+  smaller helpers, and the rerun had `0` risky functions.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 174 tests, plus build.
+- Final `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 154 changed files exceeds the
+  preflight threshold of 50, maximum changed-file risk score `203.7`, and no
+  concrete blockers after the formatter refactor.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only after the refactor: no cycles, risky
+  functions, dependency changes, contract changes, taint flows, or dataflow
+  risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-04-34-verification-report.md`.
+- Built CLI smoke in a clean temp repo showed the tucked verification-details
+  line, while JSON still reported one stored verification run and
+  `state: "clean_worktree"`.
+
 ### Compact Status Verification Lists
 
 Dogfood finding:

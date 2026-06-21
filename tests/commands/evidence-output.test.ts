@@ -203,6 +203,12 @@ describe("evidence-aware session outputs", () => {
     });
 
     expect(status.output).toContain("Changed files:\n0");
+    expect(status.output).toContain("Verification Evidence:\n1 passed, 0 failed");
+    expect(status.output).toContain(
+      "- Verification run details are tucked because the worktree is clean; open report/replay or JSON output for the full ledger."
+    );
+    expect(status.output).not.toContain("- passed:");
+    expect(status.output).not.toContain("proof ok");
     expect(status.output).toContain("Readiness: Clean worktree");
     expect(status.output).toContain("Reason: No changed files are currently detected.");
     expect(status.output).toContain(
@@ -221,9 +227,31 @@ describe("evidence-aware session outputs", () => {
       state: "clean_worktree",
       label: "Clean worktree"
     });
+    expect(payload.verification.runs).toHaveLength(1);
+    expect(payload.verification.runs[0].command).toContain("proof ok");
     expect(payload.nextAction).toBe(
       "Start a new AgentFlight session when you begin the next task."
     );
+  });
+
+  it("keeps unresolved failed verification details visible in clean status", async () => {
+    const repoRoot = await startedRepo([`${process.execPath} -e "process.exit(4)"`]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "process.exit(4)"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: [],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(status.output).toContain("Readiness: Blocked by failed verification");
+    expect(status.output).toContain("- failed:");
+    expect(status.output).toContain("process.exit(4)");
+    expect(status.output).not.toContain("Verification run details are tucked");
   });
 
   it("shows the latest snapshot in status", async () => {
