@@ -26,7 +26,10 @@ export async function runInitCommand(options: InitCommandOptions): Promise<InitC
   const verificationCommands = Array.isArray(result.config.verification?.commands)
     ? result.config.verification.commands
     : [];
-  const primaryVerificationCommand = verificationCommands[0] ?? "<proof command>";
+  const verificationStep =
+    verificationCommands.length > 0
+      ? "agentflight verify"
+      : "agentflight verify -- <proof command>";
 
   return {
     output: `AgentFlight initialized
@@ -52,7 +55,7 @@ If .projscan-memory/memory.json appears as generated tool state, add ".projscan-
 
 Primary workflow:
 agentflight start --task "Describe the work"
-agentflight verify -- ${primaryVerificationCommand}
+${verificationStep}
 agentflight handoff
 
 Supporting checks:

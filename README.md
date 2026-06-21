@@ -34,7 +34,7 @@ npx agentflight@latest start --task "Add password reset flow"
 
 # Run Codex, Claude Code, Cursor, or your coding agent normally
 
-npx agentflight@latest verify -- npm test
+npx agentflight@latest verify
 npx agentflight@latest handoff
 npx agentflight@latest status
 npx agentflight@latest snapshot --note "Initial implementation verified"
@@ -45,7 +45,7 @@ What you get:
 
 - `init` creates local `.agentflight/` project files and seeds detected verification commands into `.agentflight/config.json` when package scripts exist.
 - `start` records the task, git branch, commit, dirty state, package manager, and tool availability.
-- `verify -- npm test` runs the command and stores stdout, stderr, exit code, timing, and pass/fail status.
+- `verify` runs configured commands and stores stdout, stderr, exit code, timing, and pass/fail status. Use `verify -- <command>` for one explicit proof command.
 - `handoff` generates the local review packet: readiness, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 - `status` answers what changed, how risky it is, what proof exists, what proof is missing, and what to do next.
 - `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.

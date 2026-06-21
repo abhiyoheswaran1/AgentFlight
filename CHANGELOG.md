@@ -114,6 +114,8 @@ All notable AgentFlight changes are documented here.
 
 ### Changed
 
+- First-run `agentflight init` now points seeded configs at no-arg
+  `agentflight verify` in the primary workflow.
 - `agentflight init` now points first-run users through the handoff golden path:
   start a session, capture verification, then generate a local handoff, with
   status and doctor listed as supporting checks.

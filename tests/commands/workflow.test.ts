@@ -52,8 +52,9 @@ describe("AgentFlight command workflow", () => {
     expect(init.output).toContain("changedFileFilters.ignore");
     expect(init.output).toContain(`Primary workflow:
 agentflight start --task "Describe the work"
-agentflight verify -- npm run typecheck
+agentflight verify
 agentflight handoff`);
+    expect(init.output).not.toContain("agentflight verify -- npm run typecheck");
     expect(init.output).not.toContain("agentflight verify -- npm test");
     expect(init.output).toContain(`Supporting checks:
 agentflight status

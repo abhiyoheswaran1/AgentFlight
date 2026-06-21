@@ -4,6 +4,55 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Init Configured Verify Workflow
+
+Dogfood finding:
+
+- `agentflight init` now seeds detected package proof commands into
+  `.agentflight/config.json`, but the primary workflow still told users to run
+  one explicit command: `agentflight verify -- npm run typecheck`. That made the
+  first-run path underuse the configured no-arg verify workflow it had just set
+  up.
+
+Persona readout:
+
+- Product Maintainer: the golden path should exercise the product's configured
+  proof loop, not a one-off command when config is ready.
+- CLI Engineer: change only init copy; do not change command execution.
+- Docs and DX Writer: quickstart and examples should match what first-run users
+  see in the terminal.
+- Security Reviewer: no telemetry, no config migration, no extra writes beyond
+  init's existing generated files.
+
+Implemented locally:
+
+- `agentflight init` now prints `agentflight verify` in the primary workflow
+  when generated config includes verification commands.
+- Repos without detected proof scripts still print
+  `agentflight verify -- <proof command>`.
+- README and the basic session example now show configured `verify` in the
+  first-run workflow while keeping explicit `verify -- <command>` documented.
+
+Verification:
+
+- Red AgentFlight-captured workflow test failed because init still printed
+  `agentflight verify -- npm run typecheck`.
+- Green AgentFlight-captured workflow test passed:
+  `npm test -- tests/commands/workflow.test.ts` passed with 1 file / 10 tests.
+- Bug-pass verification passed: `npm run verify` passed with 21 files / 197
+  tests plus build, `npm run format:check` passed, and `npm pack --dry-run`
+  passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight stayed at the known accumulated branch scale caution:
+  244 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-09-59-verification-report.md`.
+- Built CLI smoke in a temp repo printed `agentflight verify` in init's primary
+  workflow and generated config with `npm run typecheck` and `npm test`.
+
 ### Doctor Concrete Verify Suggestions
 
 Dogfood finding:

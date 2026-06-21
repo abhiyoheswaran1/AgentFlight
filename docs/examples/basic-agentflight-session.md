@@ -26,10 +26,10 @@ docs/password-reset.md
 ## 3. Capture Proof
 
 ```bash
-npx agentflight@latest verify -- npm test
+npx agentflight@latest verify
 ```
 
-AgentFlight runs the command and stores local evidence:
+AgentFlight runs the configured proof command and stores local evidence:
 
 ```text
 Verification recorded
