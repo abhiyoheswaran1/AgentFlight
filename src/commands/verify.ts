@@ -1,6 +1,12 @@
 import { loadConfig } from "../core/config.js";
+import { readPackageJson } from "../core/project.js";
 import { appendSessionEvent, appendVerificationRun } from "../core/session.js";
-import { formatCommand, parseCommandLine, runVerificationCommand } from "../core/verification.js";
+import {
+  detectVerificationCommands,
+  formatCommand,
+  parseCommandLine,
+  runVerificationCommand
+} from "../core/verification.js";
 import { readCurrentSession } from "./status.js";
 import type { AgentFlightSession, VerificationRun } from "../types/index.js";
 import type { CommandRunner } from "../core/process.js";
@@ -29,9 +35,7 @@ export async function runVerifyCommand(
   const resolutionError = buildResolutionErrorResult(commandResolution.error);
   if (resolutionError) return resolutionError;
 
-  const commandSets = commandResolution.commandSets;
-
-  const missingCommand = buildMissingCommandResult(commandSets);
+  const missingCommand = buildMissingCommandResult(commandResolution);
   if (missingCommand) return missingCommand;
 
   const { output, runs } = await runResolvedVerificationCommands(
@@ -145,12 +149,24 @@ ${error}
   };
 }
 
-function buildMissingCommandResult(commandSets: string[][]): VerifyCommandResult | null {
-  if (commandSets.length > 0) return null;
+function buildMissingCommandResult(
+  commandResolution: CommandSetResolution
+): VerifyCommandResult | null {
+  if (commandResolution.commandSets.length > 0) return null;
+  const suggestedCommands = commandResolution.suggestedCommands ?? [];
+  const suggestions =
+    suggestedCommands.length > 0
+      ? `
+
+Try one of:
+${suggestedCommands.map((command) => `- agentflight verify -- ${command}`).join("\n")}
+
+To make this the default, add commands under verification.commands in .agentflight/config.json.`
+      : "";
   return {
     output: `AgentFlight verify
 
-No verification command was provided and no commands are configured in .agentflight/config.json.
+No verification command was provided and no commands are configured in .agentflight/config.json.${suggestions}
 `,
     exitCode: 1,
     runs: []
@@ -185,6 +201,7 @@ interface CommandSetResolution {
   commandSets: string[][];
   profileName?: string | undefined;
   error?: string | undefined;
+  suggestedCommands?: string[] | undefined;
 }
 
 async function resolveCommandSets(options: VerifyCommandOptions): Promise<CommandSetResolution> {
@@ -208,7 +225,7 @@ async function resolveCommandSets(options: VerifyCommandOptions): Promise<Comman
     return resolveProfileCommandSets(config?.verification, profile.name);
   }
 
-  return resolveConfiguredCommandSets(config?.verification.commands);
+  return resolveConfiguredCommandSets(options.repoRoot, config?.verification.commands);
 }
 
 function hasExplicitCommandArgs(options: VerifyCommandOptions): options is VerifyCommandOptions & {
@@ -224,9 +241,16 @@ function normalizeProfileOption(profile: string | undefined): { name?: string; e
   return name ? { name } : {};
 }
 
-function resolveConfiguredCommandSets(commands: string[] | undefined): CommandSetResolution {
+async function resolveConfiguredCommandSets(
+  repoRoot: string,
+  commands: string[] | undefined
+): Promise<CommandSetResolution> {
+  const commandSets = parseConfiguredCommands(commands ?? []);
+  if (commandSets.length > 0) return { commandSets };
+
   return {
-    commandSets: parseConfiguredCommands(commands ?? [])
+    commandSets,
+    suggestedCommands: detectVerificationCommands(await readPackageJson(repoRoot))
   };
 }
 

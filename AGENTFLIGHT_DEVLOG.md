@@ -4,6 +4,54 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Verify Empty Command Guidance
+
+Dogfood finding:
+
+- After the doctor empty-config warning, `agentflight verify` itself still ended
+  at a dead-end when `.agentflight/config.json` had no configured commands. It
+  knew no command was configured, but did not show the package proof commands
+  AgentFlight can already detect.
+
+Persona readout:
+
+- Product Maintainer: diagnosis and next action should meet at the command that
+  failed.
+- CLI Engineer: keep config immutable; suggest explicit commands only.
+- Docs and DX Writer: show copy-pasteable `agentflight verify -- <command>`
+  examples.
+- Security Reviewer: no upload, no telemetry, no config migration.
+
+Implemented locally:
+
+- The no-command `agentflight verify` error now detects package proof scripts
+  and prints concise `agentflight verify -- ...` suggestions.
+- Repos with no detected package proof scripts keep the original concise error.
+- Named profile errors remain unchanged and do not include package-script
+  suggestions.
+
+Verification:
+
+- Red AgentFlight-captured focused verify test failed because the empty-command
+  error had no `Try one of:` guidance.
+- Green AgentFlight-captured focused verify test passed:
+  `npm test -- tests/commands/verify.test.ts` passed with 1 file / 13 tests.
+- Bug-pass verification passed after removing an unused local caught by lint:
+  `npm run verify` passed with 21 files / 197 tests plus build,
+  `npm run format:check` passed, and `npm pack --dry-run` passed for
+  `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight stayed at the known accumulated branch scale caution:
+  238 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-09-35-verification-report.md`.
+- Built CLI smoke `node dist/cli.js verify` now prints concise `Try one of:`
+  suggestions for detected package proof commands while leaving config
+  unchanged.
+
 ### Doctor Empty Verification Config Guidance
 
 Dogfood finding:

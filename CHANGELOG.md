@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight verify` now suggests detected package proof commands when no
+  explicit command is provided and config commands are empty.
 - `agentflight doctor` now warns when package proof scripts exist but
   `.agentflight/config.json` has no configured verification commands.
 - `agentflight history` now lists capped repo-relative malformed session paths

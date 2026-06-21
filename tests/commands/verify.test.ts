@@ -164,6 +164,51 @@ describe("verify command", () => {
     expect(current.verificationRuns).toHaveLength(1);
   });
 
+  it("suggests detected package proof commands when configured commands are empty", async () => {
+    const repoRoot = await startedRepo({
+      scripts: {
+        typecheck: "tsc --noEmit",
+        test: "vitest run"
+      }
+    });
+    const configPath = join(repoRoot, ".agentflight", "config.json");
+    const config = JSON.parse(await readFile(configPath, "utf8"));
+    config.verification.commands = [];
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.runs).toEqual([]);
+    expect(result.output).toContain(
+      "No verification command was provided and no commands are configured"
+    );
+    expect(result.output).toContain("Try one of:");
+    expect(result.output).toContain("agentflight verify -- npm run typecheck");
+    expect(result.output).toContain("agentflight verify -- npm test");
+    expect(result.output).toContain("verification.commands");
+  });
+
+  it("keeps the no-command error concise when no package proof scripts are detected", async () => {
+    const repoRoot = await startedRepo();
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.runs).toEqual([]);
+    expect(result.output).toContain(
+      "No verification command was provided and no commands are configured"
+    );
+    expect(result.output).not.toContain("Try one of:");
+    expect(result.output).not.toContain("agentflight verify -- npm");
+  });
+
   it("runs commands from a named verification profile", async () => {
     const repoRoot = await startedRepo();
     const configPath = join(repoRoot, ".agentflight", "config.json");
@@ -213,6 +258,7 @@ describe("verify command", () => {
 
     expect(malformed.exitCode).toBe(1);
     expect(malformed.output).toContain("Verification profile malformed is invalid");
+    expect(malformed.output).not.toContain("Try one of:");
     expect(emptyName.exitCode).toBe(1);
     expect(emptyName.output).toContain("Verification profile name cannot be empty");
 
@@ -331,8 +377,14 @@ describe("verify command", () => {
   });
 });
 
-async function startedRepo(): Promise<string> {
+async function startedRepo(options: { scripts?: Record<string, string> } = {}): Promise<string> {
   const repoRoot = await createTempRepo();
+  if (options.scripts) {
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify({ scripts: options.scripts }, null, 2)
+    );
+  }
   await initAgentFlight({ repoRoot, now: new Date("2026-06-13T11:00:00.000Z") });
   await startSession({
     repoRoot,
