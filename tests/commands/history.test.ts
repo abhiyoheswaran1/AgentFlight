@@ -266,9 +266,11 @@ describe("history command", () => {
 
     expect(latestBlock).toContain("Open first: none yet");
     expect(latestBlock).toContain("Next: run agentflight handoff");
+    expect(latestBlock).toContain(
+      `Previous artifact: replay .agentflight/reports/${older.session.id}-replay.html`
+    );
     expect(latestBlock).toContain("Recorded readiness: not recorded");
     expect(latestBlock).toContain("Task: Current no artifacts");
-    expect(latestBlock).not.toContain(older.session.id);
     expect(history.output).toContain(
       `Open first: replay .agentflight/reports/${older.session.id}-replay.html`
     );

@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight history` now shows the nearest previous local artifact when the
+  current latest session has none yet, while keeping the current-session
+  handoff next action.
 - First-run AgentFlight generated-file lists and local-file guidance now use
   shared output helpers, keeping `init` and `start --yes` copy consistent.
 - `agentflight start --yes` now explains the AgentFlight files it generated

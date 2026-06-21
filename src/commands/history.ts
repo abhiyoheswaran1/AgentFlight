@@ -63,7 +63,8 @@ async function formatSessions(
   const latestAction = await formatLatestAction(
     repoRoot,
     latestSession,
-    latestSession.id === currentSessionId
+    latestSession.id === currentSessionId,
+    await findPreviousOpenFirstArtifact(repoRoot, sessions.slice(1))
   );
   const lines = await Promise.all(
     sessions.map(async (session) =>
@@ -87,14 +88,19 @@ Run agentflight start --task "Describe the task" to begin a local session.`;
 async function formatLatestAction(
   repoRoot: string,
   session: SessionSummary,
-  isCurrent: boolean
+  isCurrent: boolean,
+  previousOpenFirst: string | null
 ): Promise<string> {
   const artifacts = await readHistoryArtifacts(repoRoot, session.id);
   const openFirst = chooseOpenFirstArtifact(session, artifacts);
   const nextAction = isCurrent && openFirst === "none yet" ? "\nNext: run agentflight handoff" : "";
+  const previousArtifact =
+    isCurrent && openFirst === "none yet" && previousOpenFirst
+      ? `\nPrevious artifact: ${previousOpenFirst}`
+      : "";
 
   return `Latest action:
-Open first: ${openFirst}${nextAction}
+Open first: ${openFirst}${nextAction}${previousArtifact}
 Recorded readiness: ${formatReadiness(session)}
 Task: ${session.taskTitle}`;
 }
@@ -130,6 +136,19 @@ function formatReadiness(session: SessionSummary): string {
   if (!review) return "not recorded";
 
   return `${review.label} (risk ${review.riskLevel}, ${formatChangedFiles(review.changedFiles)})`;
+}
+
+async function findPreviousOpenFirstArtifact(
+  repoRoot: string,
+  sessions: SessionSummary[]
+): Promise<string | null> {
+  for (const session of sessions) {
+    const artifacts = await readHistoryArtifacts(repoRoot, session.id);
+    const openFirst = chooseOpenFirstArtifact(session, artifacts);
+    if (openFirst !== "none yet") return openFirst;
+  }
+
+  return null;
 }
 
 function formatChangedFiles(count: number): string {

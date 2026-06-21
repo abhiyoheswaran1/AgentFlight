@@ -4,6 +4,57 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Previous Artifact Guidance
+
+Dogfood finding:
+
+- A short smoke session became the current AgentFlight session before it had
+  handoff/report/replay artifacts. `agentflight history` correctly told the
+  user to run handoff, but the latest-action block no longer surfaced the
+  previous useful replay/report artifact, slowing local review during agentic
+  engineering work.
+
+Team persona notes:
+
+- Product Maintainer: local session discovery should keep useful prior evidence
+  visible without pretending the current coding agent session is complete.
+- CLI Engineer: preserve read-only history behavior and avoid session switching,
+  search, export, or sync.
+- Docs and DX Writer: add one concise `Previous artifact:` line instead of a
+  tutorial.
+- Security Reviewer: keep artifact hints repo-relative and local-only.
+- Repo Steward: keep the change small and avoid tracking runtime evidence.
+
+Implemented locally:
+
+- `agentflight history` now scans older sessions for the nearest existing
+  open-first artifact when the newest current session has none.
+- The latest-action block keeps `Next: run agentflight handoff` for the current
+  session and appends a repo-relative `Previous artifact:` fallback.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/commands/history.test.ts` failed
+  because the latest-action block did not show a previous artifact.
+- Green AgentFlight-captured `npm test -- tests/commands/history.test.ts`
+  passed with 1 file / 7 tests.
+- AgentFlight-captured `npm test -- tests/commands/history.test.ts` passed with
+  1 file / 7 tests after documentation updates.
+- AgentFlight-captured `npm run verify` passed with 22 files / 207 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  manual review sign-off recommended for large handoff risk.
+- ProjScan review returned the known scale-only `block` verdict with 47 current
+  changed files and maximum changed-file risk score `212.1 >= 80`; it reported
+  no risky functions, dependency changes, contract changes, new cycles, taint
+  flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-12-48-verification-report.md`.
+- AgentLoopKit task doctor passed with no task-folder hygiene issues.
+
 ### Share First-Run File Guidance Helpers
 
 Dogfood finding:
