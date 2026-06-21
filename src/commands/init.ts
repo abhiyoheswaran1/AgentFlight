@@ -46,8 +46,12 @@ Local files:
 .agentflight/.gitignore keeps runtime evidence out of git while leaving config.json visible.
 If .projscan-memory/memory.json appears as generated tool state, add ".projscan-memory/**" to changedFileFilters.ignore in .agentflight/config.json.
 
-Next commands:
+Primary workflow:
 agentflight start --task "Describe the work"
+agentflight verify -- npm test
+agentflight handoff
+
+Supporting checks:
 agentflight status
 agentflight doctor
 `

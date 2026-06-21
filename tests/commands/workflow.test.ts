@@ -50,6 +50,13 @@ describe("AgentFlight command workflow", () => {
     expect(init.output).toContain(".agentflight/.gitignore keeps runtime evidence out of git");
     expect(init.output).toContain(".projscan-memory/**");
     expect(init.output).toContain("changedFileFilters.ignore");
+    expect(init.output).toContain(`Primary workflow:
+agentflight start --task "Describe the work"
+agentflight verify -- npm test
+agentflight handoff`);
+    expect(init.output).toContain(`Supporting checks:
+agentflight status
+agentflight doctor`);
 
     const start = await runStartCommand({
       repoRoot,

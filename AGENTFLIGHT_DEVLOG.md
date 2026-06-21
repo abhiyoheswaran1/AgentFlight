@@ -4,6 +4,65 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Init Handoff Golden Path
+
+Dogfood finding:
+
+- Post-v0.6.0 research and handoff dogfood made `agentflight handoff` the local
+  end-of-session path, but `agentflight init` still ended by sending first-run
+  users to `status` before `doctor`. That made the first-run CLI guidance lag
+  behind the product's current golden path.
+
+Persona readout:
+
+- First-Time Developer: the first output should say what to do next without
+  making users choose between status, report, replay, resume, and handoff.
+- Maintainer or Reviewer: the useful path is `start`, captured verification,
+  then the handoff packet.
+- Docs and DX Writer: keep status and doctor visible, but frame them as
+  supporting checks rather than the primary workflow.
+- CLI Engineer: change copy only; do not alter generated files, config, or
+  runtime behavior.
+
+Implemented locally:
+
+- `agentflight init` now prints a `Primary workflow` block:
+  `agentflight start --task "Describe the work"`,
+  `agentflight verify -- npm test`, and `agentflight handoff`.
+- `agentflight status` and `agentflight doctor` remain visible in a
+  `Supporting checks` block.
+
+Verification:
+
+- Red AgentFlight-captured workflow test failed because init still printed the
+  old `Next commands` block with `status` and `doctor`.
+- AgentFlight-captured focused workflow test now passes:
+  `npm test -- tests/commands/workflow.test.ts` passed: 1 file / 8 tests.
+- AgentFlight-captured `npm run build` passed.
+- Built CLI smoke passed in a clean temp repo: `agentflight init` printed
+  `Primary workflow`, `agentflight verify -- npm test`, `agentflight handoff`,
+  `Supporting checks`, `agentflight status`, and `agentflight doctor`.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 185 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 194 changed files and maximum
+  changed-file risk score `207.9`.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: maximum changed-file risk score `207.9`, no risky
+  functions, no dependency changes, no contract changes, no taint flows, no
+  dataflow risks, and no cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-06-40-verification-report.md`.
+- Post-handoff `npm run format:check` passed under AgentFlight capture.
+- `npx agentloopkit@latest check-gates` passed. The output still named an
+  older archived task contract while using the current verification report and
+  handoff, which remains AgentLoopKit feedback rather than an AgentFlight
+  blocker.
+
 ### Parallel Artifact Event Preservation
 
 Dogfood finding:
