@@ -4,6 +4,50 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Point Ready Resume At Existing Handoff
+
+Dogfood finding:
+
+- After generating a ready local handoff, a follow-up `agentflight resume` still
+  told the next agent to run `agentflight handoff` again. The handoff artifact
+  existed, but dirty ready-session resume only used open-first artifact guidance
+  for clean-worktree sessions.
+
+Implemented locally:
+
+- Ready-session `agentflight resume` now reuses the existing open-first artifact
+  selector when a handoff, replay, or report artifact already exists.
+- Resume readiness now shows the existing artifact and replaces the stale
+  handoff-generation next action with a concise open-first action.
+- Clean-worktree resume guidance and blocked-session proof guidance remain
+  unchanged.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  failed because a ready resume prompt generated after handoff did not include
+  the existing handoff artifact.
+- Green AgentFlight-captured
+  `npm test -- tests/commands/evidence-output.test.ts` passed with 1 file / 36
+  tests.
+- Final AgentFlight-captured `npm run verify` passed with 23 files / 221 tests
+  plus build.
+- AgentFlight-captured `npm run format:check` initially caught formatting in
+  the new plan doc and `src/commands/resume.ts`; after formatting, it passed.
+- AgentFlight-captured `npm pack --dry-run` passed and kept the local package
+  version at `0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found 0
+  vulnerabilities.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight returned `caution` for manual review
+  sign-off. Full ProjScan review returned the known manual release sign-off
+  block: maximum changed-file risk score 222.8 >= 80, with no concrete cycle,
+  risky-function, contract, taint, or dataflow defect reported.
+- AgentFlight dogfood confirmed `agentflight resume` now renders
+  `Open first: handoff ...` after handoff generation and no longer tells the
+  next agent to generate handoff again.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Keep Artifact Commands Out Of Proof Guidance
 
 Dogfood finding:

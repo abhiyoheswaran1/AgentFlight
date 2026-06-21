@@ -1,0 +1,30 @@
+[
+  {
+    "status": "M",
+    "path": "AGENTFLIGHT_DEVLOG.md"
+  },
+  {
+    "status": "M",
+    "path": "CHANGELOG.md"
+  },
+  {
+    "status": "M",
+    "path": "src/commands/resume.ts"
+  },
+  {
+    "status": "M",
+    "path": "src/renderers/resume-prompt.ts"
+  },
+  {
+    "status": "M",
+    "path": "tests/commands/evidence-output.test.ts"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-21-point-ready-resume-at-existing-handoff.md"
+  },
+  {
+    "status": "??",
+    "path": "docs/superpowers/plans/2026-06-21-agentflight-ready-resume-open-first.md"
+  }
+]

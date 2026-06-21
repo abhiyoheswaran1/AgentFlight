@@ -1,0 +1,6 @@
+ AGENTFLIGHT_DEVLOG.md                  | 44 ++++++++++++++++++++++++++++++++++
+ CHANGELOG.md                           |  3 +++
+ src/commands/resume.ts                 | 16 +++++++------
+ src/renderers/resume-prompt.ts         | 22 ++++++++++++++++-
+ tests/commands/evidence-output.test.ts | 31 ++++++++++++++++++++++++
+ 5 files changed, 108 insertions(+), 8 deletions(-)

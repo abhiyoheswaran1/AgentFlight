@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-21-17-23-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-21-17-23",
+  "createdAtEpochMs": 1782055433148,
+  "task": {
+    "path": ".agentloop/tasks/archive/2026-06-21-point-ready-resume-at-existing-handoff.md",
+    "title": "Point ready resume at existing handoff",
+    "status": "done"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-21-17-22-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-21-17-23-pr-summary.md",
+  "changedFileCount": 7
+}

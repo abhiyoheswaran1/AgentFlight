@@ -32,6 +32,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Ready `agentflight resume` prompts now point at an existing local handoff,
+  replay, or report artifact when one already exists, instead of repeating
+  handoff-generation guidance.
 - Review Intelligence now ignores unfinished AgentFlight readout/artifact
   commands such as `agentflight replay` and `node dist/cli.js replay` when
   computing incomplete proof gaps, so readiness guidance keeps pointing at

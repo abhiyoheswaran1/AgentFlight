@@ -24,6 +24,8 @@ export interface ResumePromptInput {
   nextAction: string;
 }
 
+const readyHandoffNextAction = "Run agentflight handoff to generate the local review packet.";
+
 export function renderResumePrompt(input: ResumePromptInput): string {
   return `Continue this AgentFlight-recorded coding session safely.
 
@@ -105,9 +107,10 @@ function renderReadiness(
   if (!readiness) return "No review readiness recorded.";
   const command = readiness.suggestedCommand;
   const openFirst = openFirstArtifact ? `- Open first: ${openFirstArtifact}\n` : "";
+  const nextAction = formatResumeNextAction(readiness.nextAction, readiness, openFirstArtifact);
   return `${readiness.label}
 - Reason: ${compactCommandInText(readiness.reason, command)}
-${openFirst}- Next action: ${compactCommandInText(readiness.nextAction, command)}`;
+${openFirst}- Next action: ${compactCommandInText(nextAction, command)}`;
 }
 
 function renderNextRecommendedAction(
@@ -115,8 +118,25 @@ function renderNextRecommendedAction(
   openFirstArtifact: string | undefined
 ): string {
   if (!openFirstArtifact) return nextAction;
+  if (nextAction === readyHandoffNextAction) return `Open first: ${openFirstArtifact}`;
   return `Open first: ${openFirstArtifact}
 ${nextAction}`;
+}
+
+function formatResumeNextAction(
+  nextAction: string,
+  readiness: ReviewReadinessDecision,
+  openFirstArtifact: string | undefined
+): string {
+  if (
+    readiness.state === "ready_for_review" &&
+    openFirstArtifact &&
+    nextAction === readyHandoffNextAction
+  ) {
+    return "Open the existing local review artifact before continuing.";
+  }
+
+  return nextAction;
 }
 
 function renderConstraints(readiness: ReviewReadinessDecision | undefined): string {

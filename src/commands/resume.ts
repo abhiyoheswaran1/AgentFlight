@@ -44,13 +44,15 @@ export async function runResumeCommand(
   });
   const review = buildReviewIntelligence({ changedFiles, risk, session });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
-  const cleanOpenFirst =
+  const openFirstReadiness =
     review.readiness.state === "clean_worktree"
-      ? await readOpenFirstArtifact(
-          options.repoRoot,
-          session.id,
-          getLatestRecordedReviewSummary(session)?.state
-        )
+      ? getLatestRecordedReviewSummary(session)?.state
+      : review.readiness.state === "ready_for_review"
+        ? review.readiness.state
+        : undefined;
+  const openFirstArtifact =
+    openFirstReadiness !== undefined
+      ? await readOpenFirstArtifact(options.repoRoot, session.id, openFirstReadiness)
       : null;
   const event = {
     type: "resume_generated",
@@ -71,7 +73,7 @@ export async function runResumeCommand(
     reviewFocus: review.focus.slice(0, 5),
     proofGaps: review.proofGaps,
     readiness: review.readiness,
-    openFirstArtifact: cleanOpenFirst ?? undefined,
+    openFirstArtifact: openFirstArtifact ?? undefined,
     latestSnapshotNote: latestSnapshot?.message,
     verificationState: formatVerificationCountLine(verification),
     verificationContext: formatVerificationFailureContext(verification),
