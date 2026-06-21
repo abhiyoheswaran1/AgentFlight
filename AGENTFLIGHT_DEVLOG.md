@@ -4,6 +4,49 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### AgentFlight Repo ProjScan Memory Filter
+
+Dogfood finding:
+
+- After `agentflight doctor` learned to warn on local ProjScan memory, this repo
+  correctly reported `.projscan-memory/memory.json` as present and reviewable.
+  In AgentFlight itself that file is generated local evidence, so the repo
+  should follow AgentFlight's own suggestion and opt into filtering it.
+
+Persona readout:
+
+- Product Maintainer: this validates the suggestion-only workflow in a real
+  repo instead of changing product defaults.
+- CLI Engineer: keep built-in filters unchanged; use project config for project
+  policy.
+- Security Reviewer: no deletion or mutation of generated evidence is needed.
+
+Implemented locally:
+
+- `.agentflight/config.json` now includes
+  `changedFileFilters.ignore: [".projscan-memory/**"]`.
+- Built-in changed-file filters remain unchanged.
+
+Verification:
+
+- Red doctor smoke confirmed the generated tool state warning appeared before
+  the config change.
+- AgentFlight-captured doctor smoke now reports generated tool state as OK after
+  the repo config filter.
+- `npm run format:check` passed.
+- `npm run verify` passed with 21 files / 180 tests, plus build.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: maximum changed-file risk score `207.9`, no
+  risky functions, no dependency changes, no contract changes, and no dataflow
+  risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-05-21-verification-report.md`.
+
 ### History Recorded Readiness Label
 
 Dogfood finding:

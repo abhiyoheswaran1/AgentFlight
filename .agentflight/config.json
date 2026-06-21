@@ -15,6 +15,9 @@
   "verification": {
     "commands": []
   },
+  "changedFileFilters": {
+    "ignore": [".projscan-memory/**"]
+  },
   "privacy": {
     "localOnly": true,
     "telemetry": false
