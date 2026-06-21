@@ -4,6 +4,46 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Malformed Session Paths
+
+Dogfood finding:
+
+- `agentflight history` already counted malformed local session files, but the
+  count alone did not tell engineers which local evidence file needed cleanup.
+
+Persona readout:
+
+- Product Maintainer: local session discovery should stay trustworthy when old
+  local artifacts are malformed.
+- CLI Engineer: keep the command read-only; surface repo-relative paths only.
+- Docs and DX Writer: cap the list so history remains scannable.
+- Security Reviewer: avoid absolute workspace paths and noisy parser details.
+
+Implemented locally:
+
+- History now renders a `Skipped malformed sessions:` block with up to three
+  repo-relative `.agentflight/sessions/*.json` paths.
+- Additional malformed session files are summarized with an omitted-count line.
+- The command still does not repair, delete, upload, or sync any session data.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because history only printed the
+  malformed-file count.
+- Green AgentFlight-captured focused test passed:
+  `npm test -- tests/commands/history.test.ts` passed with 1 file / 7 tests.
+- Bug-pass verification passed:
+  `npm test -- tests/commands/history.test.ts`, `npm run verify`,
+  `npm run format:check`, and `npm pack --dry-run`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight stayed at the known accumulated branch scale caution:
+  231 changed files and maximum changed-file risk score `212.1 >= 80`.
+- ProjScan review returned a scale-only `block` verdict for manual signoff, with
+  no cycles, risky functions, dependency changes, contract changes, taint flows,
+  or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-09-09-verification-report.md`.
+
 ### Document History Latest Action Workflow
 
 Dogfood finding:

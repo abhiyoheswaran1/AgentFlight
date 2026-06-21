@@ -283,7 +283,27 @@ describe("history command", () => {
     const history = await runHistoryCommand({ repoRoot });
 
     expect(history.output).toContain("No AgentFlight sessions recorded yet.");
-    expect(history.output).toContain("Skipped: 1 malformed session file.");
+    expect(history.output).toContain("Skipped malformed sessions:");
+    expect(history.output).toContain("- .agentflight/sessions/broken.json");
+    expect(history.output).not.toContain(repoRoot);
+  });
+
+  it("caps malformed session path output", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    for (const file of ["broken-a.json", "broken-b.json", "broken-c.json", "broken-d.json"]) {
+      await writeFile(join(repoRoot, ".agentflight", "sessions", file), "{", "utf8");
+    }
+
+    const history = await runHistoryCommand({ repoRoot });
+
+    expect(history.output).toContain("- .agentflight/sessions/broken-a.json");
+    expect(history.output).toContain("- .agentflight/sessions/broken-b.json");
+    expect(history.output).toContain("- .agentflight/sessions/broken-c.json");
+    expect(history.output).not.toContain("- .agentflight/sessions/broken-d.json");
+    expect(history.output).toContain("... 1 more malformed session file omitted.");
+    expect(history.output).not.toContain(repoRoot);
   });
 
   it("handles empty local history", async () => {

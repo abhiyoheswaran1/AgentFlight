@@ -3,7 +3,7 @@ import { formatVerificationCountLine } from "../core/output.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { listSessionSummaries } from "../core/session.js";
 import { readCurrentSession } from "./status.js";
-import type { SessionSummary } from "../core/session.js";
+import type { SessionSummary, SkippedSessionFile } from "../core/session.js";
 
 export interface HistoryCommandOptions {
   repoRoot: string;
@@ -25,7 +25,7 @@ export async function runHistoryCommand(
     output: `AgentFlight history
 
 ${await formatSessions(options.repoRoot, history.sessions, currentSessionId)}
-${formatSkipped(history.skipped.length)}
+${formatSkipped(options.repoRoot, history.skipped)}
 `
   };
 }
@@ -212,7 +212,19 @@ function formatStartedAt(startedAt: string): string {
   return date.toISOString().replace("T", " ").slice(0, 16);
 }
 
-function formatSkipped(count: number): string {
-  if (count === 0) return "";
-  return `\nSkipped: ${count} malformed session ${count === 1 ? "file" : "files"}.`;
+function formatSkipped(repoRoot: string, skipped: SkippedSessionFile[]): string {
+  if (skipped.length === 0) return "";
+
+  const visiblePaths = skipped
+    .map((file) => formatRepoRelativePath(repoRoot, file.path))
+    .sort((left, right) => left.localeCompare(right))
+    .slice(0, 3);
+  const omitted = skipped.length - visiblePaths.length;
+  const omittedLine =
+    omitted > 0
+      ? `\n... ${omitted} more malformed session ${omitted === 1 ? "file" : "files"} omitted.`
+      : "";
+
+  return `\nSkipped malformed sessions:
+${visiblePaths.map((path) => `- ${path}`).join("\n")}${omittedLine}`;
 }

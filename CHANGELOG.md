@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight history` now lists capped repo-relative malformed session paths
+  instead of only reporting a skipped-file count.
 - Concurrent `agentflight verify` runs now reserve distinct stdout/stderr
   evidence paths and merge verification updates without dropping either run.
 - `agentflight history --limit` now rejects non-integer, zero, and negative
