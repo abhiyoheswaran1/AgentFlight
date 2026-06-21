@@ -64,6 +64,9 @@ All notable AgentFlight changes are documented here.
 - Clean-worktree `agentflight status` now tucks individual verification run
   details when there are no unresolved failed runs, while keeping counts and
   JSON evidence complete.
+- Review Intelligence now treats incomplete verification attempts as blocking
+  before clean-worktree readiness, so live status cannot call a session clean
+  while verification is still in progress.
 
 ### Changed
 

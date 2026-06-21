@@ -472,6 +472,38 @@ describe("review intelligence", () => {
     });
   });
 
+  it("does not report a clean worktree while verification is incomplete", () => {
+    const changedFiles: string[] = [];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [],
+        events: [
+          event("session_started", "Session started", "2026-06-14T12:00:00.000Z"),
+          event("verification_started", "Verification started", "2026-06-14T12:01:00.000Z", {
+            command: "npm test"
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps).toContainEqual(
+      expect.objectContaining({
+        id: "incomplete-verification",
+        severity: "blocking",
+        suggestedCommand: "npm test"
+      })
+    );
+    expect(review.readiness).toMatchObject({
+      state: "needs_verification",
+      label: "Needs verification",
+      suggestedCommand: "npm test"
+    });
+    expect(review.readiness.reason).toContain("Verification was started");
+  });
+
   it("keeps failed verification blocking even when no files are changed", () => {
     const changedFiles: string[] = [];
     const review = buildReviewIntelligence({

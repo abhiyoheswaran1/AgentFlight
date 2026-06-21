@@ -4,6 +4,60 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Incomplete Verification Blocks Clean Readiness
+
+Dogfood finding:
+
+- A post-commit status check was run in parallel with
+  `agentflight verify -- npm run format:check`. During that live verification,
+  status showed `Readiness: Clean worktree` while proof gaps also showed an
+  incomplete verification. Rerunning after verification completed was clean, but
+  the transient state exposed a readiness-ordering bug.
+
+Persona readout:
+
+- Product Maintainer: clean status must never mask a verification still in
+  progress.
+- CLI Engineer: keep this in Review Intelligence so status/report/replay agree.
+- Verification Engineer: add regression coverage for zero changed files with a
+  `verification_started` event and no completed run.
+- Security Reviewer: no storage, command execution, or evidence mutation
+  changes.
+
+Implemented locally:
+
+- Review Intelligence now evaluates actionable proof gaps before the
+  clean-worktree branch.
+- Unresolved failed verification remains the highest-priority readiness state.
+- Clean-worktree readiness still applies when zero files are changed and no
+  failed or incomplete verification remains.
+
+Verification:
+
+- Red targeted test failed because zero changed files plus incomplete
+  verification still returned `state: "clean_worktree"`.
+- AgentFlight-captured targeted verification now passes:
+  `npm test -- tests/core/review-intelligence.test.ts tests/commands/evidence-output.test.ts`
+  passed: 2 files / 53 tests.
+- `npm run format:check` initially failed on
+  `tests/commands/evidence-output.test.ts`; `npm run format` applied the
+  mechanical Prettier fix.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 176 tests, plus build.
+- Final `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 157 changed files exceeds the
+  preflight threshold of 50, maximum changed-file risk score `203.7`, and no
+  concrete blockers.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: no cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-04-43-verification-report.md`.
+
 ### Clean Status Verification Detail Tuck
 
 Dogfood finding:

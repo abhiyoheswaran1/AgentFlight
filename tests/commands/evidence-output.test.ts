@@ -254,6 +254,40 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).not.toContain("Verification run details are tucked");
   });
 
+  it("does not call status clean while verification is incomplete", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    ) as AgentFlightSession;
+    await saveSession(repoRoot, {
+      ...session,
+      events: [
+        ...(session.events ?? []),
+        {
+          id: "evt-20260613-120000-verification-started-999",
+          type: "verification_started",
+          timestamp: "2026-06-13T12:00:00.000Z",
+          title: "Verification started",
+          metadata: { command: "npm test" }
+        }
+      ]
+    });
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: [],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(status.output).toContain("Changed files:\n0");
+    expect(status.output).toContain("Readiness: Needs verification");
+    expect(status.output).toContain(
+      "Verification was started but no completed result was recorded"
+    );
+    expect(status.output).toContain("agentflight verify -- npm test");
+    expect(status.output).not.toContain("Readiness: Clean worktree");
+  });
+
   it("shows the latest snapshot in status", async () => {
     const repoRoot = await startedRepo([]);
     await runSnapshotCommand({

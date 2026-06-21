@@ -364,15 +364,6 @@ function buildReadinessDecision(input: {
     });
   }
 
-  if (input.changedFiles.length === 0) {
-    return readinessDecision({
-      state: "clean_worktree",
-      reason: "No changed files are currently detected.",
-      nextAction: "Start a new AgentFlight session when you begin the next task.",
-      proofGaps: input.proofGaps
-    });
-  }
-
   const actionableGaps = input.proofGaps.filter((gap) => gap.severity !== "info");
   const incompleteGap = actionableGaps.find((gap) => gap.id === "incomplete-verification");
   const blockingGap = actionableGaps.find((gap) => gap.severity === "blocking");
@@ -387,6 +378,15 @@ function buildReadinessDecision(input: {
         ? `Run agentflight verify -- ${suggestedCommand}`
         : "Run relevant verification before requesting review.",
       suggestedCommand,
+      proofGaps: input.proofGaps
+    });
+  }
+
+  if (input.changedFiles.length === 0) {
+    return readinessDecision({
+      state: "clean_worktree",
+      reason: "No changed files are currently detected.",
+      nextAction: "Start a new AgentFlight session when you begin the next task.",
       proofGaps: input.proofGaps
     });
   }
