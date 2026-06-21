@@ -190,7 +190,7 @@ describe("history command", () => {
 
     expect(currentBlock).toContain(`[current] ${current.session.task.title}`);
     expect(currentBlock).toContain("Open first: none yet");
-    expect(history.output).toContain("Next: run agentflight handoff");
+    expect(history.output).toContain("Next: run agentflight verify, then agentflight handoff");
     expect(abandonedBlock).toContain("Abandoned start only");
     expect(abandonedBlock).toContain(abandoned.session.id);
     expect(abandonedBlock).toContain("Start only: no verification or review artifacts recorded.");
@@ -268,7 +268,7 @@ describe("history command", () => {
     );
   });
 
-  it("guides the current latest session to handoff when no artifacts exist yet", async () => {
+  it("guides the current latest session to proof before handoff when no artifacts or verification exist yet", async () => {
     const repoRoot = await createTempRepo();
     await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
 
@@ -307,7 +307,7 @@ describe("history command", () => {
     );
 
     expect(latestBlock).toContain("Open first: none yet");
-    expect(latestBlock).toContain("Next: run agentflight handoff");
+    expect(latestBlock).toContain("Next: run agentflight verify, then agentflight handoff");
     expect(latestBlock).toContain(
       `Previous artifact: replay .agentflight/reports/${older.session.id}-replay.html`
     );
@@ -316,6 +316,66 @@ describe("history command", () => {
     expect(history.output).toContain(
       `Open first: replay .agentflight/reports/${older.session.id}-replay.html`
     );
+    expect(history.output).toContain(`[current] ${current.session.task.title}`);
+  });
+
+  it("guides the current latest session to handoff when verification exists but no artifacts exist yet", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    const older = await startSession({
+      repoRoot,
+      task: "Older with replay",
+      now: new Date("2026-06-13T10:00:00.000Z"),
+      git: { branch: "main", commit: "older", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await writeReportReviewSummary(repoRoot, older.session.id, {
+      state: "ready_for_review",
+      label: "Ready for review"
+    });
+    await writeArtifact(repoRoot, older.session.id, "replay.html", "<!doctype html>");
+    const current = await startSession({
+      repoRoot,
+      task: "Current verified no artifacts",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "current", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await appendVerificationRun(repoRoot, current.session, {
+      command: "npm test",
+      status: "passed",
+      exitCode: 0,
+      startedAt: "2026-06-13T11:01:00.000Z",
+      finishedAt: "2026-06-13T11:02:00.000Z",
+      durationMs: 60_000,
+      stdoutPath: ".agentflight/evidence/current.stdout.txt",
+      stderrPath: ".agentflight/evidence/current.stderr.txt"
+    });
+
+    const history = await runHistoryCommand({ repoRoot, limit: 2 });
+    const latestBlock = history.output.slice(
+      history.output.indexOf("Latest action:"),
+      history.output.indexOf("Recent sessions:")
+    );
+
+    expect(latestBlock).toContain("Open first: none yet");
+    expect(latestBlock).toContain("Next: run agentflight handoff");
+    expect(latestBlock).not.toContain("Next: run agentflight verify, then agentflight handoff");
+    expect(latestBlock).toContain(
+      `Previous artifact: replay .agentflight/reports/${older.session.id}-replay.html`
+    );
+    expect(latestBlock).toContain("Recorded readiness: not recorded");
+    expect(latestBlock).toContain("Task: Current verified no artifacts");
+    expect(history.output).toContain("Verification: 1 passed, 0 failed");
     expect(history.output).toContain(`[current] ${current.session.task.title}`);
   });
 

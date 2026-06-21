@@ -4,6 +4,42 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Guide Start-Only History Sessions To Verify Before Handoff
+
+Dogfood finding:
+
+- A current session with no local artifacts showed handoff-only next-action
+  guidance even when no verification had been recorded. That made the local
+  handoff path visible, but skipped the proof-before-handoff flow that first-run
+  users are taught elsewhere.
+
+Implemented locally:
+
+- Current latest history sessions with `Open first: none yet` now say
+  `Next: run agentflight verify, then agentflight handoff` when no verification
+  evidence exists.
+- If verification has already been recorded but no handoff/report/replay
+  artifact exists yet, history still says `Next: run agentflight handoff`.
+- Previous-artifact fallback remains visible for current sessions with no
+  artifacts.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/history.test.ts` failed
+  on the old handoff-only guidance for no-proof current sessions.
+- Green AgentFlight-captured `npm test -- tests/commands/history.test.ts`
+  passed with 1 file / 9 tests.
+- Final AgentFlight-captured `npm run verify` passed with 23 files / 212 tests
+  plus build.
+- Final AgentFlight-captured `npm run format:check` passed after formatting
+  this devlog entry.
+- Final AgentFlight-captured `npm pack --dry-run` passed.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight/review still reports the known
+  scale-only release sign-off caution: max changed-file risk score 215.8 >= 80,
+  with no concrete cycle, risky-function, contract, taint, or dataflow blocker.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Clean Stale Public AI-Assisted Positioning Copy
 
 Dogfood finding:

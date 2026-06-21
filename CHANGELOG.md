@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Current start-only `agentflight history` sessions now guide users to run
+  verification before handoff when no proof exists yet, while keeping
+  handoff-only guidance once verification has been recorded.
 - Public positioning regression coverage now guards current public/runtime
   surfaces against stale assistant-style positioning.
 - Clean-worktree status now tells users to open handoff/report/replay or JSON

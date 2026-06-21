@@ -93,7 +93,8 @@ async function formatLatestAction(
 ): Promise<string> {
   const artifacts = await readReviewArtifacts(repoRoot, session.id);
   const openFirst = chooseOpenFirstArtifact(session.latestReview?.state, artifacts);
-  const nextAction = isCurrent && openFirst === "none yet" ? "\nNext: run agentflight handoff" : "";
+  const nextAction =
+    isCurrent && openFirst === "none yet" ? formatMissingArtifactNextAction(session) : "";
   const previousArtifact =
     isCurrent && openFirst === "none yet" && previousOpenFirst
       ? `\nPrevious artifact: ${previousOpenFirst}`
@@ -103,6 +104,12 @@ async function formatLatestAction(
 Open first: ${openFirst}${nextAction}${previousArtifact}
 Recorded readiness: ${formatReadiness(session)}
 Task: ${session.taskTitle}`;
+}
+
+function formatMissingArtifactNextAction(session: SessionSummary): string {
+  return hasVerificationEvidence(session)
+    ? "\nNext: run agentflight handoff"
+    : "\nNext: run agentflight verify, then agentflight handoff";
 }
 
 async function formatSession(
