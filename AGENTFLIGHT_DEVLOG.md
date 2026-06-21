@@ -4,6 +4,55 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Replay Historical Failed Ledger Labels
+
+Dogfood finding:
+
+- Ready sessions with resolved red/green failures correctly remove urgent
+  failed-run navigation, but the replay ledger still showed resolved failed rows
+  as plain `FAIL`. That can make a ready replay look more currently broken than
+  the proof summary says.
+
+Persona readout:
+
+- Product Maintainer: resolved failures should remain visible as trust evidence
+  without looking like current action items.
+- Verification Engineer: preserve urgent unresolved failure behavior and do not
+  infer per-run resolution when mixed unresolved/resolved failures exist.
+- Docs and DX Writer: keep the label compact in the ledger; the proof summary
+  already explains historical counts.
+
+Implemented locally:
+
+- HTML replay now renders failed ledger rows as `HIST` with historical styling
+  when `verificationSummary.unresolvedFailed` is `0`.
+- Unresolved failed rows still render as `FAIL` and keep urgent navigation.
+- Raw stdout/stderr evidence paths and failure excerpts remain unchanged.
+
+Verification:
+
+- Red focused replay test failed because resolved failed rows still used
+  `entry--failed`.
+- AgentFlight-captured focused verification now passes:
+  `npm test -- tests/renderers/html-replay.test.ts tests/commands/evidence-output.test.ts`
+  passed: 2 files / 38 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 182 tests, plus build.
+- `npm run format:check` passed after a focused Prettier fix to the replay test.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: maximum changed-file risk score `207.9`, no
+  risky functions, no dependency changes, no contract changes, and no dataflow
+  risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-05-38-verification-report.md`.
+- Built CLI replay smoke passed: `agentflight replay` generated HTML containing
+  `entry--historical-failed` and `stamp--historical-failed`.
+
 ### Doctor Path-Safe Repository Root Output
 
 Dogfood finding:

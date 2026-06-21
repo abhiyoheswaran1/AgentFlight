@@ -76,6 +76,8 @@ All notable AgentFlight changes are documented here.
   `Recorded readiness:` so it is not confused with live worktree readiness.
 - `agentflight doctor` no longer prints the absolute repository root in the
   successful repository-root check.
+- HTML replay now labels resolved failed verification rows as historical when
+  no unresolved failed runs remain.
 
 ### Changed
 

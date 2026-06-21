@@ -328,6 +328,8 @@ describe("HTML replay", () => {
     expect(html).toContain('<div class="entry entry--failed" id="verification-run-2">');
     expect(html).toContain("First failed run");
     expect(html).toContain("Jump to first failed run");
+    expect(html).toContain('<div class="stamp stamp--failed">FAIL</div>');
+    expect(html).not.toContain('<div class="entry entry--historical-failed"');
   });
 
   it("keeps resolved historical failed runs in the ledger without urgent navigation", () => {
@@ -383,7 +385,8 @@ describe("HTML replay", () => {
     });
 
     expect(html).toContain("1 passed / 0 unresolved failed / 1 historical failed");
-    expect(html).toContain('<div class="entry entry--failed" id="verification-run-1">');
+    expect(html).toContain('<div class="entry entry--historical-failed" id="verification-run-1">');
+    expect(html).toContain('<div class="stamp stamp--historical-failed">HIST</div>');
     expect(html).toContain("historical failure excerpt");
     expect(html).not.toContain('class="nav-urgent"');
     expect(html).not.toContain("First failed run");

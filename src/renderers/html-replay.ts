@@ -305,6 +305,7 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
     }
     .stamp--passed { color: var(--ok); }
     .stamp--failed { color: var(--danger); }
+    .stamp--historical-failed { color: var(--chrome); }
     .entry-body { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
     .entry-cmd { font-family: var(--mono); font-size: 13.5px; color: var(--ink); overflow-wrap: anywhere; }
     .entry-meta { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--faint); }
@@ -328,6 +329,7 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
       overflow: auto;
     }
     .excerpt--failed { background: var(--danger-bg); border-color: var(--danger); color: oklch(0.4 0.1 27); }
+    .entry--historical-failed .excerpt--failed { background: var(--soft); border-color: var(--rule-strong); color: var(--ink); }
 
     /* changed file list */
     .files { columns: 2; column-gap: 36px; margin: 0; padding: 0; list-style: none; }
@@ -449,7 +451,7 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
     <section class="section" id="verification-evidence">
       <div class="section-head"><h2 class="label">Verification Evidence</h2><span class="count">${escapeHtml(String(input.verificationEvidence.length))} runs</span></div>
-      ${renderVerification(input.verificationEvidence)}
+      ${renderVerification(input.verificationEvidence, input.verificationSummary)}
     </section>
 
     <section class="section" id="recommendation">
@@ -616,13 +618,17 @@ function renderFileList(files: string[]): string {
   return `<ul class="files">${files.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("")}</ul>`;
 }
 
-function renderVerification(evidence: VerificationRun[]): string {
+function renderVerification(
+  evidence: VerificationRun[],
+  summary: VerificationFailureCounts | undefined
+): string {
   if (evidence.length === 0) return `<p class="empty">No verification evidence recorded.</p>`;
   return `<div class="ledger">${evidence
     .map((item, index) => {
       const runNumber = index + 1;
-      return `<div class="entry entry--${escapeHtml(item.status)}" id="verification-run-${escapeHtml(String(runNumber))}">
-        <div class="stamp stamp--${escapeHtml(item.status)}">${escapeHtml(stampText(item.status))}</div>
+      const display = verificationRunDisplay(item, summary);
+      return `<div class="entry entry--${escapeHtml(display.entryClass)}" id="verification-run-${escapeHtml(String(runNumber))}">
+        <div class="stamp stamp--${escapeHtml(display.stampClass)}">${escapeHtml(display.stamp)}</div>
         <div class="entry-body">
           ${renderLedgerCommand(item.command)}
           <div class="entry-meta">exit ${escapeHtml(String(item.exitCode ?? "unknown"))} &middot; ${escapeHtml(String(item.durationMs))}ms</div>
@@ -639,6 +645,32 @@ function renderVerification(evidence: VerificationRun[]): string {
       </div>`;
     })
     .join("")}</div>`;
+}
+
+function verificationRunDisplay(
+  item: VerificationRun,
+  summary: VerificationFailureCounts | undefined
+): { entryClass: string; stampClass: string; stamp: string } {
+  if (isHistoricalFailedRun(item, summary)) {
+    return {
+      entryClass: "historical-failed",
+      stampClass: "historical-failed",
+      stamp: "HIST"
+    };
+  }
+
+  return {
+    entryClass: item.status,
+    stampClass: item.status,
+    stamp: stampText(item.status)
+  };
+}
+
+function isHistoricalFailedRun(
+  item: VerificationRun,
+  summary: VerificationFailureCounts | undefined
+): boolean {
+  return item.status === "failed" && Boolean(summary?.failed) && summary?.unresolvedFailed === 0;
 }
 
 function classifyReadiness(value: string): { tone: "ok" | "attention" | "blocked" | "neutral" } {
