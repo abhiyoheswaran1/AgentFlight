@@ -4,6 +4,58 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Coding Agent Positioning Copy
+
+Product note:
+
+- Current product positioning should avoid `AI coding` and coding-assistant
+  phrasing. The preferred terms are `coding agent sessions`, `coding agents`,
+  and, where broader framing helps, `agentic engineering`.
+
+Persona readout:
+
+- Product Maintainer: product copy should sound like serious engineering
+  infrastructure, not hype around assistants.
+- Docs and DX Writer: use `coding agent sessions` for the tagline and reserve
+  `agentic engineering` for broader positioning.
+- CLI Engineer: keep command descriptions short and exact.
+- Repo Steward: avoid rewriting historical task contracts and command
+  transcripts just to change old evidence.
+
+Implemented locally:
+
+- CLI/package metadata now says
+  `Local-first review layer for coding agent sessions.`
+- `start` command help now says `Start or resume a coding agent session.`
+- README, PRODUCT.md, product direction, roadmap, the v0.6.0 website prompt,
+  ProjScan intent strings, and the CLI demo SVG description now use the new
+  positioning.
+
+Verification:
+
+- Red AgentFlight-captured CLI entrypoint test failed because the CLI
+  description still said `AI coding sessions`.
+- Green AgentFlight-captured CLI entrypoint test passed:
+  `npm test -- tests/cli-entrypoint.test.ts` passed with 1 file / 5 tests.
+- Targeted stale-copy scan passed with no matches for `AI coding`, `AI-agent`,
+  or `coding assistant` in current public/runtime surfaces.
+- Full verification initially hit workflow-test timeouts in fixtures that
+  exercised init before the behavior under test. Those fixtures now pass stubbed
+  init tool results so they do not call real optional tooling under suite load.
+- AgentFlight-captured `npm test -- tests/commands/workflow.test.ts` passed with
+  1 file / 11 tests after the fixture fixes.
+- Bug-pass verification passed: `npm run verify` passed with 21 files / 198
+  tests plus build, `npm run format:check` passed, and `npm pack --dry-run`
+  passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight stayed at the known accumulated branch scale caution:
+  252 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-10-45-verification-report.md`.
+
 ### Idempotent Init Detected Proof
 
 Dogfood finding:

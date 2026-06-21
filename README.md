@@ -8,13 +8,13 @@
 
 See what your coding agent did, what failed, and whether the work is ready for review.
 
-AgentFlight is a local-first review layer for AI coding sessions from Baseframe Labs. It records what your coding agent did, captures verification evidence, shows failure excerpts, and tells you what needs review before you trust the result.
+AgentFlight is a local-first review layer for coding agent sessions from Baseframe Labs. It records what your coding agent did, captures verification evidence, shows failure excerpts, and tells you what needs review before you trust the result.
 
 Website: [baseframelabs.com/apps/agentflight](https://www.baseframelabs.com/apps/agentflight)
 
 AgentFlight helps you:
 
-- start an AI coding session
+- start a coding agent session
 - capture verification evidence
 - see changed files and risk
 - create snapshots during the session
@@ -56,7 +56,7 @@ What you get:
 
 ## Watch The Flow
 
-AgentFlight turns a loose AI-agent session into a local proof trail:
+AgentFlight turns a loose coding agent session into a local proof trail:
 
 1. Start a session before you ask the coding agent to work.
 2. Capture real verification output with `agentflight verify`.
@@ -72,7 +72,7 @@ A high-resolution still is also available at [`docs/assets/agentflight-replay-ti
 
 ## Why This Exists
 
-AI coding agents move fast. After a few prompts, you can lose track of:
+Coding agents move fast. After a few prompts, you can lose track of:
 
 - what changed
 - whether the agent drifted from the task

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
   <title id="title">AgentFlight CLI workflow animation</title>
-  <desc id="desc">Animated terminal-style demo showing AgentFlight start, verify, snapshot, and status output for an AI coding session.</desc>
+  <desc id="desc">Animated terminal-style demo showing AgentFlight start, verify, snapshot, and status output for a coding agent session.</desc>
   <style>
     .bg { fill: #0f111a; }
     .bar { fill: #171a24; }

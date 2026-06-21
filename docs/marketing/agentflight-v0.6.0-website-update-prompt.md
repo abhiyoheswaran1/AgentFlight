@@ -16,7 +16,7 @@ Update the Baseframe Labs AgentFlight overview and docs pages for
 
 Primary positioning:
 
-> AgentFlight is a local-first review layer for AI coding sessions.
+> AgentFlight is a local-first review layer for coding agent sessions.
 
 Longer version:
 
@@ -26,8 +26,8 @@ Longer version:
 
 Core message:
 
-> AgentFlight shows you what failed, what proof exists, and whether an AI coding
-> session is ready for review.
+> AgentFlight shows you what failed, what proof exists, and whether a coding
+> agent session is ready for review.
 
 ## What To Emphasize
 
@@ -43,12 +43,12 @@ Core message:
 
 Hero subtitle:
 
-> Local-first review layer for AI coding sessions.
+> Local-first review layer for coding agent sessions.
 
 Overview paragraph:
 
 > AgentFlight v0.6.0 sits around tools like Codex, Claude Code, Cursor,
-> Windsurf, Gemini CLI, Aider, and OpenCode. It records an AI coding session,
+> Windsurf, Gemini CLI, Aider, and OpenCode. It records a coding agent session,
 > captures verification evidence, shows inline failure excerpts, ranks review
 > focus, flags proof gaps, and creates local handoff, report, replay, and resume
 > artifacts.
@@ -68,7 +68,7 @@ Workflow paragraph:
 
 ## Docs Intro
 
-> AgentFlight is a local-first review layer for AI coding sessions. Run it
+> AgentFlight is a local-first review layer for coding agent sessions. Run it
 > around Codex, Claude Code, Cursor, or any coding agent: it records the session,
 > captures verification evidence, shows failure excerpts and Review
 > Intelligence, and writes a local handoff, proof report, HTML replay ledger,
@@ -102,7 +102,7 @@ Trust section copy:
 
 - The overview and docs pages show version `0.6.0`.
 - No paragraph references `v0.4.2`, `v0.5.0`, or `v0.5.1` as current.
-- The phrase "local-first review layer for AI coding sessions" appears on the
+- The phrase "local-first review layer for coding agent sessions" appears on the
   overview and docs pages.
 - The pages mention inline failure excerpts, Review Intelligence, replay
   evidence ledger, and local handoff.

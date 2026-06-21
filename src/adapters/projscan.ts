@@ -63,7 +63,7 @@ export async function runProjScanBaseline(
     args: [
       "start",
       "--intent",
-      "Build AgentFlight, a local-first review layer for AI coding sessions"
+      "Build AgentFlight, a local-first review layer for coding agent sessions"
     ],
     cwd,
     timeoutMs: PROJSCAN_BASELINE_TIMEOUT_MS

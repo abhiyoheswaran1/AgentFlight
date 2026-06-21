@@ -114,6 +114,8 @@ All notable AgentFlight changes are documented here.
 
 ### Changed
 
+- Current product copy now uses `coding agent sessions` and agentic engineering
+  language instead of `AI coding` positioning.
 - Idempotent `agentflight init` now shows a concrete detected proof command
   when existing config verification commands are empty.
 - First-run `agentflight init` now points seeded configs at no-arg

@@ -1,7 +1,7 @@
 {
   "name": "agentflight",
   "version": "0.6.0",
-  "description": "Local-first review layer for AI coding sessions.",
+  "description": "Local-first review layer for coding agent sessions.",
   "type": "module",
   "main": "./dist/cli.js",
   "types": "./dist/cli.d.ts",
@@ -35,7 +35,7 @@
     "check": "npm run typecheck && npm run lint && npm run test",
     "dev": "tsx src/cli.ts",
     "agentflight": "tsx src/cli.ts",
-    "projscan": "projscan start --intent \"Build AgentFlight, a local-first review layer for AI coding sessions\"",
+    "projscan": "projscan start --intent \"Build AgentFlight, a local-first review layer for coding agent sessions\"",
     "agentloopkit:doctor": "agentloopkit doctor",
     "demo:replay": "npm run build && node scripts/demo/capture-replay.mjs",
     "demo:terminal": "vhs docs/marketing/agentflight-terminal-demo.tape",

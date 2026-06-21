@@ -1,7 +1,7 @@
 # Roadmap
 
 Current working direction: keep AgentFlight focused on becoming the best
-local-first review layer for AI coding sessions. See
+local-first review layer for coding agent sessions. See
 [docs/development/product-direction.md](../development/product-direction.md)
 for the active post-v0.6.0 priority order.
 

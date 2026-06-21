@@ -13,7 +13,7 @@ describe("CLI entrypoint detection", () => {
   });
 
   it("uses the current product positioning in the CLI description", () => {
-    expect(createCli().description()).toBe("Local-first review layer for AI coding sessions.");
+    expect(createCli().description()).toBe("Local-first review layer for coding agent sessions.");
   });
 
   it("includes the local history command", () => {

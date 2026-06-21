@@ -316,7 +316,11 @@ agentflight handoff`);
     );
     await runInitCommand({
       repoRoot,
-      now: new Date("2026-06-13T12:00:00.000Z")
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, version: "4.3.1", warnings: [] },
+        agentloopkit: { available: true, version: "0.28.7", warnings: [] }
+      }
     });
 
     const configPath = join(repoRoot, ".agentflight", "config.json");
@@ -365,7 +369,11 @@ agentflight handoff`);
     );
     await runInitCommand({
       repoRoot,
-      now: new Date("2026-06-13T12:00:00.000Z")
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, version: "4.3.1", warnings: [] },
+        agentloopkit: { available: true, version: "0.28.7", warnings: [] }
+      }
     });
     await mkdir(join(repoRoot, ".projscan-memory"), { recursive: true });
     await writeFile(join(repoRoot, ".projscan-memory", "memory.json"), "{}\n");
@@ -434,7 +442,11 @@ agentflight handoff`);
     const repoRoot = await createTempRepo();
     await runInitCommand({
       repoRoot,
-      now: new Date("2026-06-13T12:00:00.000Z")
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, version: "4.3.1", warnings: [] },
+        agentloopkit: { available: true, version: "0.28.7", warnings: [] }
+      }
     });
 
     await expect(runStatusCommand({ repoRoot })).rejects.toThrow(
@@ -449,7 +461,11 @@ agentflight handoff`);
     const repoRoot = await createTempRepo();
     await runInitCommand({
       repoRoot,
-      now: new Date("2026-06-13T12:00:00.000Z")
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, version: "4.3.1", warnings: [] },
+        agentloopkit: { available: true, version: "0.28.7", warnings: [] }
+      }
     });
 
     const start = await runStartCommand({

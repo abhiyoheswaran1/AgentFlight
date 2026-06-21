@@ -6,11 +6,11 @@ product
 
 ## Users
 
-AgentFlight is used by developers, reviewers, and AI-agent operators during local software development. They are usually inside a coding session, reviewing what an AI coding agent changed, deciding whether the work is safe to continue, or handing the next action to another agent or human reviewer.
+AgentFlight is used by developers, reviewers, and coding agent operators during local software development. They are usually inside an agentic engineering session, reviewing what a coding agent changed, deciding whether the work is safe to continue, or handing the next action to another agent or human reviewer.
 
 ## Product Purpose
 
-AgentFlight is a local-first review layer for AI coding sessions. It records what the coding agent did, captures verification evidence, shows failure excerpts, identifies proof gaps, and helps reviewers decide what should happen next.
+AgentFlight is a local-first review layer for coding agent sessions. It records what the coding agent did, captures verification evidence, shows failure excerpts, identifies proof gaps, and helps reviewers decide what should happen next.
 
 Success means a developer can trust the artifact quickly: what changed, what proof exists, what failed or is missing, and whether the work is ready for review.
 

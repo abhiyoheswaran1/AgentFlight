@@ -21,7 +21,7 @@ export function createCli(): Command {
 
   program
     .name("agentflight")
-    .description("Local-first review layer for AI coding sessions.")
+    .description("Local-first review layer for coding agent sessions.")
     .version(readPackageVersion());
 
   program
@@ -33,7 +33,7 @@ export function createCli(): Command {
 
   program
     .command("start")
-    .description("Start or resume an AI coding session.")
+    .description("Start or resume a coding agent session.")
     .requiredOption("--task <task>", "task title")
     .option("-y, --yes", "initialise safely if AgentFlight is missing")
     .action(async (options: { task: string; yes?: boolean }) => {

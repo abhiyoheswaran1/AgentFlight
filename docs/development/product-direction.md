@@ -7,7 +7,7 @@ release plan.
 
 ## Product North Star
 
-AgentFlight is a local-first review layer for AI coding sessions.
+AgentFlight is a local-first review layer for coding agent sessions.
 
 It should help real engineers answer three questions quickly:
 
@@ -15,10 +15,10 @@ It should help real engineers answer three questions quickly:
 2. What proof exists or failed?
 3. Is this ready to review, and what should I open first?
 
-The product should keep building around local trust, review speed, and
-maintainable evidence. Cloud, accounts, billing, hosted review, GitHub App
-surfaces, and automatic PR comments stay deferred until the local artifact is
-excellent.
+The product should keep building around agentic engineering trust, review
+speed, and maintainable evidence. Cloud, accounts, billing, hosted review,
+GitHub App surfaces, and automatic PR comments stay deferred until the local
+artifact is excellent.
 
 ## Prioritized Work Areas
 
