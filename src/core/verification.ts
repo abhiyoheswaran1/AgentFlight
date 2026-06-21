@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ensureDir, writeTextFileSafe } from "./fs-safe.js";
+import { ensureDir, tryWriteTextFileExclusive, writeTextFileSafe } from "./fs-safe.js";
 import { runCommand, type CommandRunner } from "./process.js";
 import { resolveAgentFlightPaths } from "./paths.js";
 import { getVerificationRuns } from "./session.js";
@@ -72,14 +72,12 @@ export async function runVerificationCommand(
   const now = options.now ?? (() => new Date());
   const startedAt = now();
   const runNumber = getVerificationRuns(options.session).length + 1;
-  const runName = `verification-${runNumber}`;
-  const paths = resolveAgentFlightPaths(options.repoRoot);
-  const evidenceDir = join(paths.evidence, options.session.id);
-  const stdoutPath = `.agentflight/evidence/${options.session.id}/${runName}.stdout.txt`;
-  const stderrPath = `.agentflight/evidence/${options.session.id}/${runName}.stderr.txt`;
+  const { stdoutPath, stderrPath } = await reserveVerificationEvidencePaths({
+    repoRoot: options.repoRoot,
+    sessionId: options.session.id,
+    firstRunNumber: runNumber
+  });
   const runner = options.commandRunner ?? runCommand;
-
-  await ensureDir(evidenceDir);
 
   const result = await runner(options.commandArgs[0]!, options.commandArgs.slice(1), {
     cwd: options.repoRoot,
@@ -105,6 +103,37 @@ export async function runVerificationCommand(
   if (outputExcerpt !== undefined) run.outputExcerpt = outputExcerpt;
 
   return run;
+}
+
+interface ReserveVerificationEvidencePathsOptions {
+  repoRoot: string;
+  sessionId: string;
+  firstRunNumber: number;
+}
+
+async function reserveVerificationEvidencePaths(
+  options: ReserveVerificationEvidencePathsOptions
+): Promise<{ stdoutPath: string; stderrPath: string }> {
+  const paths = resolveAgentFlightPaths(options.repoRoot);
+  const evidenceDir = join(paths.evidence, options.sessionId);
+  await ensureDir(evidenceDir);
+
+  for (let offset = 0; offset < 1000; offset += 1) {
+    const runName = `verification-${options.firstRunNumber + offset}`;
+    const claimPath = join(evidenceDir, `.${runName}.claim`);
+    const claimed = await tryWriteTextFileExclusive(
+      claimPath,
+      `${process.pid} ${new Date().toISOString()}\n`
+    );
+    if (!claimed) continue;
+
+    return {
+      stdoutPath: `.agentflight/evidence/${options.sessionId}/${runName}.stdout.txt`,
+      stderrPath: `.agentflight/evidence/${options.sessionId}/${runName}.stderr.txt`
+    };
+  }
+
+  throw new Error("Unable to reserve AgentFlight verification evidence path.");
 }
 
 export interface OutputExcerptOptions {

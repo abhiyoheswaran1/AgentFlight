@@ -269,6 +269,66 @@ describe("verify command", () => {
     const stdoutPath = join(repoRoot, current.verificationRuns[0].stdoutPath);
     await expect(readFile(stdoutPath, "utf8")).resolves.toBe("command stdout\n");
   });
+
+  it("keeps concurrent verification evidence paths distinct", async () => {
+    const repoRoot = await startedRepo();
+    let startedCommands = 0;
+    let resolveBothCommandsStarted: (() => void) | undefined;
+    let releaseCommands: (() => void) | undefined;
+    const bothCommandsStarted = new Promise<void>((resolve) => {
+      resolveBothCommandsStarted = resolve;
+    });
+    const releasePromise = new Promise<void>((resolve) => {
+      releaseCommands = resolve;
+    });
+
+    const commandRunner: CommandRunner = async (command) => {
+      startedCommands += 1;
+      if (startedCommands === 2) resolveBothCommandsStarted?.();
+      await releasePromise;
+      return {
+        exitCode: 0,
+        stdout: `${command} stdout\n`,
+        stderr: ""
+      };
+    };
+
+    const first = runVerifyCommand({
+      repoRoot,
+      commandArgs: ["first-check"],
+      now: () => new Date("2026-06-13T12:00:00.000Z"),
+      commandRunner
+    });
+    const second = runVerifyCommand({
+      repoRoot,
+      commandArgs: ["second-check"],
+      now: () => new Date("2026-06-13T12:00:01.000Z"),
+      commandRunner
+    });
+
+    await bothCommandsStarted;
+    releaseCommands?.();
+    const results = await Promise.all([first, second]);
+    const runs = results.flatMap((result) => result.runs);
+    const stdoutPaths = runs.map((run) => run.stdoutPath);
+
+    expect(new Set(stdoutPaths).size).toBe(2);
+
+    const current = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    expect(current.verificationRuns).toHaveLength(2);
+    const stdoutByCommand = Object.fromEntries(
+      await Promise.all(
+        current.verificationRuns.map(async (run: { command: string; stdoutPath: string }) => [
+          run.command,
+          await readFile(join(repoRoot, run.stdoutPath), "utf8")
+        ])
+      )
+    );
+    expect(stdoutByCommand["first-check"]).toBe("first-check stdout\n");
+    expect(stdoutByCommand["second-check"]).toBe("second-check stdout\n");
+  });
 });
 
 async function startedRepo(): Promise<string> {

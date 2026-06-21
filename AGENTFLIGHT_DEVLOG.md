@@ -4,6 +4,64 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Concurrent Verification Evidence Collision
+
+Dogfood finding:
+
+- Running two `agentflight verify` commands in parallel exposed an evidence
+  integrity bug: both commands could claim the same `verification-N` stdout and
+  stderr paths, and one session update could overwrite the other.
+
+Persona readout:
+
+- Product Maintainer: verification evidence is the product's trust anchor, so
+  ambiguous or dropped runs must be fixed before more feature work.
+- CLI Engineer: keep the terminal output shape and evidence paths familiar,
+  but make allocation safe under concurrent local commands.
+- Verification Engineer: add a deterministic regression test that forces two
+  verification commands to overlap.
+- Security Reviewer: keep all locking and reservation state local under
+  `.agentflight/`; no daemon, service, upload, or hidden network behavior.
+
+Implemented locally:
+
+- Verification evidence paths now use hidden local claim files so concurrent
+  runs reserve distinct `verification-N` stdout/stderr paths.
+- Session event and verification-run appends now use a short local file lock and
+  reload the persisted session before mutating it, so concurrent appends merge
+  instead of overwriting one another.
+- Existing sequential verify output remains unchanged.
+
+Verification:
+
+- Red regression passed through AgentFlight as a failure first:
+  `npm test -- tests/commands/verify.test.ts` failed because both concurrent
+  runs returned the same stdout path.
+- Focused AgentFlight-captured verification now passes:
+  `npm test -- tests/commands/verify.test.ts` passed: 1 file / 11 tests.
+- Broader targeted AgentFlight-captured verification now passes:
+  `npm test -- tests/commands/verify.test.ts tests/commands/evidence-output.test.ts`
+  passed: 2 files / 38 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 166 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 136 changed files, maximum
+  changed-file risk score `199.1`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-03-33-verification-report.md`.
+- Built CLI concurrent smoke ran two parallel `agentflight verify` commands and
+  reported distinct paths:
+  `verification-11.stdout.txt` / `verification-12.stdout.txt`.
+- Stored session evidence contained both parallel smoke commands and preserved
+  raw stdout: `parallel smoke one` and `parallel smoke two`.
+
 ### History Resume Artifact Discovery
 
 Research signal:

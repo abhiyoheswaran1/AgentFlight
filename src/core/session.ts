@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { basename } from "node:path";
-import { writeJsonFileSafe, writeTextFileSafe } from "./fs-safe.js";
+import { withFileLock, writeJsonFileSafe, writeTextFileSafe } from "./fs-safe.js";
 import { resolveAgentFlightPaths } from "./paths.js";
 import { getUnresolvedFailedRuns } from "./verification-runs.js";
 import type {
@@ -455,10 +455,9 @@ export async function appendSessionEvent(
   session: AgentFlightSession,
   input: SessionEventInput
 ): Promise<AgentFlightSession> {
-  const updatedSession = addSessionEvent(session, input);
-
-  await saveSession(repoRoot, updatedSession);
-  return updatedSession;
+  return mutatePersistedSession(repoRoot, session, (latestSession) =>
+    addSessionEvent(latestSession, input)
+  );
 }
 
 export async function appendVerificationRun(
@@ -466,13 +465,42 @@ export async function appendVerificationRun(
   session: AgentFlightSession,
   run: VerificationRun
 ): Promise<AgentFlightSession> {
-  const updatedSession: AgentFlightSession = {
-    ...session,
-    verificationRuns: [...getVerificationRuns(session), run]
-  };
+  return mutatePersistedSession(repoRoot, session, (latestSession) => ({
+    ...latestSession,
+    verificationRuns: [...getVerificationRuns(latestSession), run]
+  }));
+}
 
-  await saveSession(repoRoot, updatedSession);
-  return updatedSession;
+async function mutatePersistedSession(
+  repoRoot: string,
+  session: AgentFlightSession,
+  mutate: (session: AgentFlightSession) => AgentFlightSession
+): Promise<AgentFlightSession> {
+  const paths = resolveAgentFlightPaths(repoRoot);
+  const lockPath = `${paths.sessions}/${session.id}.lock`;
+
+  return withFileLock(lockPath, async () => {
+    const latestSession = await readPersistedSession(repoRoot, session);
+    const updatedSession = mutate(latestSession);
+    await saveSession(repoRoot, updatedSession);
+    return updatedSession;
+  });
+}
+
+async function readPersistedSession(
+  repoRoot: string,
+  fallback: AgentFlightSession
+): Promise<AgentFlightSession> {
+  const paths = resolveAgentFlightPaths(repoRoot);
+  const sessionPath = `${paths.sessions}/${fallback.id}.json`;
+
+  try {
+    const session = JSON.parse(await readFile(sessionPath, "utf8")) as AgentFlightSession;
+    return session.id === fallback.id ? session : fallback;
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return fallback;
+    throw error;
+  }
 }
 
 export function createSessionId(now: Date, task: string): string {

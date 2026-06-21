@@ -22,6 +22,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Concurrent `agentflight verify` runs now reserve distinct stdout/stderr
+  evidence paths and merge verification updates without dropping either run.
 - `agentflight history --limit` now rejects non-integer, zero, and negative
   values with a clear local error instead of silently falling back or returning
   an empty history.
