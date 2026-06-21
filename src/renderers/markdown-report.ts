@@ -57,9 +57,6 @@ ${input.task}
 - Session ID: ${input.sessionId}
 - Started: ${input.startedAt}
 
-## Timeline
-${renderTimeline(input.timelineEvents ?? [])}
-
 ## Changed Files
 ${renderList(input.changedFiles, "No changed files detected.")}
 
@@ -85,6 +82,9 @@ ${renderRecommendation(input)}
 
 ## Next Action
 ${renderNextAction(input)}
+
+## Timeline
+${renderTimeline(input.timelineEvents ?? [])}
 
 ## Tooling
 - ProjScan: ${formatToolForReport("ProjScan", input.tooling.projscan)}

@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Full Markdown proof reports now show changed files, risk, verification,
+  review focus, proof gaps, readiness, recommendation, and next action before
+  the timeline, keeping long sessions faster to review.
 - `agentflight history` now compacts non-current start-only sessions that have
   no proof or review artifacts, keeping recent local artifacts easier to scan.
 - Review Intelligence now keeps generated `.agentflight/.gitignore` helper files

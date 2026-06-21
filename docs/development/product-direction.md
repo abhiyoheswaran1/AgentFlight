@@ -69,6 +69,10 @@ remain the best artifact when verification failed.
 User problem: reviewers need to find the failed proof, relevant changed files,
 and next action without reading a full transcript.
 
+Markdown reports should answer proof and readiness before chronology. Long
+timelines belong later in the report because replay remains the better artifact
+for inspecting the full flight record.
+
 ### 5. Proof Guidance Quality
 
 Suggested verification commands should be compact, relevant, and consistent

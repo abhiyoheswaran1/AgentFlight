@@ -4,6 +4,58 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Prioritize Proof Before Timeline In Markdown Reports
+
+Dogfood finding:
+
+- A fresh full Markdown report for a long local session opened with dozens of
+  timeline events before changed files, risk, and verification evidence. That
+  made the report slower to scan than the handoff/replay path for the core
+  reviewer questions: what changed, what proof exists, and what needs action.
+
+Team persona notes:
+
+- Product Maintainer: reports should answer proof and readiness before showing
+  chronology.
+- CLI Engineer: keep this as a renderer-ordering change; do not add another
+  mode or duplicate Review Intelligence.
+- Docs and DX Writer: preserve the timeline, but move it below the decision
+  sections.
+- Verification Engineer: assert section order using actual Markdown headings so
+  failure excerpts cannot accidentally satisfy the check.
+- Security Reviewer: no evidence capture, upload, telemetry, or source handling
+  changes.
+
+Implemented locally:
+
+- Full Markdown reports now render changed files, risk, verification evidence,
+  review focus, proof gaps, readiness, recommendation, and next action before
+  the timeline.
+- The full timeline is still present before tooling.
+- Compact report and PR-comment draft modes are unchanged.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/renderers/markdown-report.test.ts`
+  failed because `## Timeline` appeared before `## Changed Files`.
+- Green AgentFlight-captured
+  `npm test -- tests/renderers/markdown-report.test.ts` passed with 1 file / 7
+  tests.
+- AgentFlight-captured `npm run build` passed before rebuilt-CLI dogfood.
+- Rebuilt-CLI dogfood `node dist/cli.js report` generated a report where
+  changed files, risk, verification, review focus, proof gaps, readiness,
+  recommendation, and next action appear before `## Timeline`, and `## Timeline`
+  still appears before `## Tooling`.
+- Final AgentFlight-captured `npm run verify` passed with 22 files / 210 tests
+  plus typecheck, lint, and build.
+- Final AgentFlight-captured `npm run format:check` passed.
+- Final AgentFlight-captured `npm pack --dry-run` passed.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight/review still reports the known
+  scale-only release sign-off caution: max changed-file risk score 215.8 >= 80,
+  with no concrete cycle, risky-function, contract, taint, or dataflow blocker.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Compact Start-Only History Sessions
 
 Dogfood finding:
