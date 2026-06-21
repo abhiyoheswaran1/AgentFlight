@@ -4,6 +4,58 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Init Tool Availability Consistency
+
+Dogfood finding:
+
+- First-run dogfood observed `agentflight init` reporting ProjScan unavailable
+  while later `start` and report paths found and used ProjScan. The cause was
+  different detection models: init looked for repo marker files, while later
+  commands inspected the actual CLIs.
+
+Persona readout:
+
+- Product Maintainer: first-run trust depends on consistent local tool status.
+- CLI Engineer: init should use the same concise ToolAdapterResult formatter as
+  start/report surfaces.
+- Verification Engineer: tests should inject tool results so workflow coverage
+  stays deterministic and does not depend on local npx availability.
+- Security Reviewer: keep checks local-only and avoid heavy baselines or doctor
+  calls on init.
+
+Implemented locally:
+
+- `agentflight init` now inspects ProjScan and AgentLoopKit CLI availability
+  when results are not injected.
+- Init uses the shared compact tool formatter, so unavailable tools get the
+  same concise follow-up guidance as other surfaces.
+- AgentLoopKit init inspection skips the heavier doctor call.
+
+Verification:
+
+- Red targeted test failed because init still rendered marker-file availability.
+- AgentFlight-captured targeted verification now passes:
+  `npm test -- tests/commands/workflow.test.ts tests/core/config.test.ts`
+  passed: 2 files / 8 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 168 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 145 changed files exceeds the
+  preflight threshold of 50, maximum changed-file risk score `199.1`, and no
+  concrete blockers.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: no cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-03-55-verification-report.md`.
+- Built CLI smoke in a temp repo showed `agentflight init` reporting
+  `ProjScan: available 4.9.3` and `AgentLoopKit: available 0.37.0` without
+  requiring repo marker files first.
+
 ### History Open-First Empty State
 
 Dogfood finding:

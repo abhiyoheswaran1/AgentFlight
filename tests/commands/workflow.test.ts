@@ -33,9 +33,15 @@ describe("AgentFlight command workflow", () => {
 
     const init = await runInitCommand({
       repoRoot,
-      now: new Date("2026-06-13T12:00:00.000Z")
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, version: "4.5.0", warnings: [] },
+        agentloopkit: { available: true, version: "0.35.2", warnings: [] }
+      }
     });
     expect(init.output).toContain("AgentFlight initialized");
+    expect(init.output).toContain("ProjScan: available 4.5.0");
+    expect(init.output).toContain("AgentLoopKit: available 0.35.2");
     expect(init.output).toContain(".agentflight/config.json is project config");
     expect(init.output).toContain(".agentflight/sessions/, reports/, evidence/, current/");
     expect(init.output).toContain(".agentflight/.gitignore keeps runtime evidence out of git");
@@ -126,6 +132,32 @@ describe("AgentFlight command workflow", () => {
     });
     expect(doctor.output).toContain("AgentFlight Doctor");
     expect(doctor.output).toContain("OK");
+  });
+
+  it("summarizes unavailable init tools with the same guidance as start/report surfaces", async () => {
+    const repoRoot = await createTempRepo();
+
+    const init = await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: {
+          available: false,
+          warnings: ["ProjScan unavailable: command not found"]
+        },
+        agentloopkit: {
+          available: false,
+          warnings: ["AgentLoopKit unavailable: command not found"]
+        }
+      }
+    });
+
+    expect(init.output).toContain(
+      "ProjScan: unavailable (ProjScan unavailable; run npx projscan@latest doctor for details.)"
+    );
+    expect(init.output).toContain(
+      "AgentLoopKit: unavailable (AgentLoopKit unavailable; run npx agentloopkit@latest doctor for details.)"
+    );
   });
 
   it("uses a helpful error when a command requires an active session", async () => {

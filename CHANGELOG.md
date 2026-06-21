@@ -52,6 +52,9 @@ All notable AgentFlight changes are documented here.
   status as no active task instead of falsely reporting task reuse.
 - AgentLoopKit task-link diagnostics now use generic link-check wording instead
   of stale automatic task-creation copy.
+- `agentflight init` now reports ProjScan and AgentLoopKit CLI availability
+  using the same concise tool formatter as start/report surfaces instead of
+  relying on repo marker files.
 
 ### Changed
 
