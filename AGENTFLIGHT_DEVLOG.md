@@ -4,6 +4,70 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Init Detected Proof Guidance
+
+Dogfood finding:
+
+- After the init golden-path copy moved users toward `start`, `verify`, and
+  `handoff`, the verify line still hardcoded `npm test`. In repos where
+  AgentFlight detects `typecheck`, `lint`, or `build` as the first proof
+  command, that guidance can send first-run users to the wrong initial proof.
+
+Persona readout:
+
+- First-Time Developer: the first suggested verify command should match the
+  current repo, not a generic npm convention.
+- CLI Engineer: reuse existing package-script verification detection instead
+  of creating a second command-ranking rule.
+- Verification Engineer: keep a clear fallback when no proof command is
+  detected, and cover both detected and fallback paths.
+- Repo Steward: keep config generation unchanged; this is display guidance,
+  not a schema or profile change.
+
+Implemented locally:
+
+- `agentflight init` now reads `package.json` for display-only verification
+  guidance and uses the first detected command in the primary workflow.
+- When no proof command is detected, init prints
+  `agentflight verify -- <proof command>`.
+- `.agentflight/config.json` defaults, package metadata, and session behavior
+  are unchanged.
+
+Verification:
+
+- Red AgentFlight-captured workflow test failed because init still printed the
+  hardcoded `agentflight verify -- npm test` line.
+- AgentFlight-captured focused workflow test now passes:
+  `npm test -- tests/commands/workflow.test.ts` passed: 1 file / 9 tests.
+- AgentFlight-captured `npm run build` passed.
+- Built CLI smoke passed for both detected and fallback paths:
+  `agentflight init` printed `agentflight verify -- npm run typecheck` when
+  `typecheck` was detected first, and `agentflight verify -- <proof command>`
+  when no proof script was detected.
+- Bug pass: two malformed smoke-script attempts were recorded as failed
+  verification runs; they were resolved by rerunning the same smoke command
+  strings through a temporary fake shell, then rerunning the corrected smoke.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 186 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 197 changed files and maximum
+  changed-file risk score `207.9`.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: maximum changed-file risk score `207.9`, no risky
+  functions, no dependency changes, no contract changes, no taint flows, no
+  dataflow risks, and no cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-06-53-verification-report.md`.
+- Post-handoff `npm run format:check` passed under AgentFlight capture.
+- `npx agentloopkit@latest check-gates` passed. The output still named an
+  older archived task contract while using the current verification report and
+  handoff, which remains AgentLoopKit feedback rather than an AgentFlight
+  blocker.
+
 ### Init Handoff Golden Path
 
 Dogfood finding:

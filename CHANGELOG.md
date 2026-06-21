@@ -92,6 +92,9 @@ All notable AgentFlight changes are documented here.
 - `agentflight init` now points first-run users through the handoff golden path:
   start a session, capture verification, then generate a local handoff, with
   status and doctor listed as supporting checks.
+- `agentflight init` now uses the first detected verification command in its
+  primary workflow guidance, falling back to `<proof command>` when no proof
+  script is detected.
 - Kept ready-review report, replay, resume, examples, and demo copy aligned with
   the `agentflight handoff` golden path while keeping report/replay/resume as
   supporting local artifacts.

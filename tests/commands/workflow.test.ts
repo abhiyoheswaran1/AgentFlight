@@ -52,8 +52,9 @@ describe("AgentFlight command workflow", () => {
     expect(init.output).toContain("changedFileFilters.ignore");
     expect(init.output).toContain(`Primary workflow:
 agentflight start --task "Describe the work"
-agentflight verify -- npm test
+agentflight verify -- npm run typecheck
 agentflight handoff`);
+    expect(init.output).not.toContain("agentflight verify -- npm test");
     expect(init.output).toContain(`Supporting checks:
 agentflight status
 agentflight doctor`);
@@ -166,6 +167,40 @@ agentflight doctor`);
     expect(second.output).toContain("Created files:\n- none");
     expect(second.output).toContain("Skipped existing files:\n- .agentflight/config.json");
     expect(second.output).toContain("- .agentflight/.gitignore");
+  });
+
+  it("uses a clear init verification placeholder when no proof command is detected", async () => {
+    const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            dev: "vite"
+          }
+        },
+        null,
+        2
+      )
+    );
+
+    const init = await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: false, warnings: ["ProjScan unavailable: command not found"] },
+        agentloopkit: {
+          available: false,
+          warnings: ["AgentLoopKit unavailable: command not found"]
+        }
+      }
+    });
+
+    expect(init.output).toContain(`Primary workflow:
+agentflight start --task "Describe the work"
+agentflight verify -- <proof command>
+agentflight handoff`);
+    expect(init.output).not.toContain("agentflight verify -- npm test");
   });
 
   it("doctors a healthy initialized repo before the first session as OK guidance", async () => {
