@@ -113,10 +113,16 @@ async function formatSession(
   const marker = isCurrent ? " [current]" : "";
   const branch = session.branch ?? "unknown";
   const artifacts = await readReviewArtifacts(repoRoot, session.id);
-
-  return `- ${formatStartedAt(session.startedAt)}${marker} ${session.taskTitle}
+  const header = `- ${formatStartedAt(session.startedAt)}${marker} ${session.taskTitle}
   ID: ${session.id}
-  Branch: ${branch}${session.dirty ? " (dirty at start)" : ""}
+  Branch: ${branch}${session.dirty ? " (dirty at start)" : ""}`;
+
+  if (isStartOnlySession(session, isCurrent, artifacts)) {
+    return `${header}
+  Start only: no verification or review artifacts recorded.`;
+  }
+
+  return `${header}
   Verification: ${formatVerificationCountLine({
     passed: session.verificationPassed,
     failed: session.verificationFailed,
@@ -129,6 +135,31 @@ async function formatSession(
   Report: ${artifacts.report}
   Replay: ${artifacts.replay}
   Resume: ${artifacts.resume}`;
+}
+
+function isStartOnlySession(
+  session: SessionSummary,
+  isCurrent: boolean,
+  artifacts: Awaited<ReturnType<typeof readReviewArtifacts>>
+): boolean {
+  if (isCurrent) return false;
+  if (session.latestReview) return false;
+  if (hasVerificationEvidence(session)) return false;
+  return !hasReviewArtifact(artifacts);
+}
+
+function hasVerificationEvidence(session: SessionSummary): boolean {
+  const counts = [
+    session.verificationPassed,
+    session.verificationFailed,
+    session.verificationUnresolvedFailed,
+    session.verificationResolvedFailed
+  ];
+  return counts.some((count) => count > 0);
+}
+
+function hasReviewArtifact(artifacts: Awaited<ReturnType<typeof readReviewArtifacts>>): boolean {
+  return Object.values(artifacts).some((artifact) => artifact !== "missing");
 }
 
 function formatReadiness(session: SessionSummary): string {

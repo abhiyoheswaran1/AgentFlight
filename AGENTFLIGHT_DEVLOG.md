@@ -4,6 +4,63 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Compact Start-Only History Sessions
+
+Dogfood finding:
+
+- `agentflight history --limit 5` showed an abandoned start-only session with no
+  proof or artifacts as a full multi-line missing-artifact block. That made the
+  local session list harder to scan and pushed useful report/replay paths down
+  the page.
+
+Team persona notes:
+
+- Product Maintainer: local session discovery should favor useful review
+  artifacts while keeping abandoned starts visible.
+- CLI Engineer: keep history read-only and avoid cleanup/session-switching
+  behavior.
+- Docs and DX Writer: use a direct "start only" label instead of four repeated
+  missing-artifact lines.
+- Verification Engineer: cover current start-only sessions separately so active
+  sessions still get handoff guidance.
+- Security Reviewer: no artifact deletion, upload, telemetry, or source
+  inspection behavior changes.
+
+Implemented locally:
+
+- Non-current start-only sessions now render as
+  `Start only: no verification or review artifacts recorded.`
+- Current start-only sessions keep the existing `Open first: none yet` and
+  `Next: run agentflight handoff` guidance.
+- Sessions with proof or any review artifact keep the full detailed history
+  block.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/history.test.ts` failed
+  because the abandoned session still rendered the old missing-artifact block.
+- Green AgentFlight-captured `npm test -- tests/commands/history.test.ts`
+  passed with 1 file / 8 tests.
+- AgentFlight-captured `npm run build` passed before rebuilt-CLI dogfood.
+- Rebuilt-CLI dogfood `node dist/cli.js history --limit 5` showed the abandoned
+  start-only session compacted while the current session kept handoff guidance.
+- AgentFlight-captured `npm run verify` passed with 22 files / 210 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution and
+  asked for full review.
+- Initial ProjScan review found one concrete blocker:
+  `src/commands/history.ts` `isStartOnlySession` cyclomatic complexity `10`.
+  Splitting verification and artifact checks into small helpers fixed it.
+- Final ProjScan review returned the known scale-only `block` verdict with 49
+  current changed files and maximum changed-file risk score `215.8 >= 80`; it
+  reported no risky functions, dependency changes, contract changes, new cycles,
+  taint flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-14-30-verification-report.md`.
+
 ### Keep Generated AgentFlight Gitignore Below Real Review Targets
 
 Dogfood finding:

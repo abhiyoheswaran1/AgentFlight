@@ -56,6 +56,10 @@ their keep through dogfood.
 User problem: after several agent loops, the evidence exists locally but the
 developer may not know which replay or report to open.
 
+Start-only sessions without proof or review artifacts should remain visible,
+but they should not take the same scan space as sessions with handoff, report,
+replay, or resume artifacts.
+
 ### 4. Replay And Review Ergonomics
 
 Long sessions need faster navigation and less repetition. Replay should remain

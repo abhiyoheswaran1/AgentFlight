@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight history` now compacts non-current start-only sessions that have
+  no proof or review artifacts, keeping recent local artifacts easier to scan.
 - Review Intelligence now keeps generated `.agentflight/.gitignore` helper files
   below real first-run review targets while leaving them visible.
 - `agentflight resume` now includes unresolved and historical failed-run context

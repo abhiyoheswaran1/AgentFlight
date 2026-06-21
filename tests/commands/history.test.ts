@@ -145,18 +145,59 @@ describe("history command", () => {
     expect(history.output).toContain(
       `Open first: replay .agentflight/reports/${newer.session.id}-replay.html`
     );
-    expect(history.output).toContain("Recorded readiness: not recorded");
     expect(history.output).toContain(`Report: .agentflight/reports/${newer.session.id}-proof.md`);
     expect(history.output).toContain(
       `Replay: .agentflight/reports/${newer.session.id}-replay.html`
     );
-    expect(history.output).toContain(`Report: missing`);
-    expect(history.output).toContain(`Handoff: missing`);
-    expect(history.output).toContain(`Replay: missing`);
-    expect(history.output).toContain(`Resume: missing`);
-    expect(history.output).toContain("Open first: none yet");
+    expect(history.output).toContain("Start only: no verification or review artifacts recorded.");
     expect(history.output).not.toContain(repoRoot);
     expect(history.output).toContain(older.session.id);
+  });
+
+  it("compacts non-current start-only sessions without hiding them", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    const abandoned = await startSession({
+      repoRoot,
+      task: "Abandoned start only",
+      now: new Date("2026-06-13T10:00:00.000Z"),
+      git: { branch: "main", commit: "abandoned", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const current = await startSession({
+      repoRoot,
+      task: "Current start only",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "current", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const history = await runHistoryCommand({ repoRoot, limit: 2 });
+    const currentBlock = history.output.slice(
+      history.output.indexOf("Current start only"),
+      history.output.indexOf("Abandoned start only")
+    );
+    const abandonedBlock = history.output.slice(history.output.indexOf("Abandoned start only"));
+
+    expect(currentBlock).toContain(`[current] ${current.session.task.title}`);
+    expect(currentBlock).toContain("Open first: none yet");
+    expect(history.output).toContain("Next: run agentflight handoff");
+    expect(abandonedBlock).toContain("Abandoned start only");
+    expect(abandonedBlock).toContain(abandoned.session.id);
+    expect(abandonedBlock).toContain("Start only: no verification or review artifacts recorded.");
+    expect(abandonedBlock).not.toContain("Handoff: missing");
+    expect(abandonedBlock).not.toContain("Report: missing");
+    expect(abandonedBlock).not.toContain("Replay: missing");
+    expect(abandonedBlock).not.toContain("Resume: missing");
   });
 
   it("recommends which existing artifact to open first", async () => {
