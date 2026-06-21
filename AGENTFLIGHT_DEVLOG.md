@@ -4,6 +4,62 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Generated Tool State Review Ranking
+
+Dogfood finding:
+
+- First-run handoff dogfood still showed `.projscan-memory/memory.json` as
+  capable of outranking real review targets when generated tool state received
+  a high ProjScan risk hint.
+
+Persona readout:
+
+- First-Time Developer: the first review list should point at project config and
+  user changes before generated tool cache state.
+- Product Maintainer: keep `.projscan-memory/**` suggestion-only; do not hide
+  generated memory by default.
+- Verification Engineer: preserve ProjScan hint ranking for normal files while
+  covering generated-tool-state ranking with a regression test.
+- Repo Steward: keep the change narrow in Review Intelligence and avoid adding
+  a broader workspace hygiene system.
+
+Implemented locally:
+
+- Added a regression test where `.projscan-memory/memory.json` has a high
+  ProjScan risk hint and still ranks below `.agentflight/config.json` and
+  `README.md`.
+- Review Intelligence now suppresses ProjScan hint score boosts for files
+  already classified as generated guidance.
+- The generated memory file remains visible, keeps the generated-tool-state
+  reason, and keeps the existing `changedFileFilters.ignore` suggestion.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed on review focus ordering:
+  `npm test -- tests/core/review-intelligence.test.ts`.
+- Green AgentFlight-captured focused test passed: 1 file / 23 tests.
+- Bug-pass AgentFlight-captured focused test passed again: 1 file / 23 tests.
+- AgentFlight-captured `npm run verify` passed with 21 files / 189 tests,
+  plus build.
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found
+  `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the known accumulated branch scale caution: 207 changed files versus the
+  threshold of 50 and maximum changed-file risk score `208.2 >= 80`.
+- `npx projscan@latest review --format json` returned a scale-only review block
+  on the same max changed-file risk score, with no cycles, risky functions,
+  dependency changes, contract changes, taint flows, or dataflow risks reported.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-07-25-verification-report.md`.
+- Post-handoff AgentFlight-captured `npm run format:check` passed.
+- `npx agentloopkit@latest check-gates` passed with current verification and
+  handoff evidence, while still naming an older archived task contract in the
+  task-contract gate. Treat this as the same AgentLoopKit stale-task-selection
+  feedback observed in prior tasks.
+
 ### Docs Init Proof Seeding Alignment
 
 Dogfood finding:

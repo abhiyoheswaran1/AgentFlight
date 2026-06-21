@@ -246,6 +246,41 @@ describe("review intelligence", () => {
     ).toContain("generated tool state");
   });
 
+  it("does not let ProjScan risk hints make generated memory outrank real first-run files", () => {
+    const changedFiles = [".projscan-memory/memory.json", ".agentflight/config.json", "README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: []
+      }),
+      projscanHints: [
+        {
+          file: ".projscan-memory/memory.json",
+          riskScore: 100,
+          reason: "unknown generated file"
+        }
+      ]
+    });
+
+    expect(review.focus.map((item) => item.file)).toEqual([
+      ".agentflight/config.json",
+      "README.md",
+      ".projscan-memory/memory.json"
+    ]);
+    expect(review.focus.find((item) => item.file === ".projscan-memory/memory.json")).toMatchObject(
+      {
+        proofStatus: "not_required",
+        relatedProofGapIds: ["suggest-projscan-memory-filter"]
+      }
+    );
+    expect(
+      review.focus.find((item) => item.file === ".projscan-memory/memory.json")?.reasons
+    ).toEqual(["generated tool state"]);
+    expect(review.proofGaps.map((gap) => gap.id)).toContain("suggest-projscan-memory-filter");
+  });
+
   it("requires build proof for frontend changes and suggests the configured build command", () => {
     const changedFiles = ["src/components/LoginForm.tsx"];
     const review = buildReviewIntelligence({

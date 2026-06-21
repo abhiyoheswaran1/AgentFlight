@@ -86,6 +86,9 @@ All notable AgentFlight changes are documented here.
   no changed files were detected "yet."
 - Parallel report, replay, and resume commands now preserve each artifact event
   in session history instead of letting the last stale session write win.
+- Review Intelligence no longer lets ProjScan risk hints boost generated
+  `.projscan-memory/memory.json` above real first-run review targets, while the
+  file remains visible with the existing `changedFileFilters.ignore` guidance.
 
 ### Changed
 

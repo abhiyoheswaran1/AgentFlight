@@ -305,7 +305,7 @@ function buildReviewFocus(input: {
     });
     const score =
       scoreFocusItem(file, category, proofStatus, relatedGaps, hasFailedVerification) +
-      scoreProjScanHint(projscanHint);
+      (generatedGuidanceFile ? 0 : scoreProjScanHint(projscanHint));
 
     const suggestedCommand = relatedGaps.find((gap) => gap.suggestedCommand)?.suggestedCommand;
     return {
