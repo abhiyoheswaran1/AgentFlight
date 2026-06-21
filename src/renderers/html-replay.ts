@@ -207,6 +207,44 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
     .jump-nav a.nav-urgent,
     .review-shortcuts a.nav-urgent { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
     .review-shortcuts { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+    .review-path-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+      max-width: 76ch;
+    }
+    .review-path-list li {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 10px 0;
+      border-top: 1px solid var(--rule);
+    }
+    .review-path-list li:first-child { border-top: 0; }
+    .review-path-step {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+    }
+    .review-path-title a {
+      color: var(--ink);
+      font-weight: 650;
+      text-decoration: none;
+    }
+    .review-path-title a:hover { color: var(--accent); }
+    .review-path-detail {
+      color: var(--chrome);
+      font-size: 13.5px;
+      line-height: 1.55;
+      margin-top: 2px;
+      overflow-wrap: anywhere;
+    }
+    .review-path-list li.is-urgent .review-path-title a { color: var(--danger); }
 
     /* sections */
     .section { padding-top: 38px; }
@@ -432,6 +470,8 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
     ${renderJumpNav(input, urgentFailedRunIndex)}
 
+    ${renderReviewPath(input, urgentFailedRunIndex)}
+
     ${renderReview(input.review, urgentFailedRunIndex)}
 
     <section class="section" id="timeline">
@@ -481,6 +521,7 @@ function shouldShowUrgentFailedRunShortcut(
 function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): string {
   const links: Array<{ href: string; label: string; urgent?: boolean }> = [];
   if (input.review) {
+    links.push({ href: "#review-path", label: "Review Path" });
     links.push({ href: "#review-focus", label: "Review Focus" });
     links.push({ href: "#proof-gaps", label: "Proof Gaps" });
   }
@@ -502,6 +543,105 @@ function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): str
         `<a href="${escapeHtml(link.href)}"${link.urgent ? ` class="nav-urgent"` : ""}>${escapeHtml(link.label)}</a>`
     )
     .join("")}</nav>`;
+}
+
+interface ReviewPathItem {
+  href: string;
+  title: string;
+  detail: string;
+  urgent?: boolean;
+}
+
+function renderReviewPath(input: HtmlReplayInput, firstFailedRunIndex: number): string {
+  if (!input.review) return "";
+
+  const items = buildReviewPathItems(input, firstFailedRunIndex);
+  return `<section class="section review-path" id="review-path">
+      <div class="section-head"><h2 class="label">Review Path</h2><span class="count">${escapeHtml(String(items.length))} steps</span></div>
+      <ol class="review-path-list">${items
+        .map(
+          (item, index) =>
+            `<li${item.urgent ? ` class="is-urgent"` : ""}><span class="review-path-step">${escapeHtml(String(index + 1).padStart(2, "0"))}</span><div><div class="review-path-title"><a href="${escapeHtml(item.href)}">${escapeHtml(item.title)}</a></div><div class="review-path-detail">${escapeHtml(item.detail)}</div></div></li>`
+        )
+        .join("")}</ol>
+    </section>`;
+}
+
+function buildReviewPathItems(
+  input: HtmlReplayInput,
+  firstFailedRunIndex: number
+): ReviewPathItem[] {
+  const review = input.review;
+  if (!review) return [];
+
+  const items: ReviewPathItem[] = [];
+  if (review.proofGaps.length > 0) {
+    items.push({
+      href: "#proof-gaps",
+      title: "Fix proof gaps",
+      detail: formatProofGapDetail(review.proofGaps)
+    });
+  }
+
+  if (firstFailedRunIndex >= 0) {
+    items.push({
+      href: `#verification-run-${firstFailedRunIndex + 1}`,
+      title: "Open first failed run",
+      detail: "Use the inline excerpt before reading full evidence files.",
+      urgent: true
+    });
+  }
+
+  const firstFocus = review.focus[0];
+  if (firstFocus) {
+    items.push({
+      href: "#review-focus",
+      title: "Review highest-risk files",
+      detail: `Start with ${firstFocus.file}.`
+    });
+  }
+
+  if (input.verificationEvidence.length > 0) {
+    items.push({
+      href: "#verification-evidence",
+      title: "Confirm verification evidence",
+      detail: formatReviewPathProof(input)
+    });
+  }
+
+  if (input.changedFiles.length > 0) {
+    items.push({
+      href: "#changed-files",
+      title: "Inspect changed files",
+      detail: `${input.changedFiles.length} changed ${input.changedFiles.length === 1 ? "file" : "files"} listed below.`
+    });
+  }
+
+  if (items.length === 0) {
+    items.push({
+      href: "#recommendation",
+      title: "Read recommendation",
+      detail: compactCommandInText(review.readiness.nextAction, review.readiness.suggestedCommand)
+    });
+  }
+
+  return items;
+}
+
+function formatProofGapDetail(gaps: ProofGap[]): string {
+  const blocking = gaps.filter((gap) => gap.severity === "blocking").length;
+  if (blocking > 0) {
+    return `${blocking} blocking ${blocking === 1 ? "gap" : "gaps"} before review is safe.`;
+  }
+  return `${gaps.length} proof ${gaps.length === 1 ? "gap" : "gaps"} to inspect before handoff.`;
+}
+
+function formatReviewPathProof(input: HtmlReplayInput): string {
+  if (input.verificationSummary) return formatReplayProof(input.verificationSummary);
+
+  const passed = input.verificationEvidence.filter((item) => item.status === "passed").length;
+  const failed = input.verificationEvidence.filter((item) => item.status === "failed").length;
+  return `${passed} passed / ${failed} failed`;
 }
 
 function renderSummary(input: HtmlReplayInput): string {

@@ -50,7 +50,7 @@ What you get:
 - `status` answers what changed, how risky it is, what proof exists, what proof is missing, and what to do next.
 - `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.
 - `report` writes a Markdown proof report for review.
-- `replay` writes a local HTML timeline you can open in a browser.
+- `replay` writes a local HTML review path and timeline you can open in a browser.
 - `resume` writes a Codex/Claude-ready prompt for the next safe step.
 - `history` shows a latest action with recorded readiness, the artifact to open first, and recent local handoff/report/replay/resume paths without uploading, syncing, or switching sessions. Use `history --task <text>` or `history --state ready|blocked|needs_verification|unknown|current` to narrow existing local records.
 
@@ -64,7 +64,7 @@ AgentFlight turns a loose coding agent session into a local proof trail:
 4. Read `status` to see changed files, risk, proof, gaps, and next action.
 5. Run `handoff` when the work is ready to review or when you need a clear fix-before-sharing summary.
 
-The replay artifact is a self-contained local HTML file. It leads with the review verdict, then lays out risk, review focus, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record:
+The replay artifact is a self-contained local HTML file. It leads with the review verdict and a compact review path, then lays out risk, review focus, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record:
 
 ![AgentFlight replay: review verdict, risk, timeline, and verification evidence](docs/assets/agentflight-replay-scroll.gif)
 
@@ -188,7 +188,7 @@ The current AgentFlight release supports:
 - session events
 - snapshots with `agentflight snapshot --note "..."`
 - Markdown proof reports
-- self-contained HTML replay timelines
+- self-contained HTML replays with review-path guidance and timelines
 - local review handoffs that point to the report, replay, and resume artifacts
 - local history filters for finding sessions by task text or recorded readiness
 - resume prompts for Codex, Claude Code, or a human reviewer

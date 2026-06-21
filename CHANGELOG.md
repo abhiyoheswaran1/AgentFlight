@@ -14,6 +14,10 @@ All notable AgentFlight changes are documented here.
   `agentflight history --state ready|blocked|needs_verification|unknown|current`
   filters so engineers can find relevant local sessions without scanning long
   histories or adding any index, sync, export, or session switching behavior.
+- Added a compact Review Path section to local HTML replay artifacts so long
+  sessions lead reviewers through proof gaps, unresolved failed runs, review
+  focus, and verification evidence without adding scripts, exports, or hosted
+  behavior.
 - Documented the `agentflight history --limit 1` latest-action workflow for
   reopening local handoff/report/replay/resume artifacts.
 - Added session-specific handoff artifacts under `.agentflight/reports/` so

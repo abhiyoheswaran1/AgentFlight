@@ -258,15 +258,182 @@ describe("HTML replay", () => {
     });
 
     expect(html).toContain('<nav class="jump-nav" aria-label="Replay sections">');
+    expect(html).toContain('href="#review-path"');
     expect(html).toContain('href="#review-focus"');
     expect(html).toContain('href="#proof-gaps"');
     expect(html).toContain('href="#timeline"');
     expect(html).toContain('href="#verification-evidence"');
+    expect(html).toContain('<section class="section review-path" id="review-path">');
     expect(html).toContain('<section class="section" id="review-focus">');
     expect(html).toContain('<section class="section" id="proof-gaps">');
     expect(html).toContain('<section class="section" id="timeline">');
     expect(html).toContain('<section class="section" id="verification-evidence">');
     expect(html).toContain(".section, .entry { scroll-margin-top:");
+  });
+
+  it("renders a blocked replay review path that leads with proof and failed-run anchors", () => {
+    const html = renderHtmlReplay({
+      task: "Fix replay proof path",
+      sessionId: "af-review-path-blocked",
+      startedAt: "2026-06-21T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/auth/<reset>.ts"],
+      riskBadges: ["high"],
+      verificationEvidence: [
+        {
+          command: "npm run lint",
+          startedAt: "2026-06-21T12:01:00.000Z",
+          finishedAt: "2026-06-21T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath: ".agentflight/evidence/af-review-path-blocked/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-review-path-blocked/verification-1.stderr.txt"
+        },
+        {
+          command: "npm test",
+          startedAt: "2026-06-21T12:02:00.000Z",
+          finishedAt: "2026-06-21T12:02:05.000Z",
+          durationMs: 5000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-review-path-blocked/verification-2.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-review-path-blocked/verification-2.stderr.txt",
+          outputExcerpt: "expected stderr failure"
+        }
+      ],
+      verificationSummary: {
+        passed: 1,
+        failed: 1,
+        unresolvedFailed: 1,
+        resolvedFailed: 0
+      },
+      reviewReadiness: "Blocked by failed verification",
+      review: {
+        focus: [
+          {
+            rank: 1,
+            file: "src/auth/<reset>.ts",
+            category: "auth",
+            riskLevel: "high",
+            score: 130,
+            reasons: ["identity/session path", "verification failed"],
+            suggestedReviewerFocus: "Check session, permission, and identity boundaries first.",
+            proofStatus: "failed",
+            suggestedCommand: "npm test",
+            relatedProofGapIds: ["failed-verification"]
+          }
+        ],
+        proofGaps: [
+          {
+            id: "failed-verification",
+            severity: "blocking",
+            message: "A verification command failed and must be fixed or rerun successfully.",
+            suggestedCommand: "npm test",
+            relatedFiles: ["src/auth/<reset>.ts"]
+          }
+        ],
+        readiness: {
+          state: "blocked_by_failed_verification",
+          label: "Blocked by failed verification",
+          reason: "A verification command failed and must be fixed or rerun successfully.",
+          nextAction: "Fix the failed command, then rerun agentflight verify -- npm test",
+          suggestedCommand: "npm test",
+          proofGaps: []
+        }
+      },
+      recommendation: "Fix the failed verification."
+    });
+
+    expect(html).toContain('<section class="section review-path" id="review-path">');
+    expect(html).toContain('href="#proof-gaps"');
+    expect(html).toContain('href="#verification-run-2"');
+    expect(html).toContain("Fix proof gaps");
+    expect(html).toContain("Open first failed run");
+    expect(html).toContain("Review highest-risk files");
+    expect(html).toContain("src/auth/&lt;reset&gt;.ts");
+    expect(html).not.toContain("src/auth/<reset>.ts");
+    expect(html).not.toMatch(/https?:\/\//);
+    expect(html).not.toContain("<script");
+    expect(html.indexOf("Fix proof gaps")).toBeLessThan(html.indexOf("Open first failed run"));
+    expect(html.indexOf("Open first failed run")).toBeLessThan(
+      html.indexOf("Review highest-risk files")
+    );
+  });
+
+  it("renders a ready replay review path without urgent historical failure guidance", () => {
+    const html = renderHtmlReplay({
+      task: "Ready replay path",
+      sessionId: "af-review-path-ready",
+      startedAt: "2026-06-21T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/core/verification.ts"],
+      riskBadges: ["medium"],
+      verificationEvidence: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-21T12:01:00.000Z",
+          finishedAt: "2026-06-21T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-review-path-ready/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-review-path-ready/verification-1.stderr.txt",
+          outputExcerpt: "historical failure excerpt"
+        },
+        {
+          command: "npm test",
+          startedAt: "2026-06-21T12:02:00.000Z",
+          finishedAt: "2026-06-21T12:02:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath: ".agentflight/evidence/af-review-path-ready/verification-2.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-review-path-ready/verification-2.stderr.txt"
+        }
+      ],
+      verificationSummary: {
+        passed: 1,
+        failed: 1,
+        unresolvedFailed: 0,
+        resolvedFailed: 1
+      },
+      reviewReadiness: "Ready for review",
+      review: {
+        focus: [
+          {
+            rank: 1,
+            file: "src/core/verification.ts",
+            category: "source",
+            riskLevel: "medium",
+            score: 90,
+            reasons: ["source code"],
+            suggestedReviewerFocus: "Check core behavior, command flow, and edge cases first.",
+            proofStatus: "covered",
+            relatedProofGapIds: []
+          }
+        ],
+        proofGaps: [],
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Verification evidence matches the observed review risk.",
+          nextAction: "Run agentflight handoff to generate the local review packet.",
+          proofGaps: []
+        }
+      },
+      recommendation: "Ready for review."
+    });
+
+    expect(html).toContain("Review highest-risk files");
+    expect(html).toContain("Confirm verification evidence");
+    expect(html).toContain("Inspect changed files");
+    expect(html.indexOf("Review highest-risk files")).toBeLessThan(
+      html.indexOf("Confirm verification evidence")
+    );
+    expect(html).not.toContain("Open first failed run");
+    expect(html).not.toContain("Fix proof gaps");
+    expect(html).not.toContain('href="#verification-run-1" class="nav-urgent"');
   });
 
   it("adds failed-run anchors and a review shortcut to the first failed verification", () => {

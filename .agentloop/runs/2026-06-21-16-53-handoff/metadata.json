@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-21-16-53-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-21-16-53",
+  "createdAtEpochMs": 1782053615906,
+  "task": {
+    "path": ".agentloop/tasks/2026-06-21-add-replay-review-path-guidance.md",
+    "title": "Add replay review path guidance",
+    "status": "in-progress"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-21-16-52-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-21-16-53-pr-summary.md",
+  "changedFileCount": 8
+}

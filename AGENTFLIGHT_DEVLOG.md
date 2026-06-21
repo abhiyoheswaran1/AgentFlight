@@ -4,6 +4,58 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Add Replay Review Path Guidance
+
+User-research direction:
+
+- Long replay artifacts already include section navigation and failed-run
+  anchors, but reviewers still have to infer the fastest path through proof
+  gaps, failed runs, review focus, changed files, and verification evidence.
+- The product direction calls for replay and review ergonomics that help
+  engineers find failed proof, relevant changed files, and next action without
+  reading a full transcript.
+
+Implemented locally:
+
+- HTML replay now includes a compact `Review Path` section near the top when
+  Review Intelligence is present.
+- Blocked replays lead with proof gaps and unresolved failed-run anchors before
+  review focus.
+- Ready replays with only historical failed runs lead with review focus and
+  verification evidence instead of showing urgent failed-run guidance.
+- The section uses existing local section/run anchors, keeps labels escaped, and
+  adds no scripts, external URLs, export behavior, or persisted state.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/renderers/html-replay.test.ts`
+  failed on the missing `Review Path` section and links.
+- Green AgentFlight-captured `npm test -- tests/renderers/html-replay.test.ts`
+  passed with 1 file / 9 tests.
+- Built replay dogfood confirmed the normal `node dist/cli.js replay` artifact
+  shows `Review Path`, leads with review focus for the ready state, and reports
+  no proof gaps. Replays generated from inside an outer `agentflight verify --
+node dist/cli.js replay` can still show the outer verification as in flight
+  while that wrapper command is running, so final review artifacts should be
+  regenerated after the proof command completes.
+- One parallel replay/handoff attempt returned `git status exited without
+output` from replay while handoff completed. Serial replay, serial handoff,
+  and a follow-up parallel replay/handoff attempt all passed, so no root-cause
+  fix was made in this task.
+- Final AgentFlight-captured `npm run verify` passed with 23 files / 218 tests
+  plus build.
+- Final AgentFlight-captured `npm run format:check` passed.
+- Final AgentFlight-captured `npm pack --dry-run` passed and kept the local
+  package version at `0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found 0
+  vulnerabilities.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight/review reported the known manual
+  sign-off condition: large handoff review risk with max changed-file risk score
+  219.6 >= 80. Review reported no concrete cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Filter Local Session History
 
 User-research direction:

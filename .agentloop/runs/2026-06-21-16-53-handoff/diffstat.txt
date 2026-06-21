@@ -1,0 +1,6 @@
+ AGENTFLIGHT_DEVLOG.md               |  52 +++++++++++
+ CHANGELOG.md                        |   4 +
+ README.md                           |   6 +-
+ src/renderers/html-replay.ts        | 140 ++++++++++++++++++++++++++++++
+ tests/renderers/html-replay.test.ts | 167 ++++++++++++++++++++++++++++++++++++
+ 5 files changed, 366 insertions(+), 3 deletions(-)
