@@ -29,6 +29,39 @@ describe("ProjScan adapter", () => {
     });
   });
 
+  it("can skip help probing for concise first-run tool checks", async () => {
+    const calls: string[][] = [];
+    const run: CommandRunner = async (_command, args) => {
+      calls.push(args);
+      if (args.includes("--version")) return { exitCode: 0, stdout: "4.3.1\n", stderr: "" };
+      if (args.includes("--help")) return { exitCode: 1, stdout: "", stderr: "slow help probe" };
+      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
+    };
+
+    await expect(inspectProjScan({ run, includeHelp: false })).resolves.toMatchObject({
+      available: true,
+      version: "4.3.1",
+      warnings: []
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("--version");
+    expect(calls.flat()).not.toContain("--help");
+  });
+
+  it("keeps help probing by default for deeper diagnostics", async () => {
+    const run: CommandRunner = async (_command, args) => {
+      if (args.includes("--version")) return { exitCode: 0, stdout: "4.3.1\n", stderr: "" };
+      if (args.includes("--help")) return { exitCode: 1, stdout: "", stderr: "help crashed" };
+      return { exitCode: 1, stdout: "", stderr: "unexpected command" };
+    };
+
+    await expect(inspectProjScan({ run })).resolves.toMatchObject({
+      available: true,
+      version: "4.3.1",
+      warnings: [expect.stringContaining("help crashed")]
+    });
+  });
+
   it("prefers the repo-local binary before an older PATH binary", async () => {
     const commands: string[] = [];
     const run: CommandRunner = async (command, args) => {

@@ -4,6 +4,53 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Speed Up First-Run Tool Inspection
+
+Dogfood finding:
+
+- First-run `agentflight init` and `agentflight start` only need concise
+  ProjScan availability and version output, but the shared ProjScan inspector
+  also ran a `--help` probe. That extra probe can add avoidable latency before
+  users see the local handoff workflow.
+
+Team persona notes:
+
+- Product Maintainer: keep the first-run path fast and focused on the handoff
+  workflow.
+- CLI Engineer: use one adapter with a clear option instead of duplicating tool
+  inspection logic.
+- Docs and DX Writer: do not add more first-run copy; make the current path
+  appear sooner.
+- Security Reviewer: keep checks local and deterministic; no telemetry,
+  install mutation, or hidden setup.
+- Repo Steward: leave `doctor` as the deeper diagnostic surface.
+
+Implemented locally:
+
+- Added a ProjScan inspection option for concise availability checks.
+- `agentflight init` and `agentflight start` now skip ProjScan help probing.
+- `agentflight doctor` still uses the default deeper ProjScan diagnostics path.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/adapters/projscan.test.ts
+tests/commands/workflow.test.ts` failed because `includeHelp: false` still ran
+  ProjScan help probing.
+- Green AgentFlight-captured `npm test -- tests/adapters/projscan.test.ts
+tests/commands/workflow.test.ts` passed with 2 files / 20 tests.
+- AgentFlight-captured `npm run verify` passed with 21 files / 203 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  273 changed files and maximum changed-file risk score `212.1 >= 80`.
+- ProjScan review returned the known scale-only `block` verdict with 46 current
+  changed files; it reported no risky functions, dependency changes, contract
+  changes, new cycles, taint flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-11-59-verification-report.md`.
+
 ### Readable Doctor Proof Suggestions
 
 Dogfood finding:

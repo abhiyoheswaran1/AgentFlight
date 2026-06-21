@@ -515,8 +515,8 @@ agentflight handoff`);
     const calls: string[] = [];
 
     const tools = await inspectStartTools("/repo", "Reuse active task", {
-      inspectProjScan: async () => {
-        calls.push("inspect-projscan");
+      inspectProjScan: async (options) => {
+        calls.push(`inspect-projscan:${String(options?.includeHelp)}`);
         return {
           available: true,
           version: "4.5.0",
@@ -545,7 +545,7 @@ agentflight handoff`);
     });
 
     expect(calls).toEqual([
-      "inspect-projscan",
+      "inspect-projscan:false",
       "inspect-agentloopkit:false",
       "link-agentloop-task"
     ]);

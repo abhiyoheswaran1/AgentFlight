@@ -101,7 +101,7 @@ export async function inspectStartTools(
   }
 ): Promise<{ projscan: ToolAdapterResult; agentloopkit: ToolAdapterResult }> {
   const [projscanInspection, agentLoopInspection] = await Promise.all([
-    inspectors.inspectProjScan({ cwd: repoRoot }),
+    inspectors.inspectProjScan({ cwd: repoRoot, includeHelp: false }),
     inspectors.inspectAgentLoopKit({ cwd: repoRoot, includeDoctor: false })
   ]);
 

@@ -9,6 +9,7 @@ export interface InspectProjScanOptions {
   cwd?: string;
   run?: CommandRunner;
   command?: string;
+  includeHelp?: boolean | undefined;
 }
 
 export async function inspectProjScan(
@@ -31,13 +32,6 @@ export async function inspectProjScan(
     };
   }
 
-  const help = await runToolWithFallback({
-    run,
-    localCommand: command,
-    packageName: "projscan@latest",
-    args: ["--help"],
-    cwd: options.cwd
-  });
   const result: ToolAdapterResult = {
     available: true,
     version: normalizeCliVersion(version.stdout),
@@ -45,8 +39,18 @@ export async function inspectProjScan(
     warnings: []
   };
 
-  if (help.exitCode !== 0) {
-    result.warnings.push(`ProjScan help failed: ${summarizeToolFailure(help)}`);
+  if (options.includeHelp !== false) {
+    const help = await runToolWithFallback({
+      run,
+      localCommand: command,
+      packageName: "projscan@latest",
+      args: ["--help"],
+      cwd: options.cwd
+    });
+
+    if (help.exitCode !== 0) {
+      result.warnings.push(`ProjScan help failed: ${summarizeToolFailure(help)}`);
+    }
   }
 
   return result;

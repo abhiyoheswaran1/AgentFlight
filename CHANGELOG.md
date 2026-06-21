@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight init` and `agentflight start` now use concise ProjScan version
+  checks instead of extra help probing, while `agentflight doctor` keeps deeper
+  diagnostics.
 - `agentflight doctor` now renders multiple detected proof-command suggestions
   as an indented list instead of one long semicolon-separated line.
 - `agentflight history` now prefers useful review-ready or blocked artifact
