@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Clean-worktree `agentflight handoff` now preserves existing session review
+  artifacts instead of overwriting report/replay/resume evidence with an empty
+  post-commit clean-state artifact.
 - Clean-worktree `agentflight handoff` now exits successfully instead of
   treating an informational post-commit handoff as a command failure.
 - `agentflight doctor` now suggests concrete detected `agentflight verify -- ...`

@@ -1,4 +1,4 @@
-import { writeTextFileSafe } from "../core/fs-safe.js";
+import { pathExists, writeTextFileSafe } from "../core/fs-safe.js";
 import { compactCommandInText, formatVerificationCountLine } from "../core/output.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { runReplayCommand } from "./replay.js";
@@ -71,10 +71,85 @@ interface HandoffReadiness {
   suggestedCommand?: string;
 }
 
+interface HandoffArtifactPaths {
+  handoffPath: string;
+  sessionHandoffPath: string;
+  reportPath: string;
+  replayPath: string;
+  resumePath: string;
+  sessionResumePath: string;
+}
+
 export async function runHandoffCommand(
   options: HandoffCommandOptions
 ): Promise<HandoffCommandResult> {
   const status = await readHandoffStatus(options);
+  const paths = resolveAgentFlightPaths(options.repoRoot);
+  const artifactPaths = buildHandoffArtifactPaths(paths, status.sessionId);
+  const preserveExistingArtifacts = await shouldPreserveExistingArtifacts(status, artifactPaths);
+  const artifacts = preserveExistingArtifacts
+    ? artifactPaths
+    : await generateReviewArtifacts(options, artifactPaths);
+  const output = renderHandoff({
+    status,
+    handoffPath: formatRepoRelativePath(options.repoRoot, artifacts.sessionHandoffPath),
+    currentHandoffPath: formatRepoRelativePath(options.repoRoot, artifacts.handoffPath),
+    reportPath: formatRepoRelativePath(options.repoRoot, artifacts.reportPath),
+    replayPath: formatRepoRelativePath(options.repoRoot, artifacts.replayPath),
+    resumePath: formatRepoRelativePath(options.repoRoot, artifacts.sessionResumePath),
+    currentResumePath: formatRepoRelativePath(options.repoRoot, artifacts.resumePath)
+  });
+  await writeTextFileSafe(artifactPaths.handoffPath, output, { overwrite: true });
+  if (!preserveExistingArtifacts) {
+    await writeTextFileSafe(artifactPaths.sessionHandoffPath, output, { overwrite: true });
+  }
+
+  return {
+    output,
+    exitCode: exitsSuccessfully(status.review.readiness) ? 0 : 1,
+    handoffPath: artifactPaths.handoffPath,
+    sessionHandoffPath: artifactPaths.sessionHandoffPath,
+    reportPath: artifacts.reportPath,
+    replayPath: artifacts.replayPath,
+    resumePath: artifacts.resumePath,
+    sessionResumePath: artifacts.sessionResumePath
+  };
+}
+
+function buildHandoffArtifactPaths(
+  paths: ReturnType<typeof resolveAgentFlightPaths>,
+  sessionId: string
+): HandoffArtifactPaths {
+  return {
+    handoffPath: paths.currentHandoff,
+    sessionHandoffPath: `${paths.reports}/${sessionId}-handoff.md`,
+    reportPath: `${paths.reports}/${sessionId}-proof.md`,
+    replayPath: `${paths.reports}/${sessionId}-replay.html`,
+    resumePath: paths.currentResumePrompt,
+    sessionResumePath: `${paths.reports}/${sessionId}-resume.md`
+  };
+}
+
+async function shouldPreserveExistingArtifacts(
+  status: HandoffStatus,
+  paths: HandoffArtifactPaths
+): Promise<boolean> {
+  if (status.review.readiness.state !== "clean_worktree") return false;
+
+  const checks = await Promise.all([
+    pathExists(paths.sessionHandoffPath),
+    pathExists(paths.reportPath),
+    pathExists(paths.replayPath),
+    pathExists(paths.resumePath),
+    pathExists(paths.sessionResumePath)
+  ]);
+  return checks.every(Boolean);
+}
+
+async function generateReviewArtifacts(
+  options: HandoffCommandOptions,
+  artifactPaths: HandoffArtifactPaths
+): Promise<HandoffArtifactPaths> {
   const report = await runReportCommand({
     repoRoot: options.repoRoot,
     changedFiles: options.changedFiles,
@@ -91,26 +166,9 @@ export async function runHandoffCommand(
     now: options.now
   });
 
-  const paths = resolveAgentFlightPaths(options.repoRoot);
-  const handoffPath = paths.currentHandoff;
-  const sessionHandoffPath = `${paths.reports}/${status.sessionId}-handoff.md`;
-  const output = renderHandoff({
-    status,
-    handoffPath: formatRepoRelativePath(options.repoRoot, sessionHandoffPath),
-    currentHandoffPath: formatRepoRelativePath(options.repoRoot, handoffPath),
-    reportPath: formatRepoRelativePath(options.repoRoot, report.reportPath),
-    replayPath: formatRepoRelativePath(options.repoRoot, replay.replayPath),
-    resumePath: formatRepoRelativePath(options.repoRoot, resume.sessionResumePath),
-    currentResumePath: formatRepoRelativePath(options.repoRoot, resume.resumePath)
-  });
-  await writeTextFileSafe(handoffPath, output, { overwrite: true });
-  await writeTextFileSafe(sessionHandoffPath, output, { overwrite: true });
-
   return {
-    output,
-    exitCode: exitsSuccessfully(status.review.readiness) ? 0 : 1,
-    handoffPath,
-    sessionHandoffPath,
+    handoffPath: artifactPaths.handoffPath,
+    sessionHandoffPath: artifactPaths.sessionHandoffPath,
     reportPath: report.reportPath,
     replayPath: replay.replayPath,
     resumePath: resume.resumePath,

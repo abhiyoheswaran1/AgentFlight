@@ -749,6 +749,43 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).not.toContain("Fix before sharing:");
   });
 
+  it("preserves existing review artifacts when clean-worktree handoff runs later", async () => {
+    const command = `${process.execPath} -e "console.log('proof ok')"`;
+    const repoRoot = await startedRepo([command]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('proof ok')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const readyHandoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["src/commands/handoff.ts"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+    const originalReport = await readFile(readyHandoff.reportPath, "utf8");
+    const originalReplay = await readFile(readyHandoff.replayPath, "utf8");
+    const originalResume = await readFile(readyHandoff.sessionResumePath, "utf8");
+    const originalSessionHandoff = await readFile(readyHandoff.sessionHandoffPath, "utf8");
+
+    const cleanHandoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: [],
+      now: new Date("2026-06-13T12:10:00.000Z")
+    });
+
+    expect(cleanHandoff.exitCode).toBe(0);
+    await expect(readFile(readyHandoff.reportPath, "utf8")).resolves.toBe(originalReport);
+    await expect(readFile(readyHandoff.replayPath, "utf8")).resolves.toBe(originalReplay);
+    await expect(readFile(readyHandoff.sessionResumePath, "utf8")).resolves.toBe(originalResume);
+    await expect(readFile(readyHandoff.sessionHandoffPath, "utf8")).resolves.toBe(
+      originalSessionHandoff
+    );
+    await expect(readFile(cleanHandoff.handoffPath, "utf8")).resolves.toContain(
+      "Readiness: Clean worktree"
+    );
+  });
+
   it("blocks local handoffs when required proof is missing", async () => {
     const repoRoot = await startedRepo(["npm test"]);
 

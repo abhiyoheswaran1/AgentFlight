@@ -4,6 +4,45 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Preserve Review Artifacts On Clean Handoff
+
+Dogfood finding:
+
+- After the clean-worktree handoff exit-code fix, running handoff after commit
+  could still regenerate the session report/replay/resume with zero changed
+  files. That preserved a successful command result but weakened the useful
+  review artifact.
+
+Implemented locally:
+
+- Added a regression test that creates a ready handoff, runs a later
+  clean-worktree handoff, and confirms the existing session report, replay,
+  resume, and session handoff artifacts are unchanged.
+- Clean-worktree handoff now reuses existing session-specific artifacts when
+  they are already present, writes only the current handoff pointer, and leaves
+  first-time clean handoff generation unchanged.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  failed because the later clean handoff overwrote the report artifact.
+- Green AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  passed with 1 file / 34 tests.
+- AgentFlight-captured `npm run verify` passed with 21 files / 200 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on
+  `tests/commands/evidence-output.test.ts`; Prettier fixed the test formatting,
+  and the rerun passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  264 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-11-17-verification-report.md`.
+
 ### Clean Handoff Exit Success
 
 Dogfood finding:
