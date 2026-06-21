@@ -4,6 +4,57 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Open-First Empty State
+
+Dogfood finding:
+
+- After adding `Open first:` guidance to history, sessions with no generated
+  handoff/report/replay artifacts would have shown `Open first: missing`. That
+  mirrors artifact path state, but reads like jargon in a command summary.
+
+Persona readout:
+
+- Product Maintainer: empty-state copy should reduce uncertainty, not expose
+  implementation labels.
+- CLI Engineer: keep the existing artifact path rows as `missing`, but make the
+  recommendation line human-readable.
+- Docs and DX Writer: no new docs concept is needed for this microcopy fix.
+
+Implemented locally:
+
+- `agentflight history` now prints `Open first: none yet` when no primary
+  artifact exists for a session.
+- Existing replay/report/handoff guidance remains unchanged when those
+  artifacts are available.
+
+Verification:
+
+- Red focused test failed because a no-artifact session did not show
+  `Open first: none yet`.
+- Adjacent AgentFlight-captured command verification now passes:
+  `npm test -- tests/commands/history.test.ts tests/cli-entrypoint.test.ts tests/commands/evidence-output.test.ts`
+  passed: 3 files / 37 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 167 tests, plus build.
+- The exact red focused command was rerun after the adjacent pass so the failed
+  history verification was resolved: `npm test -- tests/commands/history.test.ts`
+  passed: 1 file / 5 tests.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 142 changed files, maximum
+  changed-file risk score `199.1`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-03-48-verification-report.md`.
+- Built CLI smoke: before generating handoff/report/replay for this session,
+  `agentflight history --limit 1` showed `Open first: none yet` with all
+  primary artifacts listed as `missing`.
+
 ### History Open-First Guidance
 
 Research signal:

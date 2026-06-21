@@ -134,6 +134,7 @@ describe("history command", () => {
     expect(history.output).toContain(`Handoff: missing`);
     expect(history.output).toContain(`Replay: missing`);
     expect(history.output).toContain(`Resume: missing`);
+    expect(history.output).toContain("Open first: none yet");
     expect(history.output).not.toContain(repoRoot);
     expect(history.output).toContain(older.session.id);
   });

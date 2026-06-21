@@ -138,7 +138,7 @@ function chooseOpenFirstArtifact(session: SessionSummary, artifacts: HistoryArti
 }
 
 function firstExistingArtifact(order: PrimaryArtifact[], artifacts: HistoryArtifacts): string {
-  return order.find((artifact) => artifacts[artifact] !== "missing") ?? "missing";
+  return order.find((artifact) => artifacts[artifact] !== "missing") ?? "none yet";
 }
 
 async function formatArtifactPath(
