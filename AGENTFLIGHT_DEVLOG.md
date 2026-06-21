@@ -4,6 +4,41 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Align Clean Status Ledger Copy With Handoff Path
+
+Dogfood finding:
+
+- After ready artifact discovery changed to prefer the handoff packet,
+  clean-worktree status still said tucked verification details could be found by
+  opening report/replay or JSON output. That was accurate, but it omitted the
+  new first artifact and made the status copy less consistent with the local
+  handoff path.
+
+Implemented locally:
+
+- Clean-worktree status tucked-verification copy now says to open
+  handoff/report/replay or JSON output for the full ledger.
+- The condition for tucking details is unchanged; unresolved failed
+  verification still keeps details visible.
+
+Verification so far:
+
+- Red AgentFlight-captured
+  `npm test -- tests/commands/evidence-output.test.ts` failed on the old
+  `open report/replay or JSON` wording.
+- Green AgentFlight-captured
+  `npm test -- tests/commands/evidence-output.test.ts` passed with 1 file / 35
+  tests.
+- Final AgentFlight-captured `npm run verify` passed with 22 files / 210 tests
+  plus build.
+- Final AgentFlight-captured `npm run format:check` passed.
+- Final AgentFlight-captured `npm pack --dry-run` passed.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight/review still reports the known
+  scale-only release sign-off caution: max changed-file risk score 215.8 >= 80,
+  with no concrete cycle, risky-function, contract, taint, or dataflow blocker.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Prefer Handoff Packet For Ready Review Artifacts
 
 Dogfood finding:

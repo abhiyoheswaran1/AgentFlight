@@ -213,7 +213,7 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).not.toContain("No changed files detected yet.");
     expect(status.output).toContain("Verification Evidence:\n1 passed, 0 failed");
     expect(status.output).toContain(
-      "- Verification run details are tucked because the worktree is clean; open report/replay or JSON output for the full ledger."
+      "- Verification run details are tucked because the worktree is clean; open handoff/report/replay or JSON output for the full ledger."
     );
     expect(status.output).not.toContain("- passed:");
     expect(status.output).not.toContain("proof ok");

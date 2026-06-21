@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Clean-worktree status now tells users to open handoff/report/replay or JSON
+  output for tucked verification details, matching the handoff-first ready
+  review path.
 - Ready-session `Open first` guidance now prefers the generated handoff packet
   in handoff, clean status/resume, and history surfaces, while blocked sessions
   still point to the report/fix path.

@@ -267,7 +267,7 @@ function formatVerificationRuns(
 }
 
 function formatTuckedVerificationRuns(): string {
-  return "- Verification run details are tucked because the worktree is clean; open report/replay or JSON output for the full ledger.";
+  return "- Verification run details are tucked because the worktree is clean; open handoff/report/replay or JSON output for the full ledger.";
 }
 
 function formatVisibleVerificationRuns(runs: VerificationRun[]): string {
