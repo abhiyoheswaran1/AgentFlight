@@ -66,6 +66,30 @@ describe("review intelligence", () => {
     expect(review.focus[0]?.proofStatus).toBe("failed");
   });
 
+  it("does not block readiness when the same failed verification later passes", () => {
+    const changedFiles = ["src/api/users.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "failed"),
+          verificationRun("npm test", "passed")
+        ]
+      })
+    });
+
+    expect(review.proofGaps.map((gap) => gap.id)).not.toContain("failed-verification");
+    expect(review.readiness).toMatchObject({
+      state: "ready_for_review",
+      label: "Ready for review"
+    });
+    expect(review.focus[0]).toMatchObject({
+      proofStatus: "covered"
+    });
+  });
+
   it("marks incomplete verification events as proof gaps and blocks readiness", () => {
     const changedFiles = ["src/auth/session.ts"];
     const review = buildReviewIntelligence({

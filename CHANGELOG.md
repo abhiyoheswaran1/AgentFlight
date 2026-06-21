@@ -20,6 +20,12 @@ All notable AgentFlight changes are documented here.
 - `agentflight history --limit` now rejects non-integer, zero, and negative
   values with a clear local error instead of silently falling back or returning
   an empty history.
+- Review Intelligence now treats an earlier failed verification as resolved when
+  the same stored command later passes, so TDD red/green and format-fix loops do
+  not leave handoffs permanently blocked.
+- Ready handoffs no longer inline historical failed verification excerpts once
+  no unresolved failed-verification proof gap remains; those excerpts stay in
+  report/replay evidence.
 - `agentflight start` now treats AgentLoopKit's `Active task: none pinned.`
   status as no active task instead of falsely reporting task reuse.
 - AgentLoopKit task-link diagnostics now use generic link-check wording instead
@@ -74,6 +80,9 @@ All notable AgentFlight changes are documented here.
   partially written session state.
 - Review Intelligence now describes `.projscan-memory/memory.json` as generated
   tool state instead of arbitrary unknown code while keeping the file visible.
+- Report and replay generation now persist a compact local readiness summary in
+  session events, letting `agentflight history` show the latest recorded
+  readiness without recalculating old sessions.
 
 ## AgentFlight v0.6.0 - 2026-06-19
 

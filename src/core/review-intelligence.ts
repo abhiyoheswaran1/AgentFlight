@@ -151,27 +151,28 @@ export function buildReviewIntelligence(
   options: BuildReviewIntelligenceOptions
 ): ReviewIntelligence {
   const runs = getVerificationRuns(options.session);
+  const unresolvedFailedRuns = getUnresolvedFailedRuns(runs);
   const proofKinds = summarizeProofKinds(runs);
   const incompleteVerifications = detectIncompleteVerificationAttempts(options.session);
   const proofGaps = buildProofGaps({
     changedFiles: options.changedFiles,
     verificationCommands: options.session.verificationCommands,
     proofKinds,
-    runs,
+    unresolvedFailedRuns,
     incompleteVerifications
   });
   const focus = buildReviewFocus({
     changedFiles: options.changedFiles,
     proofGaps,
     proofKinds,
-    runs,
+    unresolvedFailedRuns,
     projscanHints: options.projscanHints
   });
   const readiness = buildReadinessDecision({
     changedFiles: options.changedFiles,
     proofGaps,
     focus,
-    runs
+    unresolvedFailedRuns
   });
 
   return {
@@ -209,15 +210,36 @@ function summarizeProofKinds(runs: VerificationRun[]): {
   return { passed, failed };
 }
 
+function getUnresolvedFailedRuns(runs: VerificationRun[]): VerificationRun[] {
+  const laterPassedCommands = new Set<string>();
+  const unresolved: VerificationRun[] = [];
+
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    const run = runs[index];
+    if (!run) continue;
+
+    if (run.status === "passed") {
+      laterPassedCommands.add(run.command);
+      continue;
+    }
+
+    if (!laterPassedCommands.has(run.command)) {
+      unresolved.unshift(run);
+    }
+  }
+
+  return unresolved;
+}
+
 function buildProofGaps(input: {
   changedFiles: string[];
   verificationCommands: string[];
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
-  runs: VerificationRun[];
+  unresolvedFailedRuns: VerificationRun[];
   incompleteVerifications: IncompleteVerificationAttempt[];
 }): ProofGap[] {
   const gaps: ProofGap[] = [];
-  const failedRuns = input.runs.filter((run) => run.status === "failed");
+  const failedRuns = input.unresolvedFailedRuns;
   if (failedRuns.length > 0) {
     const failedCommand = failedRuns[0]!.command;
     gaps.push({
@@ -276,10 +298,10 @@ function buildReviewFocus(input: {
   changedFiles: string[];
   proofGaps: ProofGap[];
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
-  runs: VerificationRun[];
+  unresolvedFailedRuns: VerificationRun[];
   projscanHints?: ProjScanReviewHint[] | undefined;
 }): ReviewFocusItem[] {
-  const hasFailedVerification = input.runs.some((run) => run.status === "failed");
+  const hasFailedVerification = input.unresolvedFailedRuns.length > 0;
   const projscanHints = normalizeProjScanHints(input.projscanHints, input.changedFiles);
   const items = input.changedFiles.map((file) => {
     const category = categorizeFile(file);
@@ -346,9 +368,9 @@ function buildReadinessDecision(input: {
   changedFiles: string[];
   proofGaps: ProofGap[];
   focus: ReviewFocusItem[];
-  runs: VerificationRun[];
+  unresolvedFailedRuns: VerificationRun[];
 }): ReviewReadinessDecision {
-  const failedRuns = input.runs.filter((run) => run.status === "failed");
+  const failedRuns = input.unresolvedFailedRuns;
   if (failedRuns.length > 0) {
     const failedCommand = failedRuns[0]!.command;
     return readinessDecision({

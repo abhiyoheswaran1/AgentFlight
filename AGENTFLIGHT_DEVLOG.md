@@ -4,6 +4,79 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Readiness Recording
+
+Research signal:
+
+- After adding `agentflight history`, engineers could find prior local sessions
+  and artifacts, but still had to open a report or replay to know whether the
+  last generated review artifact said the work was ready, blocked, or missing
+  proof.
+
+Persona readout:
+
+- Product Maintainer: history should help users pick the right artifact to open
+  without becoming search, analytics, export, or cloud sync.
+- CLI Engineer: record the readiness at artifact-generation time instead of
+  recalculating old sessions from the current workspace.
+- Verification Engineer: malformed historical metadata must not crash history.
+- Security Reviewer: keep the summary local in existing session JSON; do not
+  upload source, evidence, or telemetry.
+- Repo Steward: use a small shared helper and avoid another local index file.
+
+Implemented locally:
+
+- Report and replay generation now store compact readiness metadata in their
+  existing session events: state, label, risk level, changed-file count,
+  verification pass/fail counts, and artifact path.
+- `agentflight history` now shows the latest recorded readiness when present.
+- Older sessions without recorded readiness show `Readiness: not recorded`.
+- Malformed readiness metadata is ignored rather than making history fail.
+- Bug pass: Review Intelligence now treats earlier failed verification as
+  resolved when the same command later passes, preventing TDD red/green or
+  format-fix loops from leaving a session permanently blocked.
+- Bug pass: ready handoffs now keep historical failed verification excerpts in
+  report/replay instead of inlining them as current action items.
+
+Verification so far:
+
+- Red focused verification failed because `latestReview` was undefined in
+  session summaries.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/core/session.test.ts tests/commands/history.test.ts tests/commands/evidence-output.test.ts`
+  passed: 3 files / 36 tests.
+- Red Review Intelligence regression failed because `failed-verification` was
+  still emitted after a later pass of the same command.
+- AgentFlight-captured Review Intelligence regression passed:
+  `npm test -- tests/core/review-intelligence.test.ts` passed: 1 file / 19
+  tests.
+- Red handoff regression failed because a ready handoff still inlined historical
+  failed excerpts.
+- AgentFlight-captured handoff regression passed:
+  `npm test -- tests/commands/evidence-output.test.ts` passed: 1 file / 27
+  tests.
+- Combined focused verification passed:
+  `npm test -- tests/core/session.test.ts tests/commands/history.test.ts tests/commands/evidence-output.test.ts tests/core/review-intelligence.test.ts`
+  passed: 4 files / 56 tests.
+- Built CLI smoke:
+  `agentflight history --limit 1` showed `Readiness: Ready for review`; `agentflight handoff`
+  exited `0` and kept historical failed excerpts in report/replay.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 162 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale manual signoff caution: 111 changed
+  files against `origin/main`, maximum changed-file risk score `189.4`, and no
+  concrete blockers.
+- `npx projscan@latest review --format json` returned the same scale/manual
+  signoff block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-02-12-verification-report.md`.
+
 ### History Limit Handling
 
 Dogfood finding:

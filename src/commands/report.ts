@@ -5,7 +5,12 @@ import { listChangedFiles } from "../core/git.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
-import { addSessionEvent, getSessionTimelineEvents, saveSession } from "../core/session.js";
+import {
+  addSessionEvent,
+  buildArtifactReviewMetadata,
+  getSessionTimelineEvents,
+  saveSession
+} from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderMarkdownReport, type MarkdownReportMode } from "../renderers/markdown-report.js";
 import { readCurrentSession } from "./status.js";
@@ -45,9 +50,14 @@ export async function runReportCommand(
     type: "report_generated",
     timestamp: options.now ?? new Date(),
     title: "Report generated",
-    metadata: {
-      path: relativeReportPath
-    }
+    metadata: buildArtifactReviewMetadata({
+      path: relativeReportPath,
+      readiness: review.readiness,
+      riskLevel: risk.level,
+      changedFiles: changedFiles.length,
+      verificationPassed: verification.passed,
+      verificationFailed: verification.failed
+    })
   });
   const report = renderMarkdownReport(
     {

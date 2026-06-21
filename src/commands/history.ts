@@ -81,8 +81,20 @@ async function formatSession(
   ID: ${session.id}
   Branch: ${branch}${session.dirty ? " (dirty at start)" : ""}
   Verification: ${session.verificationPassed} passed, ${session.verificationFailed} failed
+  Readiness: ${formatReadiness(session)}
   Report: ${reportPath}
   Replay: ${replayPath}`;
+}
+
+function formatReadiness(session: SessionSummary): string {
+  const review = session.latestReview;
+  if (!review) return "not recorded";
+
+  return `${review.label} (risk ${review.riskLevel}, ${formatChangedFiles(review.changedFiles)})`;
+}
+
+function formatChangedFiles(count: number): string {
+  return `${count} changed ${count === 1 ? "file" : "files"}`;
 }
 
 async function formatArtifactPath(

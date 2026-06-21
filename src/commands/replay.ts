@@ -5,7 +5,12 @@ import { listChangedFiles } from "../core/git.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
-import { addSessionEvent, getSessionTimelineEvents, saveSession } from "../core/session.js";
+import {
+  addSessionEvent,
+  buildArtifactReviewMetadata,
+  getSessionTimelineEvents,
+  saveSession
+} from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderHtmlReplay } from "../renderers/html-replay.js";
 import { readCurrentSession } from "./status.js";
@@ -36,14 +41,20 @@ export async function runReplayCommand(
     riskLevel: risk.level
   });
   const review = buildReviewIntelligence({ changedFiles, risk, session });
+  const relativeReplayPath = `.agentflight/reports/${session.id}-replay.html`;
   const replayPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}-replay.html`;
   const updatedSession = addSessionEvent(session, {
     type: "replay_generated",
     timestamp: options.now ?? new Date(),
     title: "Replay generated",
-    metadata: {
-      path: `.agentflight/reports/${session.id}-replay.html`
-    }
+    metadata: buildArtifactReviewMetadata({
+      path: relativeReplayPath,
+      readiness: review.readiness,
+      riskLevel: risk.level,
+      changedFiles: changedFiles.length,
+      verificationPassed: verification.passed,
+      verificationFailed: verification.failed
+    })
   });
   const html = renderHtmlReplay({
     task: session.task.title,

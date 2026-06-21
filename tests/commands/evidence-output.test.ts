@@ -236,6 +236,63 @@ describe("evidence-aware session outputs", () => {
     expect(html).not.toMatch(/https?:\/\//);
   });
 
+  it("stores compact review readiness metadata for report and replay artifacts", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('proof ok')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const report = await runReportCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+    const afterReport = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const reportEvent = afterReport.events.find(
+      (event: { type: string }) => event.type === "report_generated"
+    );
+    expect(reportEvent.metadata).toMatchObject({
+      path: `.agentflight/reports/${afterReport.id}-proof.md`,
+      readiness: {
+        state: "ready_for_review",
+        label: "Ready for review",
+        riskLevel: "low",
+        changedFiles: 1,
+        verificationPassed: 1,
+        verificationFailed: 0
+      }
+    });
+    expect(report.reportPath).toContain(`${afterReport.id}-proof.md`);
+
+    const replay = await runReplayCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:06:00.000Z")
+    });
+    const afterReplay = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const replayEvent = afterReplay.events.find(
+      (event: { type: string }) => event.type === "replay_generated"
+    );
+    expect(replayEvent.metadata).toMatchObject({
+      path: `.agentflight/reports/${afterReplay.id}-replay.html`,
+      readiness: {
+        state: "ready_for_review",
+        label: "Ready for review",
+        riskLevel: "low",
+        changedFiles: 1,
+        verificationPassed: 1,
+        verificationFailed: 0
+      }
+    });
+    expect(replay.replayPath).toContain(`${afterReplay.id}-replay.html`);
+  });
+
   it("writes a compact Markdown report without changing the full report default", async () => {
     const repoRoot = await startedRepo(["npm test"]);
     await runVerifyCommand({
@@ -516,6 +573,40 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("Open first: report");
     expect(stdoutEvidence).toContain("stdout noise for handoff");
     expect(stderrEvidence).toContain("stderr handoff failure excerpt");
+  });
+
+  it("keeps resolved failed verification excerpts out of ready local handoffs", async () => {
+    const repoRoot = await startedRepo([]);
+    const scriptPath = join(repoRoot, "eventual-pass.js");
+    await writeFile(
+      scriptPath,
+      "console.error('historical failure excerpt'); process.exit(1);",
+      "utf8"
+    );
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, scriptPath],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+    await writeFile(scriptPath, "console.log('fixed proof');", "utf8");
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, scriptPath],
+      now: () => new Date("2026-06-13T12:03:00.000Z")
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(handoff.exitCode).toBe(0);
+    expect(handoff.output).toContain("Readiness: Ready for review");
+    expect(handoff.output).toContain(
+      "Historical failed verification excerpts remain in report/replay; no unresolved failed verification remains."
+    );
+    expect(handoff.output).not.toContain("historical failure excerpt");
   });
 
   it("includes verification gaps and the exact next command in resume prompts", async () => {

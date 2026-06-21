@@ -3,7 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runHistoryCommand } from "../../src/commands/history.js";
 import { initAgentFlight } from "../../src/core/config.js";
-import { appendVerificationRun, startSession } from "../../src/core/session.js";
+import {
+  addSessionEvent,
+  appendVerificationRun,
+  saveSession,
+  startSession
+} from "../../src/core/session.js";
 import { createTempRepo } from "../helpers/temp.js";
 
 describe("history command", () => {
@@ -44,7 +49,7 @@ describe("history command", () => {
       stdoutPath: ".agentflight/evidence/newer.stdout.txt",
       stderrPath: ".agentflight/evidence/newer.stderr.txt"
     });
-    await appendVerificationRun(repoRoot, newerWithPassingProof, {
+    const newerWithProof = await appendVerificationRun(repoRoot, newerWithPassingProof, {
       command: "npm run lint",
       status: "failed",
       exitCode: 1,
@@ -55,6 +60,25 @@ describe("history command", () => {
       stderrPath: ".agentflight/evidence/newer-lint.stderr.txt",
       outputExcerpt: "lint failed"
     });
+    await saveSession(
+      repoRoot,
+      addSessionEvent(newerWithProof, {
+        type: "report_generated",
+        timestamp: "2026-06-13T11:05:00.000Z",
+        title: "Report generated",
+        metadata: {
+          path: `.agentflight/reports/${newer.session.id}-proof.md`,
+          readiness: {
+            state: "blocked_by_failed_verification",
+            label: "Blocked by failed verification",
+            riskLevel: "high",
+            changedFiles: 1,
+            verificationPassed: 1,
+            verificationFailed: 1
+          }
+        }
+      })
+    );
     await mkdir(join(repoRoot, ".agentflight", "reports"), { recursive: true });
     await writeFile(
       join(repoRoot, ".agentflight", "reports", `${newer.session.id}-proof.md`),
@@ -76,6 +100,10 @@ describe("history command", () => {
     expect(history.output).toContain("[current]");
     expect(history.output).toContain("feature/history");
     expect(history.output).toContain("Verification: 1 passed, 1 failed");
+    expect(history.output).toContain(
+      "Readiness: Blocked by failed verification (risk high, 1 changed file)"
+    );
+    expect(history.output).toContain("Readiness: not recorded");
     expect(history.output).toContain(`Report: .agentflight/reports/${newer.session.id}-proof.md`);
     expect(history.output).toContain(
       `Replay: .agentflight/reports/${newer.session.id}-replay.html`

@@ -5,6 +5,9 @@ import { resolveAgentFlightPaths } from "./paths.js";
 import type {
   AgentFlightSession,
   GitInfo,
+  ReviewReadinessDecision,
+  ReviewReadinessState,
+  RiskLevel,
   SessionEvent,
   SessionEventType,
   ToolAdapterResult,
@@ -45,7 +48,28 @@ export interface SessionSummary {
   dirty: boolean;
   verificationPassed: number;
   verificationFailed: number;
+  latestReview?: SessionReviewSummary;
   sessionPath: string;
+}
+
+export interface SessionReviewSummary {
+  state: ReviewReadinessState;
+  label: string;
+  riskLevel: RiskLevel;
+  changedFiles: number;
+  verificationPassed: number;
+  verificationFailed: number;
+  artifactPath: string | null;
+  generatedAt: string;
+}
+
+export interface BuildArtifactReviewMetadataOptions {
+  path: string;
+  readiness: Pick<ReviewReadinessDecision, "state" | "label">;
+  riskLevel: RiskLevel;
+  changedFiles: number;
+  verificationPassed: number;
+  verificationFailed: number;
 }
 
 export interface SkippedSessionFile {
@@ -136,6 +160,22 @@ export function getVerificationRuns(session: AgentFlightSession): VerificationRu
   return session.verificationRuns ?? [];
 }
 
+export function buildArtifactReviewMetadata(
+  options: BuildArtifactReviewMetadataOptions
+): Record<string, unknown> {
+  return {
+    path: options.path,
+    readiness: {
+      state: options.readiness.state,
+      label: options.readiness.label,
+      riskLevel: options.riskLevel,
+      changedFiles: options.changedFiles,
+      verificationPassed: options.verificationPassed,
+      verificationFailed: options.verificationFailed
+    }
+  };
+}
+
 export async function listSessionSummaries(
   repoRoot: string,
   options: ListSessionSummariesOptions = {}
@@ -201,7 +241,7 @@ async function loadSessionSummary(sessionPath: string): Promise<LoadedSessionSum
 
 function summarizeSession(session: AgentFlightSession, sessionPath: string): SessionSummary {
   const runs = getVerificationRuns(session);
-  return {
+  const summary: SessionSummary = {
     id: session.id,
     taskTitle: session.task.title,
     startedAt: session.startedAt,
@@ -212,6 +252,10 @@ function summarizeSession(session: AgentFlightSession, sessionPath: string): Ses
     verificationFailed: runs.filter((run) => run.status === "failed").length,
     sessionPath
   };
+  const latestReview = getLatestRecordedReviewSummary(session);
+  if (latestReview) summary.latestReview = latestReview;
+
+  return summary;
 }
 
 function compareSessionSummaries(left: SessionSummary, right: SessionSummary): number {
@@ -273,6 +317,96 @@ export function getLatestSessionEvent(
       .filter((event) => event.type === type)
       .at(-1) ?? null
   );
+}
+
+function getLatestRecordedReviewSummary(session: AgentFlightSession): SessionReviewSummary | null {
+  const events = getSessionEvents(session);
+
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (!event || !isArtifactGeneratedEvent(event)) continue;
+
+    const summary = readRecordedReviewSummary(event);
+    if (summary) return summary;
+  }
+
+  return null;
+}
+
+function isArtifactGeneratedEvent(event: SessionEvent): boolean {
+  return event.type === "report_generated" || event.type === "replay_generated";
+}
+
+function readRecordedReviewSummary(event: SessionEvent): SessionReviewSummary | null {
+  const metadata = readObject(event.metadata);
+  const readiness = readObject(metadata?.readiness);
+  if (!readiness) return null;
+
+  const state = readReviewReadinessState(readiness.state);
+  const label = readNonEmptyString(readiness.label);
+  const riskLevel = readRiskLevel(readiness.riskLevel);
+  const changedFiles = readNonNegativeInteger(readiness.changedFiles);
+  const verificationPassed = readNonNegativeInteger(readiness.verificationPassed);
+  const verificationFailed = readNonNegativeInteger(readiness.verificationFailed);
+  if (
+    !state ||
+    !label ||
+    !riskLevel ||
+    changedFiles === null ||
+    verificationPassed === null ||
+    verificationFailed === null
+  ) {
+    return null;
+  }
+
+  return {
+    state,
+    label,
+    riskLevel,
+    changedFiles,
+    verificationPassed,
+    verificationFailed,
+    artifactPath: readString(metadata?.path),
+    generatedAt: event.timestamp
+  };
+}
+
+function readObject(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  const text = readString(value);
+  return text && text.trim().length > 0 ? text : null;
+}
+
+function readNonNegativeInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function readReviewReadinessState(value: unknown): ReviewReadinessState | null {
+  const states: readonly ReviewReadinessState[] = [
+    "ready_for_review",
+    "not_ready_for_review",
+    "needs_verification",
+    "blocked_by_failed_verification",
+    "unknown"
+  ];
+  return typeof value === "string" && states.includes(value as ReviewReadinessState)
+    ? (value as ReviewReadinessState)
+    : null;
+}
+
+function readRiskLevel(value: unknown): RiskLevel | null {
+  const levels: readonly RiskLevel[] = ["low", "medium", "high", "unknown"];
+  return typeof value === "string" && levels.includes(value as RiskLevel)
+    ? (value as RiskLevel)
+    : null;
 }
 
 export function buildSessionEvent(input: SessionEventInput, ordinal: number): SessionEvent {

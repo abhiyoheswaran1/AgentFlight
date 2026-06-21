@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
 import {
+  addSessionEvent,
   buildSessionRecord,
   getSessionEvents,
   getVerificationRuns,
   listSessionSummaries,
+  saveSession,
   startSession
 } from "../../src/core/session.js";
 
@@ -136,5 +138,108 @@ describe("session records", () => {
     });
     expect(history.skipped).toHaveLength(1);
     expect(history.skipped[0]?.path).toContain("broken.json");
+  });
+
+  it("extracts latest recorded artifact readiness from report and replay events", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T12:00:00.000Z") });
+
+    const result = await startSession({
+      repoRoot,
+      task: "Review recorded readiness",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const withReport = addSessionEvent(result.session, {
+      type: "report_generated",
+      timestamp: "2026-06-13T11:05:00.000Z",
+      title: "Report generated",
+      metadata: {
+        path: ".agentflight/reports/af-test-proof.md",
+        readiness: {
+          state: "needs_verification",
+          label: "Needs verification",
+          riskLevel: "medium",
+          changedFiles: 2,
+          verificationPassed: 0,
+          verificationFailed: 0
+        }
+      }
+    });
+    const withReplay = addSessionEvent(withReport, {
+      type: "replay_generated",
+      timestamp: "2026-06-13T11:06:00.000Z",
+      title: "Replay generated",
+      metadata: {
+        path: ".agentflight/reports/af-test-replay.html",
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          riskLevel: "low",
+          changedFiles: 1,
+          verificationPassed: 1,
+          verificationFailed: 0
+        }
+      }
+    });
+    await saveSession(repoRoot, withReplay);
+
+    const history = await listSessionSummaries(repoRoot);
+
+    expect(history.sessions[0]?.latestReview).toEqual({
+      state: "ready_for_review",
+      label: "Ready for review",
+      riskLevel: "low",
+      changedFiles: 1,
+      verificationPassed: 1,
+      verificationFailed: 0,
+      artifactPath: ".agentflight/reports/af-test-replay.html",
+      generatedAt: "2026-06-13T11:06:00.000Z"
+    });
+  });
+
+  it("ignores malformed artifact readiness metadata in session summaries", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T12:00:00.000Z") });
+
+    const result = await startSession({
+      repoRoot,
+      task: "Malformed recorded readiness",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await saveSession(
+      repoRoot,
+      addSessionEvent(result.session, {
+        type: "report_generated",
+        timestamp: "2026-06-13T11:05:00.000Z",
+        title: "Report generated",
+        metadata: {
+          path: ".agentflight/reports/af-test-proof.md",
+          readiness: {
+            state: "ready_for_review",
+            label: "Ready for review",
+            riskLevel: "low",
+            changedFiles: "one",
+            verificationPassed: 1,
+            verificationFailed: 0
+          }
+        }
+      })
+    );
+
+    const history = await listSessionSummaries(repoRoot);
+
+    expect(history.sessions[0]?.latestReview).toBeUndefined();
   });
 });

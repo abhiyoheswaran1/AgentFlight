@@ -144,7 +144,10 @@ Reason: ${formatReadinessReason(readiness, input.status.reason)}
 
 Verification:
 ${input.status.verification.passed} passed, ${input.status.verification.failed} failed
-${formatVerificationDetails(input.status.verification.runs)}
+${formatVerificationDetails(
+  input.status.verification.runs,
+  hasUnresolvedFailedVerification(input.status.review.proofGaps)
+)}
 
 Review first:
 ${formatReviewFocus(input.status.review.focus.slice(0, 3))}
@@ -179,6 +182,10 @@ function needsFixBeforeSharing(readiness: HandoffReadiness): boolean {
   );
 }
 
+function hasUnresolvedFailedVerification(gaps: HandoffProofGap[]): boolean {
+  return gaps.some((gap) => gap.id === "failed-verification");
+}
+
 function formatReadinessReason(readiness: HandoffReadiness, fallback: string): string {
   if (readiness.state === "blocked_by_failed_verification") {
     return "A verification command failed and must be fixed or rerun successfully.";
@@ -196,13 +203,20 @@ function formatNextAction(readiness: HandoffReadiness, fallback: string): string
   return compactCommandInText(readiness.nextAction || fallback, readiness.suggestedCommand);
 }
 
-function formatVerificationDetails(runs: HandoffVerificationRun[]): string {
+function formatVerificationDetails(
+  runs: HandoffVerificationRun[],
+  showFailedExcerpts: boolean
+): string {
   if (runs.length === 0) return "- No verification runs recorded.";
 
   const failedExcerpts = runs
     .filter((run) => run.status === "failed" && run.outputExcerpt)
     .map((run) => run.outputExcerpt!.trim())
     .filter(Boolean);
+
+  if (!showFailedExcerpts && failedExcerpts.length > 0) {
+    return "- Historical failed verification excerpts remain in report/replay; no unresolved failed verification remains.";
+  }
 
   if (failedExcerpts.length === 0) return "- No failed verification excerpts recorded.";
 
