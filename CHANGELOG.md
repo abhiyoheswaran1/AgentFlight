@@ -84,6 +84,8 @@ All notable AgentFlight changes are documented here.
   while preserving `unknown` for legacy or genuinely missing metadata.
 - Clean-worktree risk reasons now use current-state wording instead of saying
   no changed files were detected "yet."
+- Parallel report, replay, and resume commands now preserve each artifact event
+  in session history instead of letting the last stale session write win.
 
 ### Changed
 

@@ -5,7 +5,7 @@ import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
-import { addSessionEvent, getLatestSessionEvent, saveSession } from "../core/session.js";
+import { appendSessionEvent, getLatestSessionEvent } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { formatVerificationCountLine } from "../core/output.js";
 import { renderResumePrompt } from "../renderers/resume-prompt.js";
@@ -39,14 +39,14 @@ export async function runResumeCommand(
   });
   const review = buildReviewIntelligence({ changedFiles, risk, session });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
-  const updatedSession = addSessionEvent(session, {
+  const event = {
     type: "resume_generated",
     timestamp: options.now ?? new Date(),
     title: "Resume prompt generated",
     metadata: {
       path: ".agentflight/current/resume-prompt.md"
     }
-  });
+  } as const;
   const prompt = renderResumePrompt({
     task: session.task.title,
     sessionId: session.id,
@@ -68,7 +68,7 @@ export async function runResumeCommand(
 
   await writeTextFileSafe(resumePath, prompt, { overwrite: true });
   await writeTextFileSafe(sessionResumePath, prompt, { overwrite: true });
-  await saveSession(options.repoRoot, updatedSession);
+  await appendSessionEvent(options.repoRoot, session, event);
 
   return {
     output: prompt,

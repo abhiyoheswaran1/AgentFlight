@@ -4,6 +4,63 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Parallel Artifact Event Preservation
+
+Dogfood finding:
+
+- Running `history`, `doctor`, `resume`, and `report` in parallel showed a
+  freshly generated report did not update history's recorded readiness. The
+  artifact commands were saving stale session snapshots, so the last writer
+  could drop another command's event.
+
+Persona readout:
+
+- Verification Engineer: report, replay, and resume are review evidence and
+  their generated events should survive concurrent review tooling.
+- CLI Engineer: use the existing locked session mutation path instead of adding
+  a new synchronization mechanism.
+- Repo Steward: keep artifact formats unchanged; only fix persistence.
+
+Implemented locally:
+
+- `report`, `replay`, and `resume` now persist generated events through
+  `appendSessionEvent(...)`, which merges against the latest locked session.
+- Report and replay still use a local event copy for timeline rendering.
+- The incomplete-verification fixture now uses `saveSession(...)` so current
+  and canonical session files stay in sync.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because concurrent report,
+  replay, and resume left only `resume_generated` in the persisted session.
+- AgentFlight-captured focused verification now passes:
+  `npm test -- tests/commands/evidence-output.test.ts tests/core/session.test.ts`
+  passed: 2 files / 39 tests.
+- Built-CLI dogfood generated `report`, `replay`, and `resume` concurrently
+  for this session; `history --limit 1` then showed recorded readiness plus all
+  three artifact paths.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 185 tests, plus build.
+- First format pass caught Prettier drift in `src/commands/report.ts` and
+  `src/commands/replay.ts`; after formatting, `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 191 changed files and maximum
+  changed-file risk score `207.9`.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: maximum changed-file risk score `207.9`, no risky
+  functions, no dependency changes, no contract changes, no taint flows, no
+  dataflow risks, and no cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-06-29-verification-report.md`.
+- Post-handoff `npm run format:check` passed under AgentFlight capture.
+- `npx agentloopkit@latest check-gates` passed. The output still named an
+  older archived task contract while using the current verification report and
+  handoff, which remains AgentLoopKit feedback rather than an AgentFlight
+  blocker.
+
 ### Clean Risk Reason Wording
 
 Dogfood finding:

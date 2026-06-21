@@ -7,9 +7,9 @@ import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import {
   addSessionEvent,
+  appendSessionEvent,
   buildArtifactReviewMetadata,
-  getSessionTimelineEvents,
-  saveSession
+  getSessionTimelineEvents
 } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderMarkdownReport, type MarkdownReportMode } from "../renderers/markdown-report.js";
@@ -46,7 +46,7 @@ export async function runReportCommand(
   const suffix = reportPathSuffix(mode);
   const relativeReportPath = `.agentflight/reports/${session.id}${suffix}`;
   const reportPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}${suffix}`;
-  const updatedSession = addSessionEvent(session, {
+  const event = {
     type: "report_generated",
     timestamp: options.now ?? new Date(),
     title: "Report generated",
@@ -58,7 +58,8 @@ export async function runReportCommand(
       verificationPassed: verification.passed,
       verificationFailed: verification.failed
     })
-  });
+  } as const;
+  const updatedSession = addSessionEvent(session, event);
   const report = renderMarkdownReport(
     {
       task: session.task.title,
@@ -87,7 +88,7 @@ export async function runReportCommand(
   );
 
   await writeTextFileSafe(reportPath, report, { overwrite: true });
-  await saveSession(options.repoRoot, updatedSession);
+  await appendSessionEvent(options.repoRoot, session, event);
 
   return {
     output: `Report generated:

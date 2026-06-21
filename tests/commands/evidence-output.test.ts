@@ -241,6 +241,44 @@ describe("evidence-aware session outputs", () => {
     );
   });
 
+  it("preserves artifact events when report replay and resume run concurrently", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+
+    const [report, replay, resume] = await Promise.all([
+      runReportCommand({
+        repoRoot,
+        changedFiles: [],
+        now: new Date("2026-06-13T12:05:00.000Z")
+      }),
+      runReplayCommand({
+        repoRoot,
+        changedFiles: [],
+        now: new Date("2026-06-13T12:06:00.000Z")
+      }),
+      runResumeCommand({
+        repoRoot,
+        changedFiles: [],
+        now: new Date("2026-06-13T12:07:00.000Z")
+      })
+    ]);
+
+    expect(report.reportPath).toContain(".agentflight/reports/");
+    expect(replay.replayPath).toContain(".agentflight/reports/");
+    expect(resume.sessionResumePath).toContain(".agentflight/reports/");
+
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    ) as AgentFlightSession;
+    const artifactEvents = (session.events ?? [])
+      .filter((event) =>
+        ["report_generated", "replay_generated", "resume_generated"].includes(event.type)
+      )
+      .map((event) => event.type)
+      .sort();
+
+    expect(artifactEvents).toEqual(["replay_generated", "report_generated", "resume_generated"]);
+  });
+
   it("keeps unresolved failed verification details visible in clean status", async () => {
     const repoRoot = await startedRepo([`${process.execPath} -e "process.exit(4)"`]);
     await runVerifyCommand({
@@ -1007,16 +1045,22 @@ describe("evidence-aware session outputs", () => {
 
   it("surfaces incomplete verification consistently and removes legacy report gap conflicts", async () => {
     const repoRoot = await startedRepo(["npm test"]);
-    const currentSessionPath = join(repoRoot, ".agentflight", "current", "session.json");
-    const session = JSON.parse(await readFile(currentSessionPath, "utf8"));
-    session.events.push({
-      id: "evt-incomplete-verification",
-      type: "verification_started",
-      timestamp: "2026-06-13T12:00:00.000Z",
-      title: "Verification started",
-      metadata: { command: "npm test" }
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    ) as AgentFlightSession;
+    await saveSession(repoRoot, {
+      ...session,
+      events: [
+        ...(session.events ?? []),
+        {
+          id: "evt-incomplete-verification",
+          type: "verification_started",
+          timestamp: "2026-06-13T12:00:00.000Z",
+          title: "Verification started",
+          metadata: { command: "npm test" }
+        }
+      ]
     });
-    await writeFile(currentSessionPath, JSON.stringify(session, null, 2));
 
     const status = await runStatusCommand({
       repoRoot,

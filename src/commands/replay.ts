@@ -7,9 +7,9 @@ import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import {
   addSessionEvent,
+  appendSessionEvent,
   buildArtifactReviewMetadata,
-  getSessionTimelineEvents,
-  saveSession
+  getSessionTimelineEvents
 } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderHtmlReplay } from "../renderers/html-replay.js";
@@ -43,7 +43,7 @@ export async function runReplayCommand(
   const review = buildReviewIntelligence({ changedFiles, risk, session });
   const relativeReplayPath = `.agentflight/reports/${session.id}-replay.html`;
   const replayPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}-replay.html`;
-  const updatedSession = addSessionEvent(session, {
+  const event = {
     type: "replay_generated",
     timestamp: options.now ?? new Date(),
     title: "Replay generated",
@@ -55,7 +55,8 @@ export async function runReplayCommand(
       verificationPassed: verification.passed,
       verificationFailed: verification.failed
     })
-  });
+  } as const;
+  const updatedSession = addSessionEvent(session, event);
   const html = renderHtmlReplay({
     task: session.task.title,
     sessionId: session.id,
@@ -77,7 +78,7 @@ export async function runReplayCommand(
   });
 
   await writeTextFileSafe(replayPath, html, { overwrite: true });
-  await saveSession(options.repoRoot, updatedSession);
+  await appendSessionEvent(options.repoRoot, session, event);
 
   return {
     output: `Replay generated:
