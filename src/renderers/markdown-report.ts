@@ -1,6 +1,7 @@
 import {
   compactCommandInText,
   formatCommandForDisplay,
+  formatProofStatusForDisplay,
   formatToolForReport,
   formatVerificationCountLine,
   formatVerificationFailureContext,
@@ -220,7 +221,7 @@ function renderReviewFirst(input: MarkdownReportInput): string {
     return focus
       .map(
         (item) =>
-          `${item.rank}. ${item.file}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
+          `${item.rank}. ${item.file}\n   - Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
       )
       .join("\n");
   }

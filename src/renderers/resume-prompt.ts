@@ -1,4 +1,8 @@
-import { compactCommandInText, formatVerifyCommandForDisplay } from "../core/output.js";
+import {
+  compactCommandInText,
+  formatProofStatusForDisplay,
+  formatVerifyCommandForDisplay
+} from "../core/output.js";
 import type {
   ProofGap,
   ReviewFocusItem,
@@ -75,7 +79,7 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
   return items
     .map(
       (item) =>
-        `${item.rank}. ${item.file}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
+        `${item.rank}. ${item.file}\n   - Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
 }

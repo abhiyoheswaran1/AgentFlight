@@ -4,7 +4,7 @@ import {
   buildReviewIntelligence,
   classifyVerificationProofKind
 } from "../../src/core/review-intelligence.js";
-import type { AgentFlightSession, VerificationRun } from "../../src/types/index.js";
+import type { AgentFlightSession, ProofSnapshot, VerificationRun } from "../../src/types/index.js";
 
 describe("review intelligence", () => {
   it("ranks auth files above docs and tests and explains missing proof", () => {
@@ -557,6 +557,72 @@ describe("review intelligence", () => {
     });
   });
 
+  it("marks matching proof snapshots as current", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const currentProofSnapshot = proofSnapshot({ "src/auth/session.ts": "fresh" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot,
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: currentProofSnapshot
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps).toEqual([]);
+    expect(review.focus[0]).toMatchObject({
+      file: "src/auth/session.ts",
+      proofStatus: "current"
+    });
+    expect(review.focus[0]?.reasons).toContain("proof current");
+    expect(review.readiness).toMatchObject({
+      state: "ready_for_review",
+      label: "Ready for review"
+    });
+  });
+
+  it("marks passing proof as stale when current file fingerprints differ", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: proofSnapshot({ "src/auth/session.ts": "new" }),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({ "src/auth/session.ts": "old" })
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps).toContainEqual(
+      expect.objectContaining({
+        id: "stale-verification-proof",
+        severity: "warning",
+        suggestedCommand: "npm test",
+        relatedFiles: ["src/auth/session.ts"]
+      })
+    );
+    expect(review.focus[0]).toMatchObject({
+      file: "src/auth/session.ts",
+      proofStatus: "stale",
+      relatedProofGapIds: ["stale-verification-proof"]
+    });
+    expect(review.focus[0]?.reasons).toContain("proof stale");
+    expect(review.readiness).toMatchObject({
+      state: "needs_verification",
+      label: "Needs verification",
+      suggestedCommand: "npm test"
+    });
+  });
+
   it("reports a clean worktree when no files are changed", () => {
     const changedFiles: string[] = [];
     const review = buildReviewIntelligence({
@@ -694,8 +760,12 @@ function event(
   };
 }
 
-function verificationRun(command: string, status: "passed" | "failed"): VerificationRun {
-  return {
+function verificationRun(
+  command: string,
+  status: "passed" | "failed",
+  overrides: Partial<VerificationRun> = {}
+): VerificationRun {
+  const run: VerificationRun = {
     command,
     startedAt: "2026-06-14T12:01:00.000Z",
     finishedAt: "2026-06-14T12:01:05.000Z",
@@ -704,5 +774,25 @@ function verificationRun(command: string, status: "passed" | "failed"): Verifica
     status,
     stdoutPath: ".agentflight/evidence/af-test/verification-1.stdout.txt",
     stderrPath: ".agentflight/evidence/af-test/verification-1.stderr.txt"
+  };
+  return { ...run, ...overrides };
+}
+
+function proofSnapshot(fileHashes: Record<string, string>): ProofSnapshot {
+  const changedFiles = Object.keys(fileHashes).sort((left, right) => left.localeCompare(right));
+  return {
+    schemaVersion: 1,
+    capturedAt: "2026-06-14T12:01:05.000Z",
+    gitCommit: "abc123",
+    source: "git_status",
+    changedFiles,
+    hashAlgorithm: "sha256",
+    files: changedFiles.map((file) => ({
+      path: file,
+      state: "present",
+      size: 1,
+      sha256: fileHashes[file]!
+    })),
+    fingerprintHash: changedFiles.map((file) => `${file}:${fileHashes[file]}`).join("|")
   };
 }

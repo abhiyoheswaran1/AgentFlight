@@ -1,6 +1,7 @@
 import {
   compactCommandInText,
   formatCommandForDisplay,
+  formatProofStatusForDisplay,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
 import type { VerificationFailureCounts } from "../core/output.js";
@@ -716,7 +717,7 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
   return `<div class="records">${items
     .map(
       (item) =>
-        `<div class="record"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
+        `<div class="record"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Proof:</span> ${escapeHtml(formatProofStatusForDisplay(item.proofStatus))}</div><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
     )
     .join("")}</div>`;
 }

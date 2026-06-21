@@ -1,8 +1,10 @@
 import { categorizeFile } from "./risk.js";
+import { compareProofSnapshotToCurrent } from "./proof-snapshot.js";
 import { getVerificationRuns } from "./session.js";
 import { getUnresolvedFailedRuns } from "./verification.js";
 import type {
   AgentFlightSession,
+  ProofSnapshot,
   ProofGap,
   ReviewFocusItem,
   ReviewIntelligence,
@@ -21,6 +23,7 @@ export interface BuildReviewIntelligenceOptions {
   changedFiles: string[];
   risk: RiskAnalysis;
   session: AgentFlightSession;
+  currentProofSnapshot?: ProofSnapshot | undefined;
   projscanHints?: ProjScanReviewHint[] | undefined;
 }
 
@@ -177,11 +180,13 @@ export function buildReviewIntelligence(
   const runs = getVerificationRuns(options.session);
   const unresolvedFailedRuns = getUnresolvedFailedRuns(runs);
   const proofKinds = summarizeProofKinds(runs);
+  const proofFreshness = summarizeProofFreshness(runs, options.currentProofSnapshot);
   const incompleteVerifications = detectIncompleteVerificationAttempts(options.session);
   const proofGaps = buildProofGaps({
     changedFiles: options.changedFiles,
     verificationCommands: options.session.verificationCommands,
     proofKinds,
+    proofFreshness,
     unresolvedFailedRuns,
     incompleteVerifications
   });
@@ -189,6 +194,7 @@ export function buildReviewIntelligence(
     changedFiles: options.changedFiles,
     proofGaps,
     proofKinds,
+    proofFreshness,
     unresolvedFailedRuns,
     projscanHints: options.projscanHints
   });
@@ -241,10 +247,62 @@ function summarizeProofKinds(runs: VerificationRun[]): {
   return { passed, failed };
 }
 
+type ProofFreshnessState = "current" | "stale" | "legacy" | "unavailable" | "none";
+
+interface ProofFreshnessSummary {
+  state: ProofFreshnessState;
+  run?: VerificationRun | undefined;
+  staleFiles: string[];
+  reason: string;
+}
+
+function summarizeProofFreshness(
+  runs: VerificationRun[],
+  currentProofSnapshot: ProofSnapshot | undefined
+): ProofFreshnessSummary {
+  const latestPassedRun = [...runs].reverse().find((run) => run.status === "passed");
+  if (!latestPassedRun) {
+    return {
+      state: "none",
+      staleFiles: [],
+      reason: "No passing verification proof has been recorded."
+    };
+  }
+
+  const proofSnapshot = latestPassedRun.proofSnapshot;
+  if (!proofSnapshot) {
+    return {
+      state: "legacy",
+      run: latestPassedRun,
+      staleFiles: [],
+      reason: "Passing verification proof was recorded before proof freshness snapshots existed."
+    };
+  }
+
+  if (proofSnapshot.source !== "git_status" || !currentProofSnapshot) {
+    return {
+      state: "unavailable",
+      run: latestPassedRun,
+      staleFiles: [],
+      reason:
+        proofSnapshot.unavailableReason ?? "Proof freshness cannot be compared in this worktree."
+    };
+  }
+
+  const comparison = compareProofSnapshotToCurrent(proofSnapshot, currentProofSnapshot);
+  return {
+    state: comparison.current ? "current" : "stale",
+    run: latestPassedRun,
+    staleFiles: comparison.staleFiles,
+    reason: comparison.reason
+  };
+}
+
 function buildProofGaps(input: {
   changedFiles: string[];
   verificationCommands: string[];
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
+  proofFreshness: ProofFreshnessSummary;
   unresolvedFailedRuns: VerificationRun[];
   incompleteVerifications: IncompleteVerificationAttempt[];
 }): ProofGap[] {
@@ -276,6 +334,8 @@ function buildProofGaps(input: {
     addCategoryGap(gaps, input, filesByCategory, rule);
   }
 
+  addStaleProofGap(gaps, input);
+
   addGeneratedFileGuidance(gaps, input.changedFiles);
 
   return gaps;
@@ -304,10 +364,46 @@ function addCategoryGap(
   });
 }
 
+function addStaleProofGap(
+  gaps: ProofGap[],
+  input: {
+    changedFiles: string[];
+    proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
+    proofFreshness: ProofFreshnessSummary;
+  }
+): void {
+  if (input.proofFreshness.state !== "stale") return;
+  if (input.proofKinds.passed.size === 0) return;
+
+  const relatedFiles =
+    input.proofFreshness.staleFiles.length > 0
+      ? input.proofFreshness.staleFiles
+      : proofRequiredFiles(input.changedFiles);
+  if (relatedFiles.length === 0) return;
+
+  const gap: ProofGap = {
+    id: "stale-verification-proof",
+    severity: "warning",
+    message: `Verification proof is stale. ${input.proofFreshness.reason}`,
+    relatedFiles
+  };
+  if (input.proofFreshness.run?.command) gap.suggestedCommand = input.proofFreshness.run.command;
+  gaps.push(gap);
+}
+
+function proofRequiredFiles(changedFiles: string[]): string[] {
+  const proofRequiredCategories = new Set(categoryProofGapRules.flatMap((rule) => rule.categories));
+  return changedFiles.filter((file) => {
+    if (isGeneratedGuidanceFile(file)) return false;
+    return proofRequiredCategories.has(categorizeFile(file));
+  });
+}
+
 function buildReviewFocus(input: {
   changedFiles: string[];
   proofGaps: ProofGap[];
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
+  proofFreshness: ProofFreshnessSummary;
   unresolvedFailedRuns: VerificationRun[];
   projscanHints?: ProjScanReviewHint[] | undefined;
 }): ReviewFocusItem[] {
@@ -323,7 +419,8 @@ function buildReviewFocus(input: {
       relatedGaps,
       generatedGuidanceFile: Boolean(generatedGuidanceFile),
       hasFailedVerification,
-      proofKinds: input.proofKinds
+      proofKinds: input.proofKinds,
+      proofFreshness: input.proofFreshness
     });
     const reasons = buildFocusReasons({
       category,
@@ -357,20 +454,61 @@ function buildReviewFocus(input: {
     .map((item, index) => ({ ...item, rank: index + 1 }));
 }
 
-function determineProofStatus(input: {
+interface DetermineProofStatusInput {
   category: RiskCategory;
   relatedGaps: ProofGap[];
   generatedGuidanceFile?: boolean;
   hasFailedVerification: boolean;
   proofKinds: { passed: Set<VerificationProofKind>; failed: Set<VerificationProofKind> };
-}): ReviewProofStatus {
-  if (input.generatedGuidanceFile) return "not_required";
-  if (input.hasFailedVerification && input.category !== "docs") return "failed";
-  const actionableGaps = input.relatedGaps.filter((gap) => gap.severity !== "info");
-  if (actionableGaps.length > 0) return "missing";
-  if (input.category === "docs" || input.category === "agentflight/config") return "not_required";
-  if (input.proofKinds.passed.size > 0) return "covered";
-  return input.category === "unknown" ? "unknown" : "not_required";
+  proofFreshness: ProofFreshnessSummary;
+}
+
+interface ProofStatusRule {
+  matches(input: DetermineProofStatusInput): boolean;
+  status: ReviewProofStatus | ((input: DetermineProofStatusInput) => ReviewProofStatus);
+}
+
+const proofStatusRules: ProofStatusRule[] = [
+  { matches: (input) => Boolean(input.generatedGuidanceFile), status: "not_required" },
+  { matches: isFailedProofStatus, status: "failed" },
+  { matches: hasStaleProofGap, status: "stale" },
+  { matches: hasActionableProofGaps, status: "missing" },
+  { matches: isProofOptionalCategory, status: "not_required" },
+  { matches: hasPassingProof, status: statusFromPassingProof }
+];
+
+function determineProofStatus(input: DetermineProofStatusInput): ReviewProofStatus {
+  const rule = proofStatusRules.find((candidate) => candidate.matches(input));
+  if (!rule) return fallbackProofStatus(input.category);
+  return typeof rule.status === "function" ? rule.status(input) : rule.status;
+}
+
+function isFailedProofStatus(input: DetermineProofStatusInput): boolean {
+  return input.hasFailedVerification && input.category !== "docs";
+}
+
+function hasStaleProofGap(input: DetermineProofStatusInput): boolean {
+  return input.relatedGaps.some((gap) => gap.id === "stale-verification-proof");
+}
+
+function hasActionableProofGaps(input: DetermineProofStatusInput): boolean {
+  return input.relatedGaps.some((gap) => gap.severity !== "info");
+}
+
+function isProofOptionalCategory(input: DetermineProofStatusInput): boolean {
+  return input.category === "docs" || input.category === "agentflight/config";
+}
+
+function hasPassingProof(input: DetermineProofStatusInput): boolean {
+  return input.proofKinds.passed.size > 0;
+}
+
+function statusFromPassingProof(input: DetermineProofStatusInput): ReviewProofStatus {
+  return input.proofFreshness.state === "current" ? "current" : "covered";
+}
+
+function fallbackProofStatus(category: RiskCategory): ReviewProofStatus {
+  return category === "unknown" ? "unknown" : "not_required";
 }
 
 function buildReadinessDecision(input: {
@@ -481,7 +619,8 @@ function baseFocusScore(category: RiskCategory, generatedGuidanceFile: boolean):
 }
 
 function proofStatusScore(proofStatus: ReviewProofStatus): number {
-  return proofStatus === "missing" ? 30 : 0;
+  if (proofStatus === "missing" || proofStatus === "stale") return 30;
+  return 0;
 }
 
 function failedVerificationScore(category: RiskCategory, hasFailedVerification: boolean): number {
@@ -527,6 +666,8 @@ function buildFocusReasons(input: {
 
   const reasons = [categoryLabel(category)];
   if (proofStatus === "failed") reasons.push("verification failed");
+  if (proofStatus === "current") reasons.push("proof current");
+  if (proofStatus === "stale") reasons.push("proof stale");
   if (relatedGaps.some((gap) => gap.message.toLowerCase().includes("test"))) {
     reasons.push("no passing test evidence");
   } else if (relatedGaps.length > 0) {

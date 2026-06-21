@@ -123,6 +123,30 @@ export interface ToolAdapterResult {
   taskLinked?: boolean;
 }
 
+export type ProofSnapshotSource = "git_status" | "session_git" | "unavailable";
+
+export type ProofFileState = "present" | "deleted" | "unreadable";
+
+export interface ProofFileFingerprint {
+  path: string;
+  state: ProofFileState;
+  size?: number;
+  sha256?: string;
+  reason?: string;
+}
+
+export interface ProofSnapshot {
+  schemaVersion: 1;
+  capturedAt: string;
+  gitCommit: string | null;
+  source: ProofSnapshotSource;
+  unavailableReason?: string;
+  changedFiles: string[];
+  hashAlgorithm: "sha256";
+  files: ProofFileFingerprint[];
+  fingerprintHash: string;
+}
+
 export interface VerificationRun {
   command: string;
   startedAt: string;
@@ -138,6 +162,12 @@ export interface VerificationRun {
    * Local-only, never uploaded. Omitted when there is no output.
    */
   outputExcerpt?: string;
+  /**
+   * Source-free fingerprints of the changed files at verification time. Stores
+   * file paths, sizes, and hashes only; raw stdout/stderr evidence remains in
+   * the evidence files above.
+   */
+  proofSnapshot?: ProofSnapshot;
 }
 
 export type VerificationProofKind = "test" | "build" | "typecheck" | "lint" | "install" | "unknown";
@@ -150,7 +180,14 @@ export type ReviewReadinessState =
   | "clean_worktree"
   | "unknown";
 
-export type ReviewProofStatus = "covered" | "missing" | "failed" | "not_required" | "unknown";
+export type ReviewProofStatus =
+  | "current"
+  | "stale"
+  | "covered"
+  | "missing"
+  | "failed"
+  | "not_required"
+  | "unknown";
 
 export interface ReviewFocusItem {
   rank: number;

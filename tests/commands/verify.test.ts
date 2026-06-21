@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
@@ -37,6 +37,44 @@ describe("verify command", () => {
       "verification_started",
       "verification_passed"
     ]);
+  });
+
+  it("records a source-free proof snapshot after verification finishes", async () => {
+    const repoRoot = await startedRepo({ gitChangedFiles: ["src/freshness.ts"] });
+    await mkdir(join(repoRoot, "src"), { recursive: true });
+    await writeFile(join(repoRoot, "src", "freshness.ts"), "export const proof = 1;\n", "utf8");
+
+    const result = await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('snapshot proof')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z"),
+      commandRunner: async () => ({
+        exitCode: 0,
+        stdout: "snapshot proof\n",
+        stderr: ""
+      })
+    });
+
+    expect(result.exitCode).toBe(0);
+
+    const current = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const snapshot = current.verificationRuns[0].proofSnapshot;
+    expect(snapshot).toMatchObject({
+      schemaVersion: 1,
+      capturedAt: "2026-06-13T12:00:00.000Z",
+      hashAlgorithm: "sha256",
+      changedFiles: ["src/freshness.ts"]
+    });
+    expect(snapshot.files).toContainEqual(
+      expect.objectContaining({
+        path: "src/freshness.ts",
+        state: "present",
+        size: "export const proof = 1;\n".length
+      })
+    );
+    expect(JSON.stringify(snapshot)).not.toContain("export const proof");
   });
 
   it("records a failing explicit command and returns non-zero after persistence", async () => {
@@ -92,6 +130,7 @@ describe("verify command", () => {
       await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
     );
     const run = current.verificationRuns[0];
+    expect(run.proofSnapshot).toBeDefined();
     await expect(readFile(join(repoRoot, run.stdoutPath), "utf8")).resolves.toBe(
       "STDOUT_NOISE: this should stay in evidence only\nSTDOUT_NOISE: second line\n"
     );
@@ -377,7 +416,9 @@ describe("verify command", () => {
   });
 });
 
-async function startedRepo(options: { scripts?: Record<string, string> } = {}): Promise<string> {
+async function startedRepo(
+  options: { scripts?: Record<string, string>; gitChangedFiles?: string[] } = {}
+): Promise<string> {
   const repoRoot = await createTempRepo();
   if (options.scripts) {
     await writeFile(
@@ -390,7 +431,12 @@ async function startedRepo(options: { scripts?: Record<string, string> } = {}): 
     repoRoot,
     task: "Capture verification",
     now: new Date("2026-06-13T11:30:00.000Z"),
-    git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
+    git: {
+      branch: "main",
+      commit: "abc123",
+      dirty: (options.gitChangedFiles ?? []).length > 0,
+      changedFiles: options.gitChangedFiles ?? []
+    },
     packageManager: "npm",
     verificationCommands: ["npm test"],
     tools: {

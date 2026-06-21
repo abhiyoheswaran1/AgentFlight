@@ -10,9 +10,9 @@ AgentFlight is used by developers, reviewers, and coding agent operators during 
 
 ## Product Purpose
 
-AgentFlight is a local-first review layer for coding agent sessions. It records what the coding agent did, captures verification evidence, shows failure excerpts, identifies proof gaps, and helps reviewers decide what should happen next.
+AgentFlight is a local-first review layer for coding agent sessions. It records what the coding agent did, captures verification evidence, shows failure excerpts, identifies proof gaps, checks whether proof is still fresh for the current changed files, and helps reviewers decide what should happen next.
 
-Success means a developer can trust the artifact quickly: what changed, what proof exists, what failed or is missing, and whether the work is ready for review.
+Success means a developer can trust the artifact quickly: what changed, what proof exists, whether that proof still applies, what failed or is missing, and whether the work is ready for review.
 
 ## Brand Personality
 
@@ -28,6 +28,7 @@ AgentFlight replay and report surfaces should not look like SaaS dashboard clutt
 
 - Treat evidence as the primary interface.
 - Make risk and readiness skimmable without hiding the underlying facts.
+- Flag stale proof directly instead of making reviewers infer it from timestamps.
 - Keep the surface calm until the evidence says something is wrong.
 - Prefer developer-native review patterns over decorative product metaphors.
 - Optimize for screenshots, handoffs, and incident-style reconstruction.

@@ -6,11 +6,13 @@ import { pathExists, readJsonFile } from "../core/fs-safe.js";
 import {
   compactCommandInText,
   formatCommandForDisplay,
+  formatProofStatusForDisplay,
   formatVerificationCountLine,
   formatVerificationFailureContext,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
+import { buildProofSnapshot } from "../core/proof-snapshot.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { getLatestRecordedReviewSummary, getLatestSessionEvent } from "../core/session.js";
@@ -44,18 +46,25 @@ export async function runStatusCommand(
 ): Promise<StatusCommandResult> {
   const format = normalizeStatusFormat(options.format);
   const session = await readCurrentSession(options.repoRoot);
+  const now = options.now ?? new Date();
   const config = await loadConfig(options.repoRoot);
   const changedFiles = filterChangedFiles(
     options.changedFiles ?? (await listChangedFiles(options.repoRoot)),
     { ignore: config?.changedFileFilters?.ignore }
   );
   const risk = analyzeRisk(changedFiles);
-  const duration = formatDuration(session.startedAt, options.now ?? new Date());
+  const duration = formatDuration(session.startedAt, now);
   const verification = buildVerificationSummary(session, {
     changedFilesCount: changedFiles.length,
     riskLevel: risk.level
   });
-  const review = buildReviewIntelligence({ changedFiles, risk, session });
+  const currentProofSnapshot = await buildProofSnapshot({
+    repoRoot: options.repoRoot,
+    changedFiles,
+    capturedAt: now.toISOString(),
+    gitCommit: session.git.commit ?? null
+  });
+  const review = buildReviewIntelligence({ changedFiles, risk, session, currentProofSnapshot });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
   const readinessReason = compactCommandInText(
     review.readiness.reason,
@@ -329,7 +338,7 @@ function formatReviewFocus(items: ReviewFocusItem[]): string {
   return items
     .map(
       (item) =>
-        `${item.rank}. ${item.file}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
+        `${item.rank}. ${item.file}\n   Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
 }

@@ -59,9 +59,16 @@ async function runResolvedVerificationCommands(
   let session = initialSession;
   const output = buildVerificationOutputHeader(commandResolution.profileName);
   const runs: VerificationRun[] = [];
+  const config = await loadConfig(options.repoRoot);
+  const changedFileIgnore = config?.changedFileFilters?.ignore ?? [];
 
   for (const commandArgs of commandResolution.commandSets) {
-    const result = await runSingleVerificationCommand(options, session, commandArgs);
+    const result = await runSingleVerificationCommand(
+      options,
+      session,
+      commandArgs,
+      changedFileIgnore
+    );
     session = result.session;
     runs.push(result.run);
     appendVerificationOutput(output, result.run);
@@ -82,7 +89,8 @@ function buildVerificationOutputHeader(profileName: string | undefined): string[
 async function runSingleVerificationCommand(
   options: VerifyCommandOptions,
   session: AgentFlightSession,
-  commandArgs: string[]
+  commandArgs: string[],
+  changedFileIgnore: string[]
 ): Promise<{ session: AgentFlightSession; run: VerificationRun }> {
   const command = formatCommand(commandArgs);
   let updatedSession = await appendSessionEvent(options.repoRoot, session, {
@@ -98,7 +106,8 @@ async function runSingleVerificationCommand(
       session: updatedSession,
       commandArgs,
       now: options.now,
-      commandRunner: options.commandRunner
+      commandRunner: options.commandRunner,
+      changedFileIgnore
     }),
     options
   );

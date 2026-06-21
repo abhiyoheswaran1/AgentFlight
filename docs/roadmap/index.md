@@ -20,6 +20,7 @@ for the active post-v0.6.0 priority order.
 - Session events and snapshots.
 - Review focus ranking.
 - Proof gap detection.
+- Source-free proof freshness checks.
 - Review readiness recommendations.
 - Config-driven generated/internal changed-file filters.
 
@@ -29,7 +30,7 @@ for the active post-v0.6.0 priority order.
 - Continued local handoff ergonomics.
 - First-run workspace hygiene polish.
 - Replay navigation and review ergonomics.
-- Proof guidance quality improvements.
+- Proof guidance ergonomics and clearer rerun paths.
 - Deeper ProjScan-enriched review hints once stable structured output exists.
 - More precise git diff stats without including full code by default.
 - Structured local automation surfaces where they make review artifacts easier

@@ -4,6 +4,7 @@ import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
+import { buildProofSnapshot } from "../core/proof-snapshot.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import {
@@ -32,6 +33,7 @@ export async function runResumeCommand(
   options: ResumeCommandOptions
 ): Promise<ResumeCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
+  const now = options.now ?? new Date();
   const config = await loadConfig(options.repoRoot);
   const changedFiles = filterChangedFiles(
     options.changedFiles ?? (await listChangedFiles(options.repoRoot)),
@@ -42,7 +44,13 @@ export async function runResumeCommand(
     changedFilesCount: changedFiles.length,
     riskLevel: risk.level
   });
-  const review = buildReviewIntelligence({ changedFiles, risk, session });
+  const currentProofSnapshot = await buildProofSnapshot({
+    repoRoot: options.repoRoot,
+    changedFiles,
+    capturedAt: now.toISOString(),
+    gitCommit: session.git.commit ?? null
+  });
+  const review = buildReviewIntelligence({ changedFiles, risk, session, currentProofSnapshot });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
   const openFirstReadiness =
     review.readiness.state === "clean_worktree"
@@ -56,7 +64,7 @@ export async function runResumeCommand(
       : null;
   const event = {
     type: "resume_generated",
-    timestamp: options.now ?? new Date(),
+    timestamp: now,
     title: "Resume prompt generated",
     metadata: {
       path: ".agentflight/current/resume-prompt.md"

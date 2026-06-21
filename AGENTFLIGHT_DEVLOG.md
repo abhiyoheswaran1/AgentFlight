@@ -4,6 +4,49 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Build Proof Freshness Review Contract
+
+Product direction:
+
+- The next useful trust layer is proof freshness: AgentFlight should not only
+  know that proof exists, but whether the changed files still match the state
+  that was verified.
+- Keep the feature local-first and source-free. Store file paths, sizes, hashes,
+  and proof metadata, not source text, diffs, cloud state, or CI contracts.
+
+Implemented locally:
+
+- `agentflight verify` now stores a source-free proof snapshot on each
+  verification run.
+- Review Intelligence now distinguishes current proof, stale proof, legacy
+  covered proof, missing proof, failed proof, not-required proof, and unknown
+  proof.
+- Stale proof creates an actionable proof gap and keeps readiness at
+  `Needs verification` until the proof command is rerun.
+- Status, snapshot metadata, Markdown reports, HTML replays, resume prompts,
+  handoffs, and history-derived readiness now agree on stale proof.
+- A bug pass found repeated non-git `git status` probing in test/non-git
+  sessions; verification proof capture now uses a fast local `.git` metadata
+  check when no changed files are known.
+
+Verification so far:
+
+- Red/green proof snapshot tests added for source-free fingerprints and stale
+  comparisons.
+- Red/green Review Intelligence tests added for current and stale proof.
+- Red/green command surface tests added for stale proof across status, snapshot,
+  report, replay, resume, handoff, and history.
+- Targeted suites passed:
+  `tests/core/proof-snapshot.test.ts`,
+  `tests/commands/verify.test.ts`,
+  `tests/core/review-intelligence.test.ts`,
+  `tests/commands/evidence-output.test.ts`,
+  `tests/renderers/markdown-report.test.ts`,
+  `tests/renderers/html-replay.test.ts`,
+  `tests/renderers/resume-prompt.test.ts`, and
+  `tests/commands/history.test.ts`.
+- Typecheck passed after each implementation phase.
+
 ### Release AgentFlight v0.7.1
 
 Release decision:

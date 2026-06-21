@@ -1,6 +1,7 @@
 import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
 import { getGitInfo } from "../core/git.js";
+import { buildProofSnapshot } from "../core/proof-snapshot.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { appendSessionEvent } from "../core/session.js";
@@ -24,6 +25,7 @@ export async function runSnapshotCommand(
   options: SnapshotCommandOptions
 ): Promise<SnapshotCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
+  const now = options.now ?? new Date();
   const config = await loadConfig(options.repoRoot);
   const rawGit = options.git ?? (await getGitInfo(options.repoRoot));
   const changedFiles = filterChangedFiles(rawGit.changedFiles, {
@@ -39,11 +41,22 @@ export async function runSnapshotCommand(
     changedFilesCount: git.changedFiles.length,
     riskLevel: risk.level
   });
-  const review = buildReviewIntelligence({ changedFiles: git.changedFiles, risk, session });
+  const currentProofSnapshot = await buildProofSnapshot({
+    repoRoot: options.repoRoot,
+    changedFiles: git.changedFiles,
+    capturedAt: now.toISOString(),
+    gitCommit: session.git.commit ?? null
+  });
+  const review = buildReviewIntelligence({
+    changedFiles: git.changedFiles,
+    risk,
+    session,
+    currentProofSnapshot
+  });
 
   const updatedSession = await appendSessionEvent(options.repoRoot, session, {
     type: "snapshot_created",
-    timestamp: options.now ?? new Date(),
+    timestamp: now,
     title: "Snapshot created",
     ...(options.note ? { message: options.note } : {}),
     metadata: {

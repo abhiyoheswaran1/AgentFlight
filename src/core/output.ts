@@ -1,4 +1,4 @@
-import type { ToolAdapterResult } from "../types/index.js";
+import type { ReviewProofStatus, ToolAdapterResult } from "../types/index.js";
 import { formatRepoRelativePath } from "./paths.js";
 
 export interface CommandOutput {
@@ -49,6 +49,19 @@ export function formatVerifyCommandForDisplay(command: string): string {
 export function compactCommandInText(text: string, command: string | undefined): string {
   if (!command) return text;
   return text.split(command).join(formatCommandForDisplay(command));
+}
+
+export function formatProofStatusForDisplay(status: ReviewProofStatus): string {
+  const labels: Record<ReviewProofStatus, string> = {
+    current: "current",
+    stale: "stale",
+    covered: "covered",
+    missing: "missing",
+    failed: "failed",
+    not_required: "not required",
+    unknown: "unknown"
+  };
+  return labels[status];
 }
 
 export function formatVerificationCountLine(counts: VerificationFailureCounts): string {

@@ -44,8 +44,8 @@ What you get:
 
 - `init` creates local `.agentflight/` project files and seeds detected verification commands into `.agentflight/config.json` when package scripts exist.
 - `start` records the task, git branch, commit, dirty state, package manager, and tool availability.
-- `verify` runs configured commands and stores stdout, stderr, exit code, timing, and pass/fail status. Use `verify -- <command>` for one explicit proof command.
-- `status` answers what changed, how risky it is, what proof exists, what proof is missing, and what to do next.
+- `verify` runs configured commands and stores stdout, stderr, exit code, timing, pass/fail status, and a source-free changed-file proof snapshot. Use `verify -- <command>` for one explicit proof command.
+- `status` answers what changed, how risky it is, whether proof is current or stale, what proof is missing, and what to do next.
 - `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.
 - `handoff` generates the local review packet: readiness, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 - `report` writes a Markdown proof report for review.
@@ -64,7 +64,7 @@ AgentFlight turns a loose coding agent session into a local proof trail:
 5. Run `handoff` when the work is ready to review or when you need a clear fix-before-sharing summary.
 6. Use `history --limit 1` to reopen the latest local handoff, report, replay, or resume artifact.
 
-The replay artifact is a self-contained local HTML file. It leads with the review verdict and a compact review path, then lays out risk, review focus, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record:
+The replay artifact is a self-contained local HTML file. It leads with the review verdict and a compact review path, then lays out risk, review focus, proof freshness, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record:
 
 ![AgentFlight replay: review verdict, risk, timeline, and verification evidence](docs/assets/agentflight-replay-scroll.gif)
 
@@ -104,9 +104,9 @@ Verification Evidence:
 
 Review first:
 1. src/auth/reset.ts
+   Proof: current
    Why: identity/session path
    Focus: Check session, permission, and identity boundaries first.
-   Suggested proof: npm test
 
 Proof gaps:
 - none
@@ -117,7 +117,7 @@ Latest snapshot:
 - Changed files: 3
 
 Readiness: Ready for review
-Reason: Verification evidence is present and no blocking proof gaps were detected.
+Reason: Verification evidence matches the observed review risk.
 
 Next action:
 Run agentflight handoff to generate the local review packet.
@@ -130,6 +130,7 @@ Run agentflight handoff to generate the local review packet.
 
 ## Review First
 1. src/auth/reset.ts
+   - Proof: current
    - Why: identity/session path
 
 ## Verification Evidence
@@ -217,6 +218,7 @@ The current AgentFlight release supports:
 - config-defined verification profiles for repeated local command groups
 - configurable generated/internal changed-file filters
 - verification evidence capture with `agentflight verify`
+- source-free proof freshness checks that flag stale proof when files change after verification
 - inline failure excerpts in terminal output, handoffs, reports, and replays, so failures are visible without opening evidence files
 - session events
 - snapshots with `agentflight snapshot --note "..."`
@@ -254,7 +256,7 @@ AgentFlight creates a local `.agentflight/` directory in your repo:
 - `.gitignore` keeps those runtime directories out of git while leaving
   `config.json` visible.
 
-Sessions store an `events` timeline with meaningful moments such as session start, verification attempts, snapshots, and generated artifacts. Reports include filenames and summaries by default, not full source diffs.
+Sessions store an `events` timeline with meaningful moments such as session start, verification attempts, snapshots, and generated artifacts. Verification runs also store source-free changed-file fingerprints so AgentFlight can tell whether proof is current or stale. Reports include filenames and summaries by default, not full source diffs.
 
 Runtime session data is ignored by the `.agentflight/.gitignore` created by
 `agentflight init`:
@@ -289,9 +291,9 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 
 - `agentflight init` initializes `.agentflight/` with safe writes, seeds detected verification commands into config when package scripts exist, and explains which local files are project config versus runtime evidence.
 - `agentflight start --task "..."` starts a session and writes the current handoff.
-- `agentflight status` summarizes changed files, risk, verification status, review focus, proof gaps, readiness, snapshots, and next action.
+- `agentflight status` summarizes changed files, risk, verification status, proof freshness, review focus, proof gaps, readiness, snapshots, and next action.
 - `agentflight status --format json` prints the same local status data as structured JSON for scripts.
-- `agentflight verify -- <command>` runs a proof command, records stdout/stderr evidence, and prints a small heartbeat while long commands are still active.
+- `agentflight verify -- <command>` runs a proof command, records stdout/stderr evidence plus source-free changed-file proof fingerprints, and prints a small heartbeat while long commands are still active.
 - `agentflight verify` runs commands from `.agentflight/config.json`.
 - `agentflight verify --profile <name>` runs a named local command group from `.agentflight/config.json`.
 - `agentflight snapshot --note "..."` records current git, risk, and verification state as a timeline event.

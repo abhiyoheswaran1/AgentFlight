@@ -2,6 +2,29 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.8.0] - 2026-06-21
+
+### Added
+
+- Verification runs now store source-free proof snapshots of changed files so
+  Review Intelligence can distinguish current proof from stale proof after a
+  file changes.
+- Status, Markdown reports, HTML replays, resume prompts, snapshots, and
+  handoffs now surface proof freshness as `current`, `stale`, `covered`,
+  `missing`, `failed`, `not required`, or `unknown`.
+
+### Changed
+
+- Review focus rows now include a compact proof-status line across local review
+  surfaces, making stale proof visible without opening session JSON.
+- Stale proof now creates an actionable proof gap and keeps readiness at
+  `Needs verification` until the relevant proof command is rerun.
+
+### Fixed
+
+- Verification proof capture now avoids slow git-status probing in non-git
+  sessions with no known changed files.
+
 ## [0.7.1] - 2026-06-21
 
 ### Fixed

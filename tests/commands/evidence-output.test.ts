@@ -5,13 +5,14 @@ import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
 import { saveSession, startSession } from "../../src/core/session.js";
 import { runHandoffCommand } from "../../src/commands/handoff.js";
+import { runHistoryCommand } from "../../src/commands/history.js";
 import { runReplayCommand } from "../../src/commands/replay.js";
 import { runReportCommand } from "../../src/commands/report.js";
 import { runResumeCommand } from "../../src/commands/resume.js";
 import { runSnapshotCommand } from "../../src/commands/snapshot.js";
 import { runStatusCommand } from "../../src/commands/status.js";
 import { runVerifyCommand } from "../../src/commands/verify.js";
-import type { AgentFlightSession, VerificationRun } from "../../src/types/index.js";
+import type { AgentFlightSession, ProofSnapshot, VerificationRun } from "../../src/types/index.js";
 
 describe("evidence-aware session outputs", () => {
   it("shows verification evidence and readiness in status", async () => {
@@ -162,6 +163,95 @@ describe("evidence-aware session outputs", () => {
     });
     expect(payload.nextAction).toContain("agentflight handoff");
     expect(status.output).not.toContain("diff --git");
+  });
+
+  it("marks stale proof in status and handoff when files changed after verification", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    const changedFile = "src/auth/reset.ts";
+    await mkdir(join(repoRoot, "src", "auth"), { recursive: true });
+    await writeFile(join(repoRoot, changedFile), "new proof state\n", "utf8");
+
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    ) as AgentFlightSession;
+    const stdoutPath = `.agentflight/evidence/${session.id}/verification-1.stdout.txt`;
+    const stderrPath = `.agentflight/evidence/${session.id}/verification-1.stderr.txt`;
+    await mkdir(join(repoRoot, ".agentflight", "evidence", session.id), { recursive: true });
+    await writeFile(join(repoRoot, stdoutPath), "old proof ok\n", "utf8");
+    await writeFile(join(repoRoot, stderrPath), "", "utf8");
+    await saveSession(repoRoot, {
+      ...session,
+      verificationRuns: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-13T12:00:00.000Z",
+          finishedAt: "2026-06-13T12:00:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath,
+          stderrPath,
+          proofSnapshot: proofSnapshot({ [changedFile]: "old" })
+        }
+      ]
+    });
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: [changedFile],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(status.output).toContain("Proof: stale");
+    expect(status.output).toContain("Verification proof is stale");
+    expect(status.output).toContain("Readiness: Needs verification");
+    expect(status.output).toContain("agentflight verify -- npm test");
+
+    const jsonStatus = await runStatusCommand({
+      repoRoot,
+      changedFiles: [changedFile],
+      format: "json"
+    });
+    const payload = JSON.parse(jsonStatus.output);
+    expect(payload.review.focus[0]).toMatchObject({
+      file: changedFile,
+      proofStatus: "stale"
+    });
+    expect(payload.review.proofGaps[0]).toMatchObject({
+      id: "stale-verification-proof",
+      relatedFiles: [changedFile]
+    });
+
+    const snapshot = await runSnapshotCommand({
+      repoRoot,
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: true,
+        changedFiles: [changedFile]
+      },
+      now: new Date("2026-06-13T12:05:30.000Z")
+    });
+    expect(snapshot.event.metadata?.review).toMatchObject({
+      readiness: "needs_verification",
+      proofGapCount: 1
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: [changedFile],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+    expect(handoff.exitCode).toBe(1);
+    expect(handoff.output).toContain("Proof: stale");
+    expect(handoff.output).toContain("Verification proof is stale");
+    expect(handoff.output).toContain("Fix before sharing:");
+    await expect(readFile(handoff.reportPath, "utf8")).resolves.toContain("- Proof: stale");
+    await expect(readFile(handoff.replayPath, "utf8")).resolves.toContain("Proof:</span> stale");
+    await expect(readFile(handoff.sessionResumePath, "utf8")).resolves.toContain("- Proof: stale");
+
+    const history = await runHistoryCommand({ repoRoot, limit: 1 });
+    expect(history.output).toContain("Recorded readiness: Needs verification");
   });
 
   it("rejects unsupported status formats", async () => {
@@ -1458,4 +1548,23 @@ function legacySessions(repoRoot: string): Array<{
       ]
     }
   ];
+}
+
+function proofSnapshot(fileHashes: Record<string, string>): ProofSnapshot {
+  const changedFiles = Object.keys(fileHashes).sort((left, right) => left.localeCompare(right));
+  return {
+    schemaVersion: 1,
+    capturedAt: "2026-06-13T12:00:05.000Z",
+    gitCommit: "abc123",
+    source: "git_status",
+    changedFiles,
+    hashAlgorithm: "sha256",
+    files: changedFiles.map((file) => ({
+      path: file,
+      state: "present",
+      size: 1,
+      sha256: fileHashes[file]!
+    })),
+    fingerprintHash: changedFiles.map((file) => `${file}:${fileHashes[file]}`).join("|")
+  };
 }

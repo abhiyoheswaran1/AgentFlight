@@ -1,5 +1,9 @@
 import { pathExists, writeTextFileSafe } from "../core/fs-safe.js";
-import { compactCommandInText, formatVerificationCountLine } from "../core/output.js";
+import {
+  compactCommandInText,
+  formatProofStatusForDisplay,
+  formatVerificationCountLine
+} from "../core/output.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { runReplayCommand } from "./replay.js";
 import { runReportCommand } from "./report.js";
@@ -52,6 +56,7 @@ interface HandoffVerificationRun {
 interface HandoffFocusItem {
   rank: number;
   file: string;
+  proofStatus: Parameters<typeof formatProofStatusForDisplay>[0];
   reasons: string[];
   suggestedReviewerFocus: string;
 }
@@ -317,7 +322,7 @@ function formatReviewFocus(items: HandoffFocusItem[]): string {
   return items
     .map(
       (item) =>
-        `${item.rank}. ${item.file}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}`
+        `${item.rank}. ${item.file}\n   Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}`
     )
     .join("\n");
 }
@@ -394,6 +399,7 @@ function parseFocusItem(value: unknown): HandoffFocusItem {
   return {
     rank: readNumber(item.rank, 0),
     file: readString(item.file, "unknown"),
+    proofStatus: parseProofStatus(item.proofStatus),
     reasons: readArray(item.reasons).map((reason) => readString(reason, "unknown")),
     suggestedReviewerFocus: readString(item.suggestedReviewerFocus, "Inspect manually.")
   };
@@ -425,4 +431,19 @@ function readString(value: unknown, fallback: string): string {
 
 function readNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function parseProofStatus(value: unknown): Parameters<typeof formatProofStatusForDisplay>[0] {
+  if (
+    value === "current" ||
+    value === "stale" ||
+    value === "covered" ||
+    value === "missing" ||
+    value === "failed" ||
+    value === "not_required" ||
+    value === "unknown"
+  ) {
+    return value;
+  }
+  return "unknown";
 }

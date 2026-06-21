@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ensureDir, tryWriteTextFileExclusive, writeTextFileSafe } from "./fs-safe.js";
+import { filterChangedFiles } from "./changed-files.js";
+import { ensureDir, pathExists, tryWriteTextFileExclusive, writeTextFileSafe } from "./fs-safe.js";
+import { listChangedFiles } from "./git.js";
 import { runCommand, type CommandRunner } from "./process.js";
+import { buildProofSnapshot } from "./proof-snapshot.js";
 import { resolveAgentFlightPaths } from "./paths.js";
 import { getVerificationRuns } from "./session.js";
 import {
@@ -9,7 +12,13 @@ import {
   getUnresolvedFailedRuns,
   normalizeCommandString
 } from "./verification-runs.js";
-import type { AgentFlightSession, RiskLevel, VerificationRun } from "../types/index.js";
+import type {
+  AgentFlightSession,
+  ProofSnapshot,
+  ProofSnapshotSource,
+  RiskLevel,
+  VerificationRun
+} from "../types/index.js";
 
 export {
   formatCommand,
@@ -28,6 +37,7 @@ export interface RunVerificationCommandOptions {
   commandArgs: string[];
   now?: (() => Date) | undefined;
   commandRunner?: CommandRunner | undefined;
+  changedFileIgnore?: string[] | undefined;
 }
 
 export type ReviewReadiness = "Ready for review" | "Not ready for review" | "Blocked" | "Unknown";
@@ -89,6 +99,12 @@ export async function runVerificationCommand(
   await writeTextFileSafe(join(options.repoRoot, stderrPath), result.stderr, { overwrite: true });
 
   const outputExcerpt = buildOutputExcerpt(result.stdout, result.stderr);
+  const proofSnapshot = await captureVerificationProofSnapshot({
+    repoRoot: options.repoRoot,
+    session: options.session,
+    capturedAt: finishedAt.toISOString(),
+    changedFileIgnore: options.changedFileIgnore ?? []
+  });
 
   const run: VerificationRun = {
     command: formatCommand(options.commandArgs),
@@ -101,8 +117,59 @@ export async function runVerificationCommand(
     stderrPath
   };
   if (outputExcerpt !== undefined) run.outputExcerpt = outputExcerpt;
+  if (proofSnapshot !== undefined) run.proofSnapshot = proofSnapshot;
 
   return run;
+}
+
+interface CaptureVerificationProofSnapshotOptions {
+  repoRoot: string;
+  session: AgentFlightSession;
+  capturedAt: string;
+  changedFileIgnore: string[];
+}
+
+async function captureVerificationProofSnapshot(
+  options: CaptureVerificationProofSnapshotOptions
+): Promise<ProofSnapshot | undefined> {
+  let changedFiles: string[];
+  let source: ProofSnapshotSource = "git_status";
+  let unavailableReason: string | undefined;
+
+  if (!(await pathExists(join(options.repoRoot, ".git")))) {
+    const fallbackChangedFiles = filterChangedFiles(options.session.git.changedFiles, {
+      ignore: options.changedFileIgnore
+    });
+    return buildProofSnapshot({
+      repoRoot: options.repoRoot,
+      changedFiles: fallbackChangedFiles,
+      capturedAt: options.capturedAt,
+      gitCommit: options.session.git.commit ?? null,
+      source: fallbackChangedFiles.length > 0 ? "session_git" : "unavailable",
+      unavailableReason: "Git metadata was not found at the repository root."
+    });
+  }
+
+  try {
+    changedFiles = filterChangedFiles(await listChangedFiles(options.repoRoot), {
+      ignore: options.changedFileIgnore
+    });
+  } catch (error) {
+    changedFiles = filterChangedFiles(options.session.git.changedFiles, {
+      ignore: options.changedFileIgnore
+    });
+    source = changedFiles.length > 0 ? "session_git" : "unavailable";
+    unavailableReason = `Unable to inspect current changed files: ${formatProofSnapshotError(error)}`;
+  }
+
+  return buildProofSnapshot({
+    repoRoot: options.repoRoot,
+    changedFiles,
+    capturedAt: options.capturedAt,
+    gitCommit: options.session.git.commit ?? null,
+    source,
+    unavailableReason
+  });
 }
 
 interface ReserveVerificationEvidencePathsOptions {
@@ -172,6 +239,10 @@ export function buildOutputExcerpt(
   }
 
   return excerpt;
+}
+
+function formatProofSnapshotError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export async function readVerificationStdout(

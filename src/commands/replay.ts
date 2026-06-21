@@ -3,6 +3,7 @@ import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
+import { buildProofSnapshot } from "../core/proof-snapshot.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import {
@@ -30,6 +31,7 @@ export async function runReplayCommand(
   options: ReplayCommandOptions
 ): Promise<ReplayCommandResult> {
   const session = await readCurrentSession(options.repoRoot);
+  const now = options.now ?? new Date();
   const config = await loadConfig(options.repoRoot);
   const changedFiles = filterChangedFiles(
     options.changedFiles ?? (await listChangedFiles(options.repoRoot)),
@@ -40,12 +42,18 @@ export async function runReplayCommand(
     changedFilesCount: changedFiles.length,
     riskLevel: risk.level
   });
-  const review = buildReviewIntelligence({ changedFiles, risk, session });
+  const currentProofSnapshot = await buildProofSnapshot({
+    repoRoot: options.repoRoot,
+    changedFiles,
+    capturedAt: now.toISOString(),
+    gitCommit: session.git.commit ?? null
+  });
+  const review = buildReviewIntelligence({ changedFiles, risk, session, currentProofSnapshot });
   const relativeReplayPath = `.agentflight/reports/${session.id}-replay.html`;
   const replayPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}-replay.html`;
   const event = {
     type: "replay_generated",
-    timestamp: options.now ?? new Date(),
+    timestamp: now,
     title: "Replay generated",
     metadata: buildArtifactReviewMetadata({
       path: relativeReplayPath,
