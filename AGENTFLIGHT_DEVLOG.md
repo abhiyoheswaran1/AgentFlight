@@ -4,6 +4,55 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Configure AgentFlight Repo Default Verification
+
+Dogfood finding:
+
+- After the repo was clean, `agentflight doctor` still warned that
+  `.agentflight/config.json` had no configured verification commands even though
+  package proof scripts existed. New repos now get seeded verification commands,
+  but AgentFlight's own tracked config predated that behavior.
+
+Team persona notes:
+
+- Product Maintainer: the project should dogfood the no-arg verification path it
+  recommends to real coding agent sessions.
+- CLI Engineer: use the existing config contract rather than adding command
+  behavior.
+- Verification Engineer: point no-arg `agentflight verify` at the same all-up
+  proof command maintainers already run.
+- Security Reviewer: keep the command local and repository-scoped.
+- Repo Steward: avoid source changes; this is tracked project configuration and
+  documentation only.
+
+Implemented locally:
+
+- Set AgentFlight's tracked `.agentflight/config.json` verification command to
+  `npm run verify`.
+
+Verification so far:
+
+- Red AgentFlight-captured `node dist/cli.js verify` failed because no command
+  was configured.
+- AgentFlight-captured `node dist/cli.js doctor` passed and reported
+  `.agentflight/config.json` has 1 configured verification command.
+- Green AgentFlight-captured `node dist/cli.js verify` passed by running the
+  configured `npm run verify` command with 22 files / 207 tests plus build.
+- AgentFlight-captured `npm run verify` passed with 22 files / 207 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on the new plan
+  Markdown file; Prettier fixed the file and the rerun passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  manual review sign-off recommended for large handoff risk.
+- ProjScan review returned the known scale-only `block` verdict with 47 current
+  changed files and maximum changed-file risk score `212.1 >= 80`; it reported
+  no risky functions, dependency changes, contract changes, new cycles, taint
+  flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-12-58-verification-report.md`.
+
 ### History Previous Artifact Guidance
 
 Dogfood finding:

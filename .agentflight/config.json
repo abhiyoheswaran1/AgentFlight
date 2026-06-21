@@ -13,7 +13,7 @@
     }
   },
   "verification": {
-    "commands": []
+    "commands": ["npm run verify"]
   },
   "changedFileFilters": {
     "ignore": [".projscan-memory/**"]
