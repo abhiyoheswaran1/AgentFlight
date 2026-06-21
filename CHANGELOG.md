@@ -41,6 +41,8 @@ All notable AgentFlight changes are documented here.
 - History now includes stable resume artifact paths when those artifacts exist.
 - History now suggests which existing local artifact to open first for each
   session.
+- History now surfaces the newest session's open-first action before the full
+  session list, reducing scan work in long local histories.
 - History now says `Open first: none yet` when no handoff, report, or replay
   artifact exists.
 - HTML replay now reserves urgent failed-run navigation for unresolved failed

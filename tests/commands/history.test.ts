@@ -114,6 +114,14 @@ describe("history command", () => {
     const history = await runHistoryCommand({ repoRoot, limit: 5 });
 
     expect(history.output).toContain("AgentFlight history");
+    expect(history.output).toContain("Latest action:");
+    expect(history.output).toContain(
+      `Open first: replay .agentflight/reports/${newer.session.id}-replay.html`
+    );
+    expect(history.output).toContain("Task: Newer review");
+    expect(history.output.indexOf("Latest action:")).toBeLessThan(
+      history.output.indexOf("Recent sessions:")
+    );
     expect(history.output.indexOf("Newer review")).toBeLessThan(
       history.output.indexOf("Older review")
     );

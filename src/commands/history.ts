@@ -52,20 +52,40 @@ async function formatSessions(
   currentSessionId: string | null
 ): Promise<string> {
   if (sessions.length === 0) {
-    return `No AgentFlight sessions recorded yet.
-
-Next action:
-Run agentflight start --task "Describe the task" to begin a local session.`;
+    return formatEmptyHistory();
   }
 
+  const latestSession = sessions[0];
+  if (!latestSession) {
+    return formatEmptyHistory();
+  }
+
+  const latestAction = await formatLatestAction(repoRoot, latestSession);
   const lines = await Promise.all(
     sessions.map(async (session) =>
       formatSession(repoRoot, session, session.id === currentSessionId)
     )
   );
 
-  return `Recent sessions:
+  return `${latestAction}
+
+Recent sessions:
 ${lines.join("\n")}`;
+}
+
+function formatEmptyHistory(): string {
+  return `No AgentFlight sessions recorded yet.
+
+Next action:
+Run agentflight start --task "Describe the task" to begin a local session.`;
+}
+
+async function formatLatestAction(repoRoot: string, session: SessionSummary): Promise<string> {
+  const artifacts = await readHistoryArtifacts(repoRoot, session.id);
+
+  return `Latest action:
+Open first: ${chooseOpenFirstArtifact(session, artifacts)}
+Task: ${session.taskTitle}`;
 }
 
 async function formatSession(
@@ -75,16 +95,7 @@ async function formatSession(
 ): Promise<string> {
   const marker = isCurrent ? " [current]" : "";
   const branch = session.branch ?? "unknown";
-  const handoffPath = await formatArtifactPath(repoRoot, session.id, "handoff.md");
-  const reportPath = await formatArtifactPath(repoRoot, session.id, "proof.md");
-  const replayPath = await formatArtifactPath(repoRoot, session.id, "replay.html");
-  const resumePath = await formatArtifactPath(repoRoot, session.id, "resume.md");
-  const artifacts = {
-    handoff: handoffPath,
-    report: reportPath,
-    replay: replayPath,
-    resume: resumePath
-  };
+  const artifacts = await readHistoryArtifacts(repoRoot, session.id);
 
   return `- ${formatStartedAt(session.startedAt)}${marker} ${session.taskTitle}
   ID: ${session.id}
@@ -97,10 +108,10 @@ async function formatSession(
   })}
   Recorded readiness: ${formatReadiness(session)}
   Open first: ${chooseOpenFirstArtifact(session, artifacts)}
-  Handoff: ${handoffPath}
-  Report: ${reportPath}
-  Replay: ${replayPath}
-  Resume: ${resumePath}`;
+  Handoff: ${artifacts.handoff}
+  Report: ${artifacts.report}
+  Replay: ${artifacts.replay}
+  Resume: ${artifacts.resume}`;
 }
 
 function formatReadiness(session: SessionSummary): string {
@@ -119,6 +130,18 @@ interface HistoryArtifacts {
   report: string;
   replay: string;
   resume: string;
+}
+
+async function readHistoryArtifacts(
+  repoRoot: string,
+  sessionId: string
+): Promise<HistoryArtifacts> {
+  return {
+    handoff: await formatArtifactPath(repoRoot, sessionId, "handoff.md"),
+    report: await formatArtifactPath(repoRoot, sessionId, "proof.md"),
+    replay: await formatArtifactPath(repoRoot, sessionId, "replay.html"),
+    resume: await formatArtifactPath(repoRoot, sessionId, "resume.md")
+  };
 }
 
 type PrimaryArtifact = "handoff" | "report" | "replay";
