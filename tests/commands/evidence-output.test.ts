@@ -425,7 +425,18 @@ describe("evidence-aware session outputs", () => {
       repoRoot,
       changedFiles: ["docs/development/verification.md"]
     });
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    const sessionResumePath = join(repoRoot, ".agentflight", "reports", `${session.id}-resume.md`);
 
+    expect(resume.sessionResumePath).toBe(sessionResumePath);
+    await expect(readFile(resume.resumePath, "utf8")).resolves.toContain(
+      "Continue this AgentFlight-recorded coding session safely."
+    );
+    await expect(readFile(resume.sessionResumePath, "utf8")).resolves.toContain(
+      "Continue this AgentFlight-recorded coding session safely."
+    );
     expect(resume.output).toContain("Latest Snapshot");
     expect(resume.output).toContain("Ready to hand off");
     expect(resume.output).toContain("Verification State");
@@ -486,6 +497,7 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.replayPath).toContain("-replay.html");
     expect(handoff.resumePath).toContain(".agentflight/current/resume-prompt.md");
     expect(handoff.sessionHandoffPath).toContain("-handoff.md");
+    expect(handoff.sessionResumePath).toContain("-resume.md");
     await expect(readFile(handoff.handoffPath, "utf8")).resolves.toContain("AgentFlight handoff");
     await expect(readFile(handoff.sessionHandoffPath, "utf8")).resolves.toContain(
       "AgentFlight handoff"
@@ -504,6 +516,8 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("Resume:");
     expect(handoff.output).toContain("- Handoff: .agentflight/reports/");
     expect(handoff.output).toContain("- Current handoff: .agentflight/current/handoff.md");
+    expect(handoff.output).toContain("- Resume: .agentflight/reports/");
+    expect(handoff.output).toContain("- Current resume: .agentflight/current/resume-prompt.md");
     expect(handoff.output).toContain(".agentflight/current/handoff.md");
     expect(handoff.output).toContain(".agentflight/reports/");
     expect(handoff.output).not.toContain(repoRoot);

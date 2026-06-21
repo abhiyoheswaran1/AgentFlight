@@ -20,6 +20,7 @@ export interface HandoffCommandResult {
   reportPath: string;
   replayPath: string;
   resumePath: string;
+  sessionResumePath: string;
 }
 
 interface HandoffStatus {
@@ -99,7 +100,8 @@ export async function runHandoffCommand(
     currentHandoffPath: formatRepoRelativePath(options.repoRoot, handoffPath),
     reportPath: formatRepoRelativePath(options.repoRoot, report.reportPath),
     replayPath: formatRepoRelativePath(options.repoRoot, replay.replayPath),
-    resumePath: formatRepoRelativePath(options.repoRoot, resume.resumePath)
+    resumePath: formatRepoRelativePath(options.repoRoot, resume.sessionResumePath),
+    currentResumePath: formatRepoRelativePath(options.repoRoot, resume.resumePath)
   });
   await writeTextFileSafe(handoffPath, output, { overwrite: true });
   await writeTextFileSafe(sessionHandoffPath, output, { overwrite: true });
@@ -111,7 +113,8 @@ export async function runHandoffCommand(
     sessionHandoffPath,
     reportPath: report.reportPath,
     replayPath: replay.replayPath,
-    resumePath: resume.resumePath
+    resumePath: resume.resumePath,
+    sessionResumePath: resume.sessionResumePath
   };
 }
 
@@ -132,6 +135,7 @@ function renderHandoff(input: {
   reportPath: string;
   replayPath: string;
   resumePath: string;
+  currentResumePath: string;
 }): string {
   const readiness = input.status.review.readiness;
   const ready = isReadyForSharing(readiness);
@@ -175,6 +179,7 @@ Artifacts:
 - Report: ${input.reportPath}
 - Replay: ${input.replayPath}
 - Resume: ${input.resumePath}
+- Current resume: ${input.currentResumePath}
 
 Local only: no upload, no telemetry, no automatic PR comment.
 `;

@@ -78,6 +78,7 @@ async function formatSession(
   const handoffPath = await formatArtifactPath(repoRoot, session.id, "handoff.md");
   const reportPath = await formatArtifactPath(repoRoot, session.id, "proof.md");
   const replayPath = await formatArtifactPath(repoRoot, session.id, "replay.html");
+  const resumePath = await formatArtifactPath(repoRoot, session.id, "resume.md");
 
   return `- ${formatStartedAt(session.startedAt)}${marker} ${session.taskTitle}
   ID: ${session.id}
@@ -91,7 +92,8 @@ async function formatSession(
   Readiness: ${formatReadiness(session)}
   Handoff: ${handoffPath}
   Report: ${reportPath}
-  Replay: ${replayPath}`;
+  Replay: ${replayPath}
+  Resume: ${resumePath}`;
 }
 
 function formatReadiness(session: SessionSummary): string {
@@ -108,7 +110,7 @@ function formatChangedFiles(count: number): string {
 async function formatArtifactPath(
   repoRoot: string,
   sessionId: string,
-  suffix: "handoff.md" | "proof.md" | "replay.html"
+  suffix: "handoff.md" | "proof.md" | "replay.html" | "resume.md"
 ): Promise<string> {
   const artifactPath = `${resolveAgentFlightPaths(repoRoot).reports}/${sessionId}-${suffix}`;
   return (await pathExists(artifactPath))

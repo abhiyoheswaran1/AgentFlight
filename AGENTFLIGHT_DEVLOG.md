@@ -4,6 +4,65 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Resume Artifact Discovery
+
+Research signal:
+
+- Resume prompts were still current-only artifacts at
+  `.agentflight/current/resume-prompt.md`. Since resume is part of the local
+  handoff packet, prior sessions should keep a stable continuation prompt just
+  like report, replay, and handoff artifacts.
+
+Persona readout:
+
+- Product Maintainer: the full local review packet should be recoverable from
+  history, including the continuation prompt.
+- CLI Engineer: preserve the current resume pointer and add a stable
+  session-specific copy instead of changing the resume command surface.
+- Security Reviewer: keep paths local and repo-relative; no upload, sync, or
+  PR comment.
+- Docs and DX Writer: describe history as finding handoff/report/replay/resume
+  artifacts.
+
+Implemented locally:
+
+- `agentflight resume` now writes both
+  `.agentflight/current/resume-prompt.md` and
+  `.agentflight/reports/<session-id>-resume.md`.
+- `agentflight handoff` now lists the stable resume path plus the current
+  resume pointer.
+- `agentflight history` now shows a `Resume:` line and reports `missing` when
+  no stable resume artifact exists.
+- README and changelog copy now describe history as showing
+  handoff/report/replay/resume artifact paths.
+
+Verification:
+
+- Red focused tests failed because no session-specific resume was written and
+  history had no `Resume:` line.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/commands/evidence-output.test.ts tests/commands/history.test.ts`
+  passed: 2 files / 31 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 165 tests, plus build.
+- `npm run format:check` passed after a narrow Prettier write on
+  `tests/commands/evidence-output.test.ts` and `tests/commands/history.test.ts`.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 132 changed files, maximum
+  changed-file risk score `199.1`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-03-22-verification-report.md`.
+- Built CLI smoke: `agentflight handoff` wrote
+  `.agentflight/reports/af-20260621-011503-surface-resume-artifacts-in-history-output-resume.md`,
+  and `agentflight history --limit 1` listed stable handoff/report/replay/resume
+  paths for the current session.
+
 ### History Handoff Artifact Discovery
 
 Research signal:

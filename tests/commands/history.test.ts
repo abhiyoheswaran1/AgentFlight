@@ -105,6 +105,11 @@ describe("history command", () => {
       "AgentFlight handoff",
       "utf8"
     );
+    await writeFile(
+      join(repoRoot, ".agentflight", "reports", `${newer.session.id}-resume.md`),
+      "Continue this AgentFlight-recorded coding session safely.",
+      "utf8"
+    );
 
     const history = await runHistoryCommand({ repoRoot, limit: 5 });
 
@@ -119,6 +124,7 @@ describe("history command", () => {
     expect(history.output).toContain(
       `Handoff: .agentflight/reports/${newer.session.id}-handoff.md`
     );
+    expect(history.output).toContain(`Resume: .agentflight/reports/${newer.session.id}-resume.md`);
     expect(history.output).toContain("Readiness: not recorded");
     expect(history.output).toContain(`Report: .agentflight/reports/${newer.session.id}-proof.md`);
     expect(history.output).toContain(
@@ -127,6 +133,7 @@ describe("history command", () => {
     expect(history.output).toContain(`Report: missing`);
     expect(history.output).toContain(`Handoff: missing`);
     expect(history.output).toContain(`Replay: missing`);
+    expect(history.output).toContain(`Resume: missing`);
     expect(history.output).not.toContain(repoRoot);
     expect(history.output).toContain(older.session.id);
   });

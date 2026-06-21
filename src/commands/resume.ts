@@ -20,6 +20,7 @@ export interface ResumeCommandOptions {
 export interface ResumeCommandResult {
   output: string;
   resumePath: string;
+  sessionResumePath: string;
 }
 
 export async function runResumeCommand(
@@ -61,13 +62,17 @@ export async function runResumeCommand(
     verificationState: formatVerificationCountLine(verification),
     nextAction: review.readiness.nextAction
   });
-  const resumePath = resolveAgentFlightPaths(options.repoRoot).currentResumePrompt;
+  const paths = resolveAgentFlightPaths(options.repoRoot);
+  const resumePath = paths.currentResumePrompt;
+  const sessionResumePath = `${paths.reports}/${session.id}-resume.md`;
 
   await writeTextFileSafe(resumePath, prompt, { overwrite: true });
+  await writeTextFileSafe(sessionResumePath, prompt, { overwrite: true });
   await saveSession(options.repoRoot, updatedSession);
 
   return {
     output: prompt,
-    resumePath
+    resumePath,
+    sessionResumePath
   };
 }

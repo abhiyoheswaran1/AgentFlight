@@ -12,6 +12,9 @@ All notable AgentFlight changes are documented here.
   artifact paths without search indexing, export, sync, or session switching.
 - Added session-specific handoff artifacts under `.agentflight/reports/` so
   `agentflight history` can point to stable handoff packets from prior sessions.
+- Added session-specific resume artifacts under `.agentflight/reports/` so
+  `agentflight history` can point to stable continuation prompts from prior
+  sessions.
 - Added post-v0.6.0 user-research findings and a v0.6.0 website update prompt focused on the local handoff workflow.
 - Added a post-v0.6.0 product direction note that keeps local handoff, first-run
   workspace hygiene, replay ergonomics, proof guidance, and explainable ranking
@@ -33,6 +36,7 @@ All notable AgentFlight changes are documented here.
   prior sessions.
 - History now includes stable handoff artifact paths alongside report and
   replay paths when those artifacts exist.
+- History now includes stable resume artifact paths when those artifacts exist.
 - HTML replay now reserves urgent failed-run navigation for unresolved failed
   verification while keeping historical failed runs visible in the ledger.
 - Ready handoffs no longer inline historical failed verification excerpts once
