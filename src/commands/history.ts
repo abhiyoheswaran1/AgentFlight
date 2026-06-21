@@ -1,4 +1,5 @@
 import { pathExists } from "../core/fs-safe.js";
+import { formatVerificationCountLine } from "../core/output.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { listSessionSummaries } from "../core/session.js";
 import { readCurrentSession } from "./status.js";
@@ -80,7 +81,12 @@ async function formatSession(
   return `- ${formatStartedAt(session.startedAt)}${marker} ${session.taskTitle}
   ID: ${session.id}
   Branch: ${branch}${session.dirty ? " (dirty at start)" : ""}
-  Verification: ${session.verificationPassed} passed, ${session.verificationFailed} failed
+  Verification: ${formatVerificationCountLine({
+    passed: session.verificationPassed,
+    failed: session.verificationFailed,
+    unresolvedFailed: session.verificationUnresolvedFailed,
+    resolvedFailed: session.verificationResolvedFailed
+  })}
   Readiness: ${formatReadiness(session)}
   Report: ${reportPath}
   Replay: ${replayPath}`;

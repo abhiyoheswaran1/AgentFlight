@@ -4,6 +4,64 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Resolved Failure Wording
+
+Dogfood finding:
+
+- `agentflight history` still listed total failed verification counts for ready
+  sessions. After the status/resume fixes, that made the session list look more
+  alarming than the actual unresolved proof state.
+
+Persona readout:
+
+- Product Maintainer: history should help engineers pick the right artifact
+  without making resolved red/green work look currently blocked.
+- CLI Engineer: keep history read-only, local, and text-first; reuse shared
+  count formatting.
+- Verification Engineer: derive unresolved/resolved counts from stored runs
+  without mutating session JSON.
+- Repo Steward: avoid adding a dependency cycle between session loading and
+  verification summaries.
+
+Implemented locally:
+
+- Added dependency-free verification-run helpers for command parsing,
+  normalization, and unresolved failed-run detection.
+- Re-exported those helpers from `src/core/verification.ts` so existing imports
+  remain compatible.
+- Session summaries now carry unresolved and resolved failed-run counts.
+- `agentflight history` now formats verification counts with the shared
+  unresolved/resolved count helper.
+- Bug pass: split the extracted command parser into small state helpers after
+  ProjScan flagged the newly added parser as high complexity.
+
+Verification so far:
+
+- Red history regression failed because resolved historical failures still
+  rendered without unresolved/resolved context.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/commands/history.test.ts tests/core/verification.test.ts`
+  passed: 2 files / 16 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 165 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- Initial ProjScan preflight flagged one new high-complexity parser function;
+  the parser was split and rerun.
+- `npx projscan@latest preflight --mode before_commit --format json` then
+  returned only the existing accumulated branch-scale caution: 126 changed
+  files, maximum changed-file risk score `199.1`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-02-59-verification-report.md`.
+- Built CLI smoke: `agentflight history --limit 1` showed the current session as
+  ready with report/replay paths and resolved-failure context:
+  `16 passed, 1 failed (0 unresolved, 1 resolved)`.
+
 ### Resume Resolved Failure Wording
 
 Dogfood finding:

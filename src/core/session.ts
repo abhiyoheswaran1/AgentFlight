@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { writeJsonFileSafe, writeTextFileSafe } from "./fs-safe.js";
 import { resolveAgentFlightPaths } from "./paths.js";
+import { getUnresolvedFailedRuns } from "./verification-runs.js";
 import type {
   AgentFlightSession,
   GitInfo,
@@ -48,6 +49,8 @@ export interface SessionSummary {
   dirty: boolean;
   verificationPassed: number;
   verificationFailed: number;
+  verificationUnresolvedFailed: number;
+  verificationResolvedFailed: number;
   latestReview?: SessionReviewSummary;
   sessionPath: string;
 }
@@ -241,6 +244,9 @@ async function loadSessionSummary(sessionPath: string): Promise<LoadedSessionSum
 
 function summarizeSession(session: AgentFlightSession, sessionPath: string): SessionSummary {
   const runs = getVerificationRuns(session);
+  const passed = runs.filter((run) => run.status === "passed").length;
+  const failed = runs.filter((run) => run.status === "failed").length;
+  const unresolvedFailed = getUnresolvedFailedRuns(runs).length;
   const summary: SessionSummary = {
     id: session.id,
     taskTitle: session.task.title,
@@ -248,8 +254,10 @@ function summarizeSession(session: AgentFlightSession, sessionPath: string): Ses
     branch: session.git.branch ?? null,
     commit: session.git.commit ?? null,
     dirty: session.git.dirty,
-    verificationPassed: runs.filter((run) => run.status === "passed").length,
-    verificationFailed: runs.filter((run) => run.status === "failed").length,
+    verificationPassed: passed,
+    verificationFailed: failed,
+    verificationUnresolvedFailed: unresolvedFailed,
+    verificationResolvedFailed: failed - unresolvedFailed,
     sessionPath
   };
   const latestReview = getLatestRecordedReviewSummary(session);

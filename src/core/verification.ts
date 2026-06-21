@@ -4,7 +4,19 @@ import { ensureDir, writeTextFileSafe } from "./fs-safe.js";
 import { runCommand, type CommandRunner } from "./process.js";
 import { resolveAgentFlightPaths } from "./paths.js";
 import { getVerificationRuns } from "./session.js";
+import {
+  formatCommand,
+  getUnresolvedFailedRuns,
+  normalizeCommandString
+} from "./verification-runs.js";
 import type { AgentFlightSession, RiskLevel, VerificationRun } from "../types/index.js";
+
+export {
+  formatCommand,
+  getUnresolvedFailedRuns,
+  normalizeCommandString,
+  parseCommandLine
+} from "./verification-runs.js";
 
 export interface PackageJsonLike {
   scripts?: Record<string, string>;
@@ -48,55 +60,6 @@ export function detectVerificationCommands(packageJson: PackageJsonLike): string
   if (scripts.build) commands.push("npm run build");
 
   return commands;
-}
-
-export function parseCommandLine(command: string): string[] {
-  const args: string[] = [];
-  let current = "";
-  let quote: "'" | '"' | null = null;
-  let escaping = false;
-
-  for (const char of command) {
-    if (escaping) {
-      current += char;
-      escaping = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      escaping = true;
-      continue;
-    }
-
-    if (quote) {
-      if (char === quote) {
-        quote = null;
-      } else {
-        current += char;
-      }
-      continue;
-    }
-
-    if (char === "'" || char === '"') {
-      quote = char;
-      continue;
-    }
-
-    if (/\s/.test(char)) {
-      if (current.length > 0) {
-        args.push(current);
-        current = "";
-      }
-      continue;
-    }
-
-    current += char;
-  }
-
-  if (escaping) current += "\\";
-  if (current.length > 0) args.push(current);
-
-  return args;
 }
 
 export async function runVerificationCommand(
@@ -221,42 +184,6 @@ export function buildVerificationSummary(
     readiness,
     nextAction: buildNextAction(readiness, missingCommands, options.riskLevel)
   };
-}
-
-export function normalizeCommandString(command: string): string {
-  const parsed = parseCommandLine(command);
-  return parsed.length > 0 ? formatCommand(parsed) : command.trim();
-}
-
-export function getUnresolvedFailedRuns(runs: VerificationRun[]): VerificationRun[] {
-  const laterPassedCommands = new Set<string>();
-  const unresolved: VerificationRun[] = [];
-
-  for (let index = runs.length - 1; index >= 0; index -= 1) {
-    const run = runs[index];
-    if (!run) continue;
-
-    const command = normalizeCommandString(run.command);
-    if (run.status === "passed") {
-      laterPassedCommands.add(command);
-      continue;
-    }
-
-    if (!laterPassedCommands.has(command)) {
-      unresolved.unshift(run);
-    }
-  }
-
-  return unresolved;
-}
-
-export function formatCommand(args: string[]): string {
-  return args.map(formatCommandArg).join(" ");
-}
-
-function formatCommandArg(arg: string): string {
-  if (/^[A-Za-z0-9_./:=@+-]+$/.test(arg)) return arg;
-  return JSON.stringify(arg);
 }
 
 function buildVerificationGaps(

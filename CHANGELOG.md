@@ -27,6 +27,8 @@ All notable AgentFlight changes are documented here.
   verification from historical failed runs that later passed.
 - Resume prompts now use the same unresolved-versus-resolved verification count
   wording as the other review surfaces.
+- History now shows unresolved-versus-resolved failed verification counts for
+  prior sessions.
 - HTML replay now reserves urgent failed-run navigation for unresolved failed
   verification while keeping historical failed runs visible in the ledger.
 - Ready handoffs no longer inline historical failed verification excerpts once
