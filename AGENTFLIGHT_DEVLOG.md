@@ -4,6 +4,56 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Show Latest Artifact in Clean Resume
+
+Dogfood finding:
+
+- After clean handoff, `status` and `history` now showed the replay path
+  directly, but `resume` still omitted the local artifact shortcut. That made a
+  continuation prompt less useful for reviewing or restarting agentic
+  engineering work.
+
+Team persona notes:
+
+- Product Maintainer: clean resume should carry the same review doorway as
+  status and history.
+- CLI Engineer: use the shared artifact helper and keep resume text-only.
+- Verification Engineer: cover the clean-worktree resume path after handoff
+  artifacts exist.
+- Docs and DX Writer: include the familiar `Open first:` line without expanding
+  the prompt into a tutorial.
+- Security Reviewer: keep paths repo-relative and local-only.
+
+Implemented locally:
+
+- Added `readOpenFirstArtifact` to the shared artifact helper.
+- Clean-worktree `agentflight resume` now includes the repo-relative
+  `Open first:` artifact under Review Readiness and Next Recommended Action when
+  current artifacts exist.
+- `agentflight status` now uses the same helper for its clean open-first line.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  failed because clean resume did not include the replay artifact path.
+- Green AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  passed with 1 file / 34 tests.
+- AgentFlight-captured `npm run verify` passed with 22 files / 207 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on the new plan
+  Markdown file and resume renderer formatting; Prettier fixed the files and
+  the rerun passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  manual review sign-off recommended for large handoff risk.
+- ProjScan review returned the known scale-only `block` verdict with 49 current
+  changed files and maximum changed-file risk score `212.1 >= 80`; it reported
+  no risky functions, dependency changes, contract changes, new cycles, taint
+  flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-13-33-verification-report.md`.
+
 ### Prefer Configured Proof in Start Output
 
 Dogfood finding:

@@ -1,3 +1,4 @@
+import { readOpenFirstArtifact } from "../core/artifacts.js";
 import { writeTextFileSafe } from "../core/fs-safe.js";
 import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
@@ -5,7 +6,11 @@ import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
-import { appendSessionEvent, getLatestSessionEvent } from "../core/session.js";
+import {
+  appendSessionEvent,
+  getLatestRecordedReviewSummary,
+  getLatestSessionEvent
+} from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { formatVerificationCountLine } from "../core/output.js";
 import { renderResumePrompt } from "../renderers/resume-prompt.js";
@@ -39,6 +44,14 @@ export async function runResumeCommand(
   });
   const review = buildReviewIntelligence({ changedFiles, risk, session });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
+  const cleanOpenFirst =
+    review.readiness.state === "clean_worktree"
+      ? await readOpenFirstArtifact(
+          options.repoRoot,
+          session.id,
+          getLatestRecordedReviewSummary(session)?.state
+        )
+      : null;
   const event = {
     type: "resume_generated",
     timestamp: options.now ?? new Date(),
@@ -58,6 +71,7 @@ export async function runResumeCommand(
     reviewFocus: review.focus.slice(0, 5),
     proofGaps: review.proofGaps,
     readiness: review.readiness,
+    openFirstArtifact: cleanOpenFirst ?? undefined,
     latestSnapshotNote: latestSnapshot?.message,
     verificationState: formatVerificationCountLine(verification),
     nextAction: review.readiness.nextAction

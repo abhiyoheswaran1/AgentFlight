@@ -226,6 +226,17 @@ describe("evidence-aware session outputs", () => {
       "Start a new AgentFlight session when you begin the next task."
     );
 
+    const resume = await runResumeCommand({
+      repoRoot,
+      changedFiles: [],
+      now: new Date("2026-06-13T12:06:00.000Z")
+    });
+    expect(resume.output).toContain(`- Open first: replay ${replayPath}`);
+    expect(resume.output).toContain(`## Next Recommended Action
+Open first: replay ${replayPath}
+Start a new AgentFlight session when you begin the next task.`);
+    expect(resume.output).not.toContain(handoff.replayPath);
+
     const jsonStatus = await runStatusCommand({
       repoRoot,
       changedFiles: [],

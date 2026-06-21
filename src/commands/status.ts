@@ -1,4 +1,4 @@
-import { chooseOpenFirstArtifact, readReviewArtifacts } from "../core/artifacts.js";
+import { readOpenFirstArtifact } from "../core/artifacts.js";
 import { listChangedFiles } from "../core/git.js";
 import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
@@ -65,7 +65,11 @@ export async function runStatusCommand(
   );
   const cleanOpenFirst =
     review.readiness.state === "clean_worktree"
-      ? await formatCleanOpenFirst(options.repoRoot, session)
+      ? await readOpenFirstArtifact(
+          options.repoRoot,
+          session.id,
+          getLatestRecordedReviewSummary(session)?.state
+        )
       : null;
   const statusTextNextAction =
     review.readiness.state === "clean_worktree"
@@ -208,18 +212,6 @@ function formatLatestSnapshot(event: SessionEvent | null): string {
   return `- ${event.timestamp}${note}
 - Risk: ${riskLevel}
 - Changed files: ${changedFiles}`;
-}
-
-async function formatCleanOpenFirst(
-  repoRoot: string,
-  session: AgentFlightSession
-): Promise<string | null> {
-  const artifacts = await readReviewArtifacts(repoRoot, session.id);
-  const openFirst = chooseOpenFirstArtifact(
-    getLatestRecordedReviewSummary(session)?.state,
-    artifacts
-  );
-  return openFirst === "none yet" ? null : openFirst;
 }
 
 function formatCleanStatusNextAction(openFirst: string | null): string {

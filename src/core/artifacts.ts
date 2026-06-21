@@ -23,6 +23,16 @@ export async function readReviewArtifacts(
   };
 }
 
+export async function readOpenFirstArtifact(
+  repoRoot: string,
+  sessionId: string,
+  readiness: ReviewReadinessState | undefined
+): Promise<string | null> {
+  const artifacts = await readReviewArtifacts(repoRoot, sessionId);
+  const openFirst = chooseOpenFirstArtifact(readiness, artifacts);
+  return openFirst === "none yet" ? null : openFirst;
+}
+
 export function chooseOpenFirstArtifact(
   readiness: ReviewReadinessState | undefined,
   artifacts: ReviewArtifacts

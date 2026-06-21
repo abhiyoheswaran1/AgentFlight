@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Clean-worktree `agentflight resume` prompts now include the latest local
+  `Open first:` artifact path when current report/replay/handoff evidence
+  exists.
 - Clean-worktree `agentflight status` now shows the latest local `Open first:`
   artifact path when current report/replay/handoff evidence exists.
 - `agentflight history` now shows the nearest previous local artifact when the

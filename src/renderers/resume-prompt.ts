@@ -17,6 +17,7 @@ export interface ResumePromptInput {
   reviewFocus?: ReviewFocusItem[] | undefined;
   proofGaps?: ProofGap[] | undefined;
   readiness?: ReviewReadinessDecision | undefined;
+  openFirstArtifact?: string | undefined;
   latestSnapshotNote?: string | undefined;
   verificationState?: string | undefined;
   nextAction: string;
@@ -52,10 +53,10 @@ ${renderReviewFocus(input.reviewFocus ?? [])}
 ${renderProofGaps(input)}
 
 ## Review Readiness
-${renderReadiness(input.readiness)}
+${renderReadiness(input.readiness, input.openFirstArtifact)}
 
 ## Next Recommended Action
-${input.nextAction}
+${renderNextRecommendedAction(input.nextAction, input.openFirstArtifact)}
 
 ## Constraints
 - Stay scoped to the current task.
@@ -95,10 +96,23 @@ function renderProofGaps(input: ResumePromptInput): string {
   return renderList(input.verificationGaps, "No verification gaps recorded.");
 }
 
-function renderReadiness(readiness: ReviewReadinessDecision | undefined): string {
+function renderReadiness(
+  readiness: ReviewReadinessDecision | undefined,
+  openFirstArtifact: string | undefined
+): string {
   if (!readiness) return "No review readiness recorded.";
   const command = readiness.suggestedCommand;
+  const openFirst = openFirstArtifact ? `- Open first: ${openFirstArtifact}\n` : "";
   return `${readiness.label}
 - Reason: ${compactCommandInText(readiness.reason, command)}
-- Next action: ${compactCommandInText(readiness.nextAction, command)}`;
+${openFirst}- Next action: ${compactCommandInText(readiness.nextAction, command)}`;
+}
+
+function renderNextRecommendedAction(
+  nextAction: string,
+  openFirstArtifact: string | undefined
+): string {
+  if (!openFirstArtifact) return nextAction;
+  return `Open first: ${openFirstArtifact}
+${nextAction}`;
 }
