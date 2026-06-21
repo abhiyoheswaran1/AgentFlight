@@ -229,7 +229,7 @@ ${formatProofGaps(input.status.review.proofGaps)}
 ${needsFix ? "Fix before sharing" : "Next action"}:
 ${formatNextAction(readiness, input.status.nextAction)}
 
-Open first: ${formatOpenFirstArtifact(ready, input.reportPath, input.replayPath)}
+Open first: ${formatOpenFirstArtifact(ready, input.handoffPath, input.reportPath)}
 
 Artifacts:
 - Handoff: ${input.handoffPath}
@@ -251,8 +251,8 @@ function exitsSuccessfully(readiness: HandoffReadiness): boolean {
   return readiness.state === "ready_for_review" || readiness.state === "clean_worktree";
 }
 
-function formatOpenFirstArtifact(ready: boolean, reportPath: string, replayPath: string): string {
-  return ready ? `replay ${replayPath}` : `report ${reportPath}`;
+function formatOpenFirstArtifact(ready: boolean, handoffPath: string, reportPath: string): string {
+  return ready ? `handoff ${handoffPath}` : `report ${reportPath}`;
 }
 
 function needsFixBeforeSharing(readiness: HandoffReadiness): boolean {

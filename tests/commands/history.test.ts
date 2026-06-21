@@ -120,7 +120,7 @@ describe("history command", () => {
     expect(history.output).toContain("AgentFlight history");
     expect(history.output).toContain("Latest action:");
     expect(history.output).toContain(
-      `Open first: replay .agentflight/reports/${newer.session.id}-replay.html`
+      `Open first: handoff .agentflight/reports/${newer.session.id}-handoff.md`
     );
     expect(history.output).toContain("Task: Newer review");
     expect(latestBlock).toContain(
@@ -143,7 +143,7 @@ describe("history command", () => {
     );
     expect(history.output).toContain(`Resume: .agentflight/reports/${newer.session.id}-resume.md`);
     expect(history.output).toContain(
-      `Open first: replay .agentflight/reports/${newer.session.id}-replay.html`
+      `Open first: handoff .agentflight/reports/${newer.session.id}-handoff.md`
     );
     expect(history.output).toContain(`Report: .agentflight/reports/${newer.session.id}-proof.md`);
     expect(history.output).toContain(
@@ -248,6 +248,7 @@ describe("history command", () => {
     });
     await writeArtifact(repoRoot, unknown.session.id, "handoff.md", "AgentFlight handoff");
     await writeArtifact(repoRoot, blocked.session.id, "proof.md", "# proof");
+    await writeArtifact(repoRoot, ready.session.id, "handoff.md", "AgentFlight handoff");
     await writeArtifact(repoRoot, ready.session.id, "proof.md", "# proof");
     await writeArtifact(repoRoot, ready.session.id, "replay.html", "<!doctype html>");
 
@@ -255,7 +256,7 @@ describe("history command", () => {
 
     expect(history.output).toContain("Ready readiness");
     expect(history.output).toContain(
-      `Open first: replay .agentflight/reports/${ready.session.id}-replay.html`
+      `Open first: handoff .agentflight/reports/${ready.session.id}-handoff.md`
     );
     expect(history.output).toContain("Blocked readiness");
     expect(history.output).toContain(

@@ -200,7 +200,7 @@ describe("evidence-aware session outputs", () => {
       changedFiles: ["docs/development/verification.md"],
       now: new Date("2026-06-13T12:04:00.000Z")
     });
-    const replayPath = `.agentflight/reports/${basename(handoff.replayPath)}`;
+    const handoffPath = `.agentflight/reports/${basename(handoff.sessionHandoffPath)}`;
 
     const status = await runStatusCommand({
       repoRoot,
@@ -219,9 +219,9 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).not.toContain("proof ok");
     expect(status.output).toContain("Readiness: Clean worktree");
     expect(status.output).toContain("Reason: No changed files are currently detected.");
-    expect(status.output).toContain(`Open first: replay ${replayPath}`);
-    expect(status.output).not.toContain(handoff.replayPath);
-    expect(status.output).toContain("Next action:\nOpen first: replay .agentflight/reports/");
+    expect(status.output).toContain(`Open first: handoff ${handoffPath}`);
+    expect(status.output).not.toContain(handoff.sessionHandoffPath);
+    expect(status.output).toContain("Next action:\nOpen first: handoff .agentflight/reports/");
     expect(status.output).toContain(
       "Start a new AgentFlight session when you begin the next task."
     );
@@ -231,11 +231,11 @@ describe("evidence-aware session outputs", () => {
       changedFiles: [],
       now: new Date("2026-06-13T12:06:00.000Z")
     });
-    expect(resume.output).toContain(`- Open first: replay ${replayPath}`);
+    expect(resume.output).toContain(`- Open first: handoff ${handoffPath}`);
     expect(resume.output).toContain(`## Next Recommended Action
-Open first: replay ${replayPath}
+Open first: handoff ${handoffPath}
 Start a new AgentFlight session when you begin the next task.`);
-    expect(resume.output).not.toContain(handoff.replayPath);
+    expect(resume.output).not.toContain(handoff.sessionHandoffPath);
     expect(resume.output).toContain("Start a new AgentFlight session before unrelated work.");
     expect(resume.output).not.toContain("- Do not start unrelated work.");
 
@@ -737,9 +737,9 @@ Start a new AgentFlight session when you begin the next task.`);
     );
     expect(handoff.output).toContain("AgentFlight handoff");
     expect(handoff.output).toContain("Readiness: Ready for review");
-    expect(handoff.output).toContain("Open first: replay");
-    expect(handoff.output).toContain("Open first: replay .agentflight/reports/");
-    expect(handoff.output).toContain("-replay.html");
+    expect(handoff.output).toContain("Open first: handoff");
+    expect(handoff.output).toContain("Open first: handoff .agentflight/reports/");
+    expect(handoff.output).toContain("-handoff.md");
     expect(handoff.output).toContain("Share this handoff with the report/replay");
     expect(handoff.output).toContain("No failed verification excerpts recorded.");
     expect(handoff.output).not.toContain("Run agentflight handoff");

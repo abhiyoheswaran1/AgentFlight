@@ -4,6 +4,60 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Prefer Handoff Packet For Ready Review Artifacts
+
+Dogfood finding:
+
+- `agentflight history --limit 5` showed ready sessions with stable handoff
+  packets, reports, replays, and resumes, but the top-level `Open first:` line
+  still pointed to replay. That preserved chronological inspection, but it made
+  the golden local handoff path less obvious after the handoff workflow became
+  the preferred review packet.
+
+Team persona notes:
+
+- Product Maintainer: the ready-session discovery path should reinforce
+  handoff as the local review packet.
+- CLI Engineer: keep this as artifact preference only; do not add modes or
+  change artifact generation.
+- Docs and DX Writer: report and replay should stay visible, but the first
+  action should be the handoff packet when it exists.
+- Verification Engineer: cover handoff, clean status/resume, and history so the
+  same readiness state does not drift across surfaces.
+- Security Reviewer: no upload, telemetry, posting, export, or source-handling
+  changes.
+
+Implemented locally:
+
+- Ready-session artifact selection now tries handoff before replay and report.
+- Ready `agentflight handoff` output now says `Open first: handoff ...`.
+- Blocked and needs-verification paths remain report-first.
+- Report, replay, resume, and handoff artifact generation are unchanged.
+
+Verification so far:
+
+- Red AgentFlight-captured
+  `npm test -- tests/commands/history.test.ts tests/commands/evidence-output.test.ts`
+  failed with 4 expected replay-first assertion failures.
+- Green AgentFlight-captured
+  `npm test -- tests/commands/history.test.ts tests/commands/evidence-output.test.ts`
+  passed with 2 files / 43 tests.
+- AgentFlight-captured `npm run build` passed before built-CLI dogfood.
+- Built-CLI `node dist/cli.js handoff` reported `Readiness: Ready for review`
+  and `Open first: handoff .agentflight/reports/...-handoff.md`.
+- Built-CLI `node dist/cli.js history --limit 1` reported the same handoff
+  packet in the latest action and session entry, while retaining report,
+  replay, and resume paths.
+- Final AgentFlight-captured `npm run verify` passed with 22 files / 210 tests
+  plus build.
+- Final AgentFlight-captured `npm run format:check` passed.
+- Final AgentFlight-captured `npm pack --dry-run` passed.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight/review still reports the known
+  scale-only release sign-off caution: max changed-file risk score 215.8 >= 80,
+  with no concrete cycle, risky-function, contract, taint, or dataflow blocker.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Prioritize Proof Before Timeline In Markdown Reports
 
 Dogfood finding:

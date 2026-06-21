@@ -28,6 +28,10 @@ The handoff command should be the default end-of-session path. It must remain
 local-only, deterministic, and concise. It should point to report, replay, and
 resume artifacts without replacing them.
 
+Ready-session discovery should open the handoff packet first. Replay remains the
+best artifact for chronological inspection, and report remains the best artifact
+for failed or incomplete proof.
+
 User problem: engineers should not need to choose between five AgentFlight
 commands when deciding whether work is reviewable.
 

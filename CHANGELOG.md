@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Ready-session `Open first` guidance now prefers the generated handoff packet
+  in handoff, clean status/resume, and history surfaces, while blocked sessions
+  still point to the report/fix path.
 - Full Markdown proof reports now show changed files, risk, verification,
   review focus, proof gaps, readiness, recommendation, and next action before
   the timeline, keeping long sessions faster to review.

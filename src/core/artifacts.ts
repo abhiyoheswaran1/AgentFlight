@@ -39,7 +39,7 @@ export function chooseOpenFirstArtifact(
 ): string {
   if (readiness === "ready_for_review") {
     return formatOpenFirstArtifact(
-      firstExistingArtifact(["replay", "handoff", "report"], artifacts),
+      firstExistingArtifact(["handoff", "replay", "report"], artifacts),
       artifacts
     );
   }
