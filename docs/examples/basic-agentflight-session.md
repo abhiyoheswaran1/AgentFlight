@@ -129,6 +129,14 @@ replay_generated
 
 The report and replay stay local under `.agentflight/reports/`. The current handoff and resume prompt stay local under `.agentflight/current/`.
 
+To reopen the latest local artifacts later:
+
+```bash
+npx agentflight@latest history --limit 1
+```
+
+History shows the latest action, recorded readiness, and the report/replay/handoff/resume paths for the most recent session.
+
 ## 7. Resume Safely
 
 ```bash

@@ -4,6 +4,40 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Document History Latest Action Workflow
+
+Dogfood finding:
+
+- The CLI now uses `agentflight history --limit 1` as the clean-status path
+  back to the latest local artifacts, but README and the basic example still
+  described history mostly as a generic session list.
+
+Persona readout:
+
+- Product Maintainer: public docs should reinforce history as the local artifact
+  reopening path, not just a ledger.
+- Docs and DX Writer: keep the wording short and concrete; show the exact
+  command.
+- CLI Engineer: docs only; no runtime behavior change.
+- Security Reviewer: preserve local-only/no-upload wording.
+
+Implemented locally:
+
+- README history copy now mentions the latest action, recorded readiness,
+  open-first artifact guidance, and local artifact paths.
+- The basic session example now shows
+  `npx agentflight@latest history --limit 1` after handoff as the way to reopen
+  the latest local artifacts.
+
+Verification:
+
+- AgentFlight-captured `npm run format:check` passed after formatting the plan.
+- AgentFlight-captured `npm run verify` passed with 21 files / 190 tests, plus
+  build.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- Final AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-08-58-verification-report.md`.
+
 ### Clean Status History Guidance
 
 Dogfood finding:
