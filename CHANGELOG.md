@@ -91,6 +91,8 @@ All notable AgentFlight changes are documented here.
   file remains visible with the existing `changedFileFilters.ignore` guidance.
 - `agentflight history` now includes the selected local artifact path directly
   on the `Open first:` line, reducing lookup work in long session lists.
+- `agentflight handoff` now includes the selected report or replay path directly
+  on the `Open first:` line while preserving the full artifact list.
 
 ### Changed
 

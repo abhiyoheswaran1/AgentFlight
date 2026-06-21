@@ -4,6 +4,63 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Handoff Open First Path
+
+Dogfood finding:
+
+- The golden-path handoff output selected `Open first: replay` or
+  `Open first: report`, but reviewers still had to map the label to a later
+  artifact path line before opening the file.
+
+Persona readout:
+
+- Product Maintainer: the handoff packet should answer the next review action
+  without extra lookup work.
+- CLI Engineer: derive the path from already generated artifact paths and leave
+  exit codes/readiness unchanged.
+- Docs and DX Writer: keep the artifact list intact while making the first
+  action directly actionable.
+- Security Reviewer: keep paths repo-relative and local-only.
+
+Implemented locally:
+
+- Ready handoffs now render `Open first: replay <path>`.
+- Blocked or not-ready handoffs now render `Open first: report <path>`.
+- Handoff artifact generation, exit codes, and local-only wording are unchanged.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because handoff output still
+  printed only the open-first artifact label.
+- Green AgentFlight-captured focused test passed:
+  `npm test -- tests/commands/evidence-output.test.ts` passed with 1 file / 32
+  tests.
+- Clean-session bug pass:
+  `npm test -- tests/commands/evidence-output.test.ts` passed with 1 file / 32
+  tests.
+- AgentFlight-captured `npm run verify` passed with 21 files / 189 tests,
+  plus build.
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found
+  `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the known accumulated branch scale caution: 213 changed files versus the
+  threshold of 50 and maximum changed-file risk score `212.1 >= 80`.
+- `npx projscan@latest review --format json` returned a scale-only review block
+  on the same max changed-file risk score, with no cycles, risky functions,
+  dependency changes, contract changes, taint flows, or dataflow risks reported.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-07-47-verification-report.md`.
+- Final AgentFlight handoff smoke printed
+  `Open first: replay .agentflight/reports/...-replay.html`.
+- Post-handoff AgentFlight-captured `npm run format:check` passed.
+- `npx agentloopkit@latest check-gates` passed with current verification and
+  handoff evidence, while still naming an older archived task contract in the
+  task-contract gate. This is the same AgentLoopKit stale-task-selection
+  feedback observed in prior tasks.
+
 ### History Open First Path
 
 Dogfood finding:

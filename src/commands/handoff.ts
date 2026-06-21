@@ -171,7 +171,7 @@ ${formatProofGaps(input.status.review.proofGaps)}
 ${needsFix ? "Fix before sharing" : "Next action"}:
 ${formatNextAction(readiness, input.status.nextAction)}
 
-Open first: ${ready ? "replay" : "report"}
+Open first: ${formatOpenFirstArtifact(ready, input.reportPath, input.replayPath)}
 
 Artifacts:
 - Handoff: ${input.handoffPath}
@@ -187,6 +187,10 @@ Local only: no upload, no telemetry, no automatic PR comment.
 
 function isReadyForSharing(readiness: HandoffReadiness): boolean {
   return readiness.state === "ready_for_review";
+}
+
+function formatOpenFirstArtifact(ready: boolean, reportPath: string, replayPath: string): string {
+  return ready ? `replay ${replayPath}` : `report ${reportPath}`;
 }
 
 function needsFixBeforeSharing(readiness: HandoffReadiness): boolean {
