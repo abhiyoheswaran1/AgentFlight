@@ -4,6 +4,44 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clean Stale Public AI-Assisted Positioning Copy
+
+Dogfood finding:
+
+- A public copy scan still found `AI-assisted coding sessions` in
+  `docs/architecture/overview.md`. Current positioning avoids assistant-style
+  phrasing and uses `coding agent sessions`, `coding agents`, and agentic
+  engineering language.
+
+Implemented locally:
+
+- Added `tests/public-positioning.test.ts` to scan current public/runtime
+  surfaces for stale `AI-assisted`, `AI coding`, `AI-agent`, and
+  coding-assistant positioning.
+- Updated `docs/architecture/overview.md` to describe AgentFlight as wrapping
+  coding agent sessions.
+- Kept historical devlog evidence and archived implementation plans out of the
+  regression scan.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/public-positioning.test.ts`
+  failed on `docs/architecture/overview.md: \\bAI-assisted\\b`.
+- Green AgentFlight-captured `npm test -- tests/public-positioning.test.ts`
+  passed with 1 file / 1 test.
+- The focused positioning test briefly failed again when the changelog entry
+  named the stale phrases literally; the changelog wording was revised to
+  `stale assistant-style positioning` while keeping `CHANGELOG.md` in the scan.
+- Final AgentFlight-captured `npm run verify` passed with 23 files / 211 tests
+  plus build.
+- Final AgentFlight-captured `npm run format:check` passed.
+- Final AgentFlight-captured `npm pack --dry-run` passed.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight/review still reports the known
+  scale-only release sign-off caution: max changed-file risk score 215.8 >= 80,
+  with no concrete cycle, risky-function, contract, taint, or dataflow blocker.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Align Clean Status Ledger Copy With Handoff Path
 
 Dogfood finding:

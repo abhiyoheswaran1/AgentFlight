@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Public positioning regression coverage now guards current public/runtime
+  surfaces against stale assistant-style positioning.
 - Clean-worktree status now tells users to open handoff/report/replay or JSON
   output for tucked verification details, matching the handoff-first ready
   review path.

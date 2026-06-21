@@ -1,6 +1,6 @@
 # Architecture Overview
 
-AgentFlight is a local-first TypeScript npm CLI. It wraps AI-assisted coding sessions with session metadata, changed-file risk summaries, proof reports, HTML replays, and resume prompts.
+AgentFlight is a local-first TypeScript npm CLI. It wraps coding agent sessions with session metadata, changed-file risk summaries, proof reports, HTML replays, and resume prompts.
 
 ## Layers
 
