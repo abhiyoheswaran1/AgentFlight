@@ -4,6 +4,63 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Open First Path
+
+Dogfood finding:
+
+- `agentflight history` correctly chose an `Open first:` artifact, but in long
+  lists the user still had to map that label to a separate artifact path line.
+
+Persona readout:
+
+- Product Maintainer: local session discovery should answer what to open without
+  adding search, sync, or session switching.
+- CLI Engineer: keep the command read-only and reuse existing artifact path
+  lookup instead of adding state.
+- Docs and DX Writer: keep output compact; show the path where the decision is
+  made and leave the full artifact list intact.
+- Repo Steward: treat this as scanability polish, not a new workflow.
+
+Implemented locally:
+
+- `agentflight history` now renders `Open first: <artifact> <path>` when the
+  chosen artifact exists.
+- Sessions without a primary artifact still render `Open first: none yet`.
+- Handoff, report, replay, and resume path lines remain visible for complete
+  local context.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because `Open first:` still only
+  printed the artifact label.
+- Green AgentFlight-captured focused test passed:
+  `npm test -- tests/commands/history.test.ts` passed with 1 file / 5 tests.
+- First format pass caught Prettier drift in `src/commands/history.ts`; after
+  formatting, AgentFlight-captured focused history tests and `format:check`
+  passed.
+- AgentFlight-captured `npm run verify` passed with 21 files / 189 tests,
+  plus build.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found
+  `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the known accumulated branch scale caution: 210 changed files versus the
+  threshold of 50 and maximum changed-file risk score `212.1 >= 80`.
+- `npx projscan@latest review --format json` returned a scale-only review block
+  on the same max changed-file risk score, with no cycles, risky functions,
+  dependency changes, contract changes, taint flows, or dataflow risks reported.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-07-34-verification-report.md`.
+- Built CLI smoke passed:
+  `node dist/cli.js history --limit 2` printed `Open first: replay` with the
+  selected local replay path on the same line.
+- Post-handoff AgentFlight-captured `npm run format:check` passed.
+- `npx agentloopkit@latest check-gates` passed with current verification and
+  handoff evidence, while still naming an older archived task contract in the
+  task-contract gate. This is the same AgentLoopKit stale-task-selection
+  feedback observed in prior tasks.
+
 ### Generated Tool State Review Ranking
 
 Dogfood finding:

@@ -89,6 +89,8 @@ All notable AgentFlight changes are documented here.
 - Review Intelligence no longer lets ProjScan risk hints boost generated
   `.projscan-memory/memory.json` above real first-run review targets, while the
   file remains visible with the existing `changedFileFilters.ignore` guidance.
+- `agentflight history` now includes the selected local artifact path directly
+  on the `Open first:` line, reducing lookup work in long session lists.
 
 ### Changed
 

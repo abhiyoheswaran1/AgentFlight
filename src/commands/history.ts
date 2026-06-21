@@ -127,18 +127,38 @@ function chooseOpenFirstArtifact(session: SessionSummary, artifacts: HistoryArti
   const readiness = session.latestReview?.state;
 
   if (readiness === "ready_for_review") {
-    return firstExistingArtifact(["replay", "handoff", "report"], artifacts);
+    return formatOpenFirstArtifact(
+      firstExistingArtifact(["replay", "handoff", "report"], artifacts),
+      artifacts
+    );
   }
 
   if (readiness) {
-    return firstExistingArtifact(["report", "handoff", "replay"], artifacts);
+    return formatOpenFirstArtifact(
+      firstExistingArtifact(["report", "handoff", "replay"], artifacts),
+      artifacts
+    );
   }
 
-  return firstExistingArtifact(["handoff", "replay", "report"], artifacts);
+  return formatOpenFirstArtifact(
+    firstExistingArtifact(["handoff", "replay", "report"], artifacts),
+    artifacts
+  );
 }
 
-function firstExistingArtifact(order: PrimaryArtifact[], artifacts: HistoryArtifacts): string {
-  return order.find((artifact) => artifacts[artifact] !== "missing") ?? "none yet";
+function firstExistingArtifact(
+  order: PrimaryArtifact[],
+  artifacts: HistoryArtifacts
+): PrimaryArtifact | null {
+  return order.find((artifact) => artifacts[artifact] !== "missing") ?? null;
+}
+
+function formatOpenFirstArtifact(
+  artifact: PrimaryArtifact | null,
+  artifacts: HistoryArtifacts
+): string {
+  if (!artifact) return "none yet";
+  return `${artifact} ${artifacts[artifact]}`;
 }
 
 async function formatArtifactPath(

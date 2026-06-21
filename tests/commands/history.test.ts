@@ -127,6 +127,9 @@ describe("history command", () => {
       `Handoff: .agentflight/reports/${newer.session.id}-handoff.md`
     );
     expect(history.output).toContain(`Resume: .agentflight/reports/${newer.session.id}-resume.md`);
+    expect(history.output).toContain(
+      `Open first: replay .agentflight/reports/${newer.session.id}-replay.html`
+    );
     expect(history.output).toContain("Recorded readiness: not recorded");
     expect(history.output).toContain(`Report: .agentflight/reports/${newer.session.id}-proof.md`);
     expect(history.output).toContain(
@@ -195,11 +198,17 @@ describe("history command", () => {
     const history = await runHistoryCommand({ repoRoot, limit: 5 });
 
     expect(history.output).toContain("Ready readiness");
-    expect(history.output).toContain("Open first: replay");
+    expect(history.output).toContain(
+      `Open first: replay .agentflight/reports/${ready.session.id}-replay.html`
+    );
     expect(history.output).toContain("Blocked readiness");
-    expect(history.output).toContain("Open first: report");
+    expect(history.output).toContain(
+      `Open first: report .agentflight/reports/${blocked.session.id}-proof.md`
+    );
     expect(history.output).toContain("Unknown readiness");
-    expect(history.output).toContain("Open first: handoff");
+    expect(history.output).toContain(
+      `Open first: handoff .agentflight/reports/${unknown.session.id}-handoff.md`
+    );
   });
 
   it("summarizes malformed session files without crashing", async () => {
