@@ -112,6 +112,10 @@ describe("history command", () => {
     );
 
     const history = await runHistoryCommand({ repoRoot, limit: 5 });
+    const latestBlock = history.output.slice(
+      history.output.indexOf("Latest action:"),
+      history.output.indexOf("Recent sessions:")
+    );
 
     expect(history.output).toContain("AgentFlight history");
     expect(history.output).toContain("Latest action:");
@@ -119,6 +123,9 @@ describe("history command", () => {
       `Open first: replay .agentflight/reports/${newer.session.id}-replay.html`
     );
     expect(history.output).toContain("Task: Newer review");
+    expect(latestBlock).toContain(
+      "Recorded readiness: Ready for review (risk medium, 1 changed file)"
+    );
     expect(history.output.indexOf("Latest action:")).toBeLessThan(
       history.output.indexOf("Recent sessions:")
     );
@@ -259,6 +266,7 @@ describe("history command", () => {
 
     expect(latestBlock).toContain("Open first: none yet");
     expect(latestBlock).toContain("Next: run agentflight handoff");
+    expect(latestBlock).toContain("Recorded readiness: not recorded");
     expect(latestBlock).toContain("Task: Current no artifacts");
     expect(latestBlock).not.toContain(older.session.id);
     expect(history.output).toContain(

@@ -95,6 +95,7 @@ async function formatLatestAction(
 
   return `Latest action:
 Open first: ${openFirst}${nextAction}
+Recorded readiness: ${formatReadiness(session)}
 Task: ${session.taskTitle}`;
 }
 

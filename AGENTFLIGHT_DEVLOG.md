@@ -4,6 +4,61 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Latest Action Readiness
+
+Dogfood finding:
+
+- The top-level `Latest action:` block now points to the artifact or handoff
+  step, but it still omitted whether the latest recorded session was ready,
+  blocked, or not recorded. That left one of the product's core review
+  questions in the detailed row only.
+
+Persona readout:
+
+- Product Maintainer: the top summary should pair "what should I open?" with
+  the latest readiness state.
+- CLI Engineer: reuse the existing `formatReadiness` wording; do not add a
+  second readiness model.
+- Docs and DX Writer: keep the top block compact and leave detailed session
+  rows unchanged.
+- Security Reviewer: no new file reads beyond existing local session metadata.
+
+Implemented locally:
+
+- The `Latest action:` block now includes `Recorded readiness: ...`.
+- Ready latest sessions show the same risk/changed-file wording as the detailed
+  row.
+- Current no-artifact sessions show `Recorded readiness: not recorded`.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because the top block did not
+  include recorded readiness.
+- Green AgentFlight-captured focused test passed:
+  `npm test -- tests/commands/history.test.ts` passed with 1 file / 6 tests.
+- AgentFlight-captured `npm run format:check` passed after formatting the plan
+  and history test.
+- AgentFlight-captured `npm run verify` passed with 21 files / 190 tests, plus
+  build.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found
+  `0 vulnerabilities`.
+- AgentFlight-captured `npx projscan@latest doctor --format json` passed with
+  health `100/A`.
+- AgentFlight-captured
+  `npx projscan@latest preflight --mode before_commit --format json` returned
+  the known accumulated branch scale caution: 222 changed files and maximum
+  changed-file risk score `212.1 >= 80`.
+- AgentFlight-captured `npx projscan@latest review --format json` exited `0`
+  but returned a scale-only `block` verdict for manual release signoff. Saved
+  evidence reported risky functions `0`, dependency changes `0`, contract
+  changes `0`, and dataflow risks `0`.
+- Final AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-08-31-verification-report.md`.
+- Built CLI smoke passed: before handoff, `node dist/cli.js history --limit 2`
+  printed `Recorded readiness: not recorded`; after handoff, it printed
+  `Recorded readiness: Ready for review (risk medium, 6 changed files)`.
+
 ### History Latest Action Before Artifacts
 
 Dogfood finding:

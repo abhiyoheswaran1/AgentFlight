@@ -45,6 +45,8 @@ All notable AgentFlight changes are documented here.
   session list, reducing scan work in long local histories.
 - History now tells users to run `agentflight handoff` when the latest local
   session is current but no handoff/report/replay artifact exists yet.
+- History now shows the latest session's recorded readiness in the top-level
+  `Latest action:` block.
 - History now says `Open first: none yet` when no handoff, report, or replay
   artifact exists.
 - HTML replay now reserves urgent failed-run navigation for unresolved failed
