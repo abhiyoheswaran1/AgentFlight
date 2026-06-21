@@ -250,6 +250,69 @@ describe("session records", () => {
     });
   });
 
+  it("prefers review-ready artifact metadata over later clean-worktree metadata", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T12:00:00.000Z") });
+
+    const result = await startSession({
+      repoRoot,
+      task: "Prefer review artifact",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const withReadyReplay = addSessionEvent(result.session, {
+      type: "replay_generated",
+      timestamp: "2026-06-13T11:05:00.000Z",
+      title: "Replay generated",
+      metadata: {
+        path: ".agentflight/reports/af-test-replay.html",
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          riskLevel: "medium",
+          changedFiles: 2,
+          verificationPassed: 1,
+          verificationFailed: 0
+        }
+      }
+    });
+    const withCleanReport = addSessionEvent(withReadyReplay, {
+      type: "report_generated",
+      timestamp: "2026-06-13T11:10:00.000Z",
+      title: "Report generated",
+      metadata: {
+        path: ".agentflight/reports/af-test-proof.md",
+        readiness: {
+          state: "clean_worktree",
+          label: "Clean worktree",
+          riskLevel: "none",
+          changedFiles: 0,
+          verificationPassed: 1,
+          verificationFailed: 0
+        }
+      }
+    });
+    await saveSession(repoRoot, withCleanReport);
+
+    const history = await listSessionSummaries(repoRoot);
+
+    expect(history.sessions[0]?.latestReview).toEqual({
+      state: "ready_for_review",
+      label: "Ready for review",
+      riskLevel: "medium",
+      changedFiles: 2,
+      verificationPassed: 1,
+      verificationFailed: 0,
+      artifactPath: ".agentflight/reports/af-test-replay.html",
+      generatedAt: "2026-06-13T11:05:00.000Z"
+    });
+  });
+
   it("ignores malformed artifact readiness metadata in session summaries", async () => {
     const repoRoot = await createTempRepo();
     await initAgentFlight({ repoRoot, now: new Date("2026-06-13T12:00:00.000Z") });

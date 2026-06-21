@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight history` now prefers useful review-ready or blocked artifact
+  metadata over later clean-worktree artifact metadata, while preserving
+  clean-only session history.
 - Clean-worktree `agentflight handoff` now preserves existing session review
   artifacts instead of overwriting report/replay/resume evidence with an empty
   post-commit clean-state artifact.

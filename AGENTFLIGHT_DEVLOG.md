@@ -4,6 +4,44 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Prefer Review-Ready History Artifacts
+
+Dogfood finding:
+
+- Historical sessions that generated a ready replay and later generated a
+  clean-worktree report could show `Recorded readiness: Clean worktree` in
+  history, even though the preserved replay was the more useful artifact to open
+  first.
+
+Implemented locally:
+
+- Added a regression test for a ready replay followed by a clean report.
+- Updated session summary selection to prefer the newest non-clean review
+  artifact metadata, falling back to clean metadata only when no non-clean
+  artifact metadata exists.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/core/session.test.ts
+tests/commands/history.test.ts` failed because history selected
+  `clean_worktree`.
+- Green AgentFlight-captured `npm test -- tests/core/session.test.ts
+tests/commands/history.test.ts` passed with 2 files / 15 tests.
+- AgentFlight-captured `npm run verify` passed with 21 files / 201 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on
+  `AGENTFLIGHT_DEVLOG.md`; Prettier fixed the devlog wrapping, and the rerun
+  passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  267 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-11-29-verification-report.md`.
+
 ### Preserve Review Artifacts On Clean Handoff
 
 Dogfood finding:

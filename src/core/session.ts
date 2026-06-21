@@ -329,16 +329,19 @@ export function getLatestSessionEvent(
 
 function getLatestRecordedReviewSummary(session: AgentFlightSession): SessionReviewSummary | null {
   const events = getSessionEvents(session);
+  let cleanFallback: SessionReviewSummary | null = null;
 
   for (let index = events.length - 1; index >= 0; index -= 1) {
     const event = events[index];
     if (!event || !isArtifactGeneratedEvent(event)) continue;
 
     const summary = readRecordedReviewSummary(event);
-    if (summary) return summary;
+    if (!summary) continue;
+    if (summary.state !== "clean_worktree") return summary;
+    cleanFallback ??= summary;
   }
 
-  return null;
+  return cleanFallback;
 }
 
 function isArtifactGeneratedEvent(event: SessionEvent): boolean {
