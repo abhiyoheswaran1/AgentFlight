@@ -125,11 +125,18 @@ export function createCli(): Command {
     .command("history")
     .description("List recent local AgentFlight sessions.")
     .option("--limit <count>", "number of recent sessions to show")
-    .action(async (options: { limit?: string }) => {
+    .option("--task <text>", "filter sessions by task title text")
+    .option(
+      "--state <state>",
+      "filter sessions by state: ready, blocked, needs_verification, unknown, current"
+    )
+    .action(async (options: { limit?: string; task?: string; state?: string }) => {
       await printResult(
         runHistoryCommand({
           repoRoot: await getRepositoryRoot(process.cwd()),
-          limit: options.limit === undefined ? undefined : Number(options.limit)
+          limit: options.limit === undefined ? undefined : Number(options.limit),
+          task: options.task,
+          state: options.state
         })
       );
     });

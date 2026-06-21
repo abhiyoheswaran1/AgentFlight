@@ -10,6 +10,10 @@ All notable AgentFlight changes are documented here.
 - Added `agentflight history`, a read-only local command for listing recent
   sessions, proof counts, the current-session marker, and existing report/replay
   artifact paths without search indexing, export, sync, or session switching.
+- Added local `agentflight history --task <text>` and
+  `agentflight history --state ready|blocked|needs_verification|unknown|current`
+  filters so engineers can find relevant local sessions without scanning long
+  histories or adding any index, sync, export, or session switching behavior.
 - Documented the `agentflight history --limit 1` latest-action workflow for
   reopening local handoff/report/replay/resume artifacts.
 - Added session-specific handoff artifacts under `.agentflight/reports/` so

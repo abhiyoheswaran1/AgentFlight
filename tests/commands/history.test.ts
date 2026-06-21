@@ -379,6 +379,187 @@ describe("history command", () => {
     expect(history.output).toContain(`[current] ${current.session.task.title}`);
   });
 
+  it("filters sessions by task text before applying the display limit", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    const auth = await startSession({
+      repoRoot,
+      task: "Fix auth callback",
+      now: new Date("2026-06-13T10:00:00.000Z"),
+      git: { branch: "main", commit: "auth", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await writeReportReviewSummary(repoRoot, auth.session.id, {
+      state: "ready_for_review",
+      label: "Ready for review"
+    });
+    await writeArtifact(repoRoot, auth.session.id, "handoff.md", "AgentFlight handoff");
+    await startSession({
+      repoRoot,
+      task: "Update docs",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "docs", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const history = await runHistoryCommand({ repoRoot, limit: 1, task: "AUTH" });
+
+    expect(history.output).toContain("Filters:");
+    expect(history.output).toContain("Task contains: AUTH");
+    expect(history.output).toContain("Fix auth callback");
+    expect(history.output).toContain(
+      `Open first: handoff .agentflight/reports/${auth.session.id}-handoff.md`
+    );
+    expect(history.output).not.toContain("Update docs");
+  });
+
+  it("filters sessions by recorded readiness state aliases", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    const ready = await startSession({
+      repoRoot,
+      task: "Ready session",
+      now: new Date("2026-06-13T10:00:00.000Z"),
+      git: { branch: "main", commit: "ready", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const blocked = await startSession({
+      repoRoot,
+      task: "Blocked session",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "blocked", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const needsVerification = await startSession({
+      repoRoot,
+      task: "Needs proof session",
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      git: { branch: "main", commit: "needs", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await writeReportReviewSummary(repoRoot, ready.session.id, {
+      state: "ready_for_review",
+      label: "Ready for review"
+    });
+    await writeReportReviewSummary(repoRoot, blocked.session.id, {
+      state: "blocked_by_failed_verification",
+      label: "Blocked by failed verification"
+    });
+    await writeReportReviewSummary(repoRoot, needsVerification.session.id, {
+      state: "needs_verification",
+      label: "Needs verification"
+    });
+    await writeArtifact(repoRoot, ready.session.id, "handoff.md", "AgentFlight handoff");
+    await writeArtifact(repoRoot, blocked.session.id, "proof.md", "# proof");
+
+    const unknown = await startSession({
+      repoRoot,
+      task: "Unknown prior session",
+      now: new Date("2026-06-13T13:00:00.000Z"),
+      git: { branch: "main", commit: "unknown", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const current = await startSession({
+      repoRoot,
+      task: "Current session",
+      now: new Date("2026-06-13T14:00:00.000Z"),
+      git: { branch: "main", commit: "current", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const readyHistory = await runHistoryCommand({ repoRoot, state: "ready" });
+    expect(readyHistory.output).toContain("State: ready");
+    expect(readyHistory.output).toContain("Ready session");
+    expect(readyHistory.output).not.toContain("Blocked session");
+    expect(readyHistory.output).not.toContain("Needs proof session");
+
+    const hyphenReadyHistory = await runHistoryCommand({ repoRoot, state: "ready-for-review" });
+    expect(hyphenReadyHistory.output).toContain("Ready session");
+    expect(hyphenReadyHistory.output).not.toContain("Blocked session");
+
+    const blockedHistory = await runHistoryCommand({ repoRoot, state: "blocked" });
+    expect(blockedHistory.output).toContain("Blocked session");
+    expect(blockedHistory.output).not.toContain("Ready session");
+
+    const needsHistory = await runHistoryCommand({ repoRoot, state: "needs_verification" });
+    expect(needsHistory.output).toContain("Needs proof session");
+    expect(needsHistory.output).not.toContain("Blocked session");
+
+    const unknownHistory = await runHistoryCommand({ repoRoot, state: "unknown" });
+    expect(unknownHistory.output).toContain("Unknown prior session");
+    expect(unknownHistory.output).toContain("Current session");
+    expect(unknownHistory.output).not.toContain("Ready session");
+
+    const currentHistory = await runHistoryCommand({ repoRoot, state: "current" });
+    expect(currentHistory.output).toContain(`[current] ${current.session.task.title}`);
+    expect(currentHistory.output).not.toContain(unknown.session.task.title);
+  });
+
+  it("shows a clear empty result while preserving malformed-session reporting", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+    await startSession({
+      repoRoot,
+      task: "Fix auth callback",
+      now: new Date("2026-06-13T10:00:00.000Z"),
+      git: { branch: "main", commit: "auth", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await writeFile(join(repoRoot, ".agentflight", "sessions", "broken.json"), "{", "utf8");
+
+    const history = await runHistoryCommand({ repoRoot, task: "billing" });
+
+    expect(history.output).toContain("No AgentFlight sessions matched the history filters.");
+    expect(history.output).toContain("Task contains: billing");
+    expect(history.output).toContain("Run agentflight history without filters");
+    expect(history.output).toContain("Skipped malformed sessions:");
+    expect(history.output).toContain("- .agentflight/sessions/broken.json");
+    expect(history.output).not.toContain(repoRoot);
+  });
+
+  it("rejects invalid history state filters", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    await expect(runHistoryCommand({ repoRoot, state: "shipped" })).rejects.toThrow(
+      "History state filter must be one of: ready, blocked, needs_verification, unknown, current."
+    );
+  });
+
   it("summarizes malformed session files without crashing", async () => {
     const repoRoot = await createTempRepo();
     await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });

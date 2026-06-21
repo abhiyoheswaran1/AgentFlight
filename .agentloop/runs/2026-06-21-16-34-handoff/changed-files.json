@@ -1,0 +1,58 @@
+[
+  {
+    "status": "M",
+    "path": "AGENTFLIGHT_DEVLOG.md"
+  },
+  {
+    "status": "M",
+    "path": "CHANGELOG.md"
+  },
+  {
+    "status": "M",
+    "path": "README.md"
+  },
+  {
+    "status": "M",
+    "path": "src/cli.ts"
+  },
+  {
+    "status": "M",
+    "path": "src/commands/history.ts"
+  },
+  {
+    "status": "M",
+    "path": "tests/commands/history.test.ts"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-21-16-31-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-16-31-handoff/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-16-31-handoff/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-16-31-handoff/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-16-31-handoff/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/state.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-21-filter-local-agentflight-session-history.md"
+  },
+  {
+    "status": "??",
+    "path": "docs/superpowers/plans/2026-06-21-filter-local-history.md"
+  }
+]

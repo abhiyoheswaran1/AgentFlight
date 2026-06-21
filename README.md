@@ -52,7 +52,7 @@ What you get:
 - `report` writes a Markdown proof report for review.
 - `replay` writes a local HTML timeline you can open in a browser.
 - `resume` writes a Codex/Claude-ready prompt for the next safe step.
-- `history` shows a latest action with recorded readiness, the artifact to open first, and recent local handoff/report/replay/resume paths without uploading, syncing, or switching sessions.
+- `history` shows a latest action with recorded readiness, the artifact to open first, and recent local handoff/report/replay/resume paths without uploading, syncing, or switching sessions. Use `history --task <text>` or `history --state ready|blocked|needs_verification|unknown|current` to narrow existing local records.
 
 ## Watch The Flow
 
@@ -190,6 +190,7 @@ The current AgentFlight release supports:
 - Markdown proof reports
 - self-contained HTML replay timelines
 - local review handoffs that point to the report, replay, and resume artifacts
+- local history filters for finding sessions by task text or recorded readiness
 - resume prompts for Codex, Claude Code, or a human reviewer
 - doctor checks for local setup
 - defensive ProjScan and AgentLoopKit adapters
@@ -268,6 +269,8 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 - `agentflight resume` prints and saves a continuation prompt with the next safest action.
 - `agentflight handoff` generates a local review handoff, report, replay, and resume prompt without posting anywhere. It exits non-zero when verification failures or missing proof make the work not ready to share.
 - `agentflight history` shows the latest action first, including recorded readiness, open-first artifact guidance, current-session marker, proof counts, and existing local handoff/report/replay/resume paths.
+- `agentflight history --task <text>` narrows existing local sessions by task title before applying `--limit`.
+- `agentflight history --state ready|blocked|needs_verification|unknown|current` narrows existing local sessions by recorded readiness or the current-session marker before applying `--limit`.
 - `agentflight doctor` checks local setup, scripts, tools, config, and current session state.
 
 Future placeholders exist for `upgrade`, `license`, and `login`; AgentFlight Pro/Team is not available yet.

@@ -1,0 +1,7 @@
+ AGENTFLIGHT_DEVLOG.md          |  44 ++++++++++
+ CHANGELOG.md                   |   4 +
+ README.md                      |   5 +-
+ src/cli.ts                     |  11 ++-
+ src/commands/history.ts        | 132 ++++++++++++++++++++++++++++--
+ tests/commands/history.test.ts | 181 +++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 369 insertions(+), 8 deletions(-)

@@ -8,6 +8,8 @@ import type { SessionSummary, SkippedSessionFile } from "../core/session.js";
 export interface HistoryCommandOptions {
   repoRoot: string;
   limit?: number | undefined;
+  task?: string | undefined;
+  state?: string | undefined;
 }
 
 export interface HistoryCommandResult {
@@ -18,13 +20,15 @@ export async function runHistoryCommand(
   options: HistoryCommandOptions
 ): Promise<HistoryCommandResult> {
   const limit = normalizeLimit(options.limit);
-  const history = await listSessionSummaries(options.repoRoot, { limit });
+  const filters = normalizeHistoryFilters(options);
+  const history = await listSessionSummaries(options.repoRoot);
   const currentSessionId = await readCurrentSessionId(options.repoRoot);
+  const sessions = applyHistoryFilters(history.sessions, filters, currentSessionId).slice(0, limit);
 
   return {
     output: `AgentFlight history
 
-${await formatSessions(options.repoRoot, history.sessions, currentSessionId)}
+${await formatSessions(options.repoRoot, sessions, currentSessionId, filters)}
 ${formatSkipped(options.repoRoot, history.skipped)}
 `
   };
@@ -38,6 +42,67 @@ function normalizeLimit(limit: number | undefined): number {
   return limit;
 }
 
+type HistoryStateFilter = "ready" | "blocked" | "needs_verification" | "unknown" | "current";
+
+interface NormalizedHistoryFilters {
+  task: string | null;
+  state: HistoryStateFilter | null;
+  rawTask: string | null;
+  rawState: string | null;
+}
+
+const historyStateFilterLabels: HistoryStateFilter[] = [
+  "ready",
+  "blocked",
+  "needs_verification",
+  "unknown",
+  "current"
+];
+
+const historyStateAliases = new Map<string, HistoryStateFilter>([
+  ["ready", "ready"],
+  ["ready_for_review", "ready"],
+  ["blocked", "blocked"],
+  ["blocked_by_failed_verification", "blocked"],
+  ["failed", "blocked"],
+  ["not_ready", "blocked"],
+  ["not_ready_for_review", "blocked"],
+  ["needs", "needs_verification"],
+  ["needs-verification", "needs_verification"],
+  ["needs_verification", "needs_verification"],
+  ["unknown", "unknown"],
+  ["current", "current"]
+]);
+
+function normalizeHistoryFilters(options: HistoryCommandOptions): NormalizedHistoryFilters {
+  const rawTask = normalizeOptionalText(options.task);
+  const rawState = normalizeOptionalText(options.state);
+
+  return {
+    task: rawTask ? rawTask.toLocaleLowerCase() : null,
+    state: rawState ? normalizeHistoryState(rawState) : null,
+    rawTask,
+    rawState
+  };
+}
+
+function normalizeOptionalText(value: string | undefined): string | null {
+  if (value === undefined) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeHistoryState(value: string): HistoryStateFilter {
+  const normalized = value
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[\s-]+/g, "_");
+  const state = historyStateAliases.get(normalized);
+  if (state) return state;
+
+  throw new Error(`History state filter must be one of: ${historyStateFilterLabels.join(", ")}.`);
+}
+
 async function readCurrentSessionId(repoRoot: string): Promise<string | null> {
   try {
     return (await readCurrentSession(repoRoot)).id;
@@ -49,10 +114,11 @@ async function readCurrentSessionId(repoRoot: string): Promise<string | null> {
 async function formatSessions(
   repoRoot: string,
   sessions: SessionSummary[],
-  currentSessionId: string | null
+  currentSessionId: string | null,
+  filters: NormalizedHistoryFilters
 ): Promise<string> {
   if (sessions.length === 0) {
-    return formatEmptyHistory();
+    return hasHistoryFilters(filters) ? formatEmptyFilteredHistory(filters) : formatEmptyHistory();
   }
 
   const latestSession = sessions[0];
@@ -72,7 +138,7 @@ async function formatSessions(
     )
   );
 
-  return `${latestAction}
+  return `${formatFilters(filters)}${latestAction}
 
 Recent sessions:
 ${lines.join("\n")}`;
@@ -83,6 +149,13 @@ function formatEmptyHistory(): string {
 
 Next action:
 Run agentflight start --task "Describe the task" to begin a local session.`;
+}
+
+function formatEmptyFilteredHistory(filters: NormalizedHistoryFilters): string {
+  return `No AgentFlight sessions matched the history filters.
+
+${formatFilters(filters)}Next action:
+Run agentflight history without filters to list recent local sessions.`;
 }
 
 async function formatLatestAction(
@@ -167,6 +240,55 @@ function hasVerificationEvidence(session: SessionSummary): boolean {
 
 function hasReviewArtifact(artifacts: Awaited<ReturnType<typeof readReviewArtifacts>>): boolean {
   return Object.values(artifacts).some((artifact) => artifact !== "missing");
+}
+
+function applyHistoryFilters(
+  sessions: SessionSummary[],
+  filters: NormalizedHistoryFilters,
+  currentSessionId: string | null
+): SessionSummary[] {
+  return sessions
+    .filter((session) => matchesTaskFilter(session, filters.task))
+    .filter((session) => matchesStateFilter(session, filters.state, currentSessionId));
+}
+
+function matchesTaskFilter(session: SessionSummary, taskFilter: string | null): boolean {
+  if (!taskFilter) return true;
+  return session.taskTitle.toLocaleLowerCase().includes(taskFilter);
+}
+
+function matchesStateFilter(
+  session: SessionSummary,
+  stateFilter: HistoryStateFilter | null,
+  currentSessionId: string | null
+): boolean {
+  if (!stateFilter) return true;
+  if (stateFilter === "current") return session.id === currentSessionId;
+  if (stateFilter === "unknown")
+    return !session.latestReview || session.latestReview.state === "unknown";
+  if (!session.latestReview) return false;
+
+  if (stateFilter === "ready") return session.latestReview.state === "ready_for_review";
+  if (stateFilter === "blocked") {
+    return (
+      session.latestReview.state === "blocked_by_failed_verification" ||
+      session.latestReview.state === "not_ready_for_review"
+    );
+  }
+  return session.latestReview.state === "needs_verification";
+}
+
+function hasHistoryFilters(filters: NormalizedHistoryFilters): boolean {
+  return Boolean(filters.rawTask || filters.rawState);
+}
+
+function formatFilters(filters: NormalizedHistoryFilters): string {
+  if (!hasHistoryFilters(filters)) return "";
+
+  const lines = ["Filters:"];
+  if (filters.rawTask) lines.push(`- Task contains: ${filters.rawTask}`);
+  if (filters.rawState) lines.push(`- State: ${filters.rawState}`);
+  return `${lines.join("\n")}\n\n`;
 }
 
 function formatReadiness(session: SessionSummary): string {

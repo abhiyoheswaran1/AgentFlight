@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-21-16-34-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-21-16-34",
+  "createdAtEpochMs": 1782052485950,
+  "task": {
+    "path": ".agentloop/tasks/2026-06-21-filter-local-agentflight-session-history.md",
+    "title": "Filter local AgentFlight session history",
+    "status": "in-progress"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-21-16-33-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-21-16-34-pr-summary.md",
+  "changedFileCount": 14
+}

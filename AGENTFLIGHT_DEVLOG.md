@@ -4,6 +4,50 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Filter Local Session History
+
+User-research direction:
+
+- After several agentic engineering loops, local handoff/report/replay artifacts
+  exist, but a long chronological history still forces engineers to scan for
+  the session they need.
+- The product direction calls for better local session discovery without adding
+  a search index, sync, export, session switching, or hosted surface.
+
+Implemented locally:
+
+- `agentflight history --task <text>` now filters existing local session
+  summaries by case-insensitive task title before applying `--limit`.
+- `agentflight history --state ready|blocked|needs_verification|unknown|current`
+  now filters existing local session summaries by recorded readiness or the
+  current-session marker before applying `--limit`.
+- Filtered history output shows the active filters, derives `Latest action:`
+  from the filtered result set, and still reports malformed local session files.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/history.test.ts` failed
+  on the new task/state filter assertions.
+- Green AgentFlight-captured `npm test -- tests/commands/history.test.ts`
+  passed with 1 file / 13 tests.
+- Built-CLI dogfood passed for `node dist/cli.js history --state current
+--limit 3` and `node dist/cli.js history --task history --limit 2`.
+- Final AgentFlight-captured `npm run verify` passed with 23 files / 216 tests
+  plus build.
+- Final AgentFlight-captured `npm run format:check` passed.
+- Final AgentFlight-captured `npm pack --dry-run` passed and kept the local
+  package version at `0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found 0
+  vulnerabilities.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight/review reported the known manual
+  sign-off condition: large handoff review risk with max changed-file risk score
+  219.6 >= 80. Review reported no concrete cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+- AgentFlight-captured AgentLoopKit verification passed.
+- AgentLoopKit gates passed for task, verification, handoff, task hygiene,
+  harness, policies, git context, and git target.
+
 ### Clarify In-Flight Verification Guidance
 
 Dogfood finding:
