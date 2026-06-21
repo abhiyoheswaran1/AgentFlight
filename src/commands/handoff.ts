@@ -279,7 +279,7 @@ function formatNextAction(readiness: HandoffReadiness, fallback: string): string
     return "Fix the failed command, rerun verification, then regenerate this handoff.";
   }
   if (readiness.state === "ready_for_review") {
-    return "Share this handoff with the report/replay and request scoped human review.";
+    return "Share the local handoff packet for scoped review; use report/replay for details.";
   }
   return compactCommandInText(readiness.nextAction || fallback, readiness.suggestedCommand);
 }

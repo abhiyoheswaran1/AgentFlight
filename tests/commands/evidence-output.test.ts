@@ -740,7 +740,10 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(handoff.output).toContain("Open first: handoff");
     expect(handoff.output).toContain("Open first: handoff .agentflight/reports/");
     expect(handoff.output).toContain("-handoff.md");
-    expect(handoff.output).toContain("Share this handoff with the report/replay");
+    expect(handoff.output).toContain(
+      "Share the local handoff packet for scoped review; use report/replay for details."
+    );
+    expect(handoff.output).not.toContain("Share this handoff with the report/replay");
     expect(handoff.output).toContain("No failed verification excerpts recorded.");
     expect(handoff.output).not.toContain("Run agentflight handoff");
     expect(handoff.output).toContain("Review first:");
@@ -834,6 +837,7 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(handoff.output).toContain("Open first: report .agentflight/reports/");
     expect(handoff.output).toContain("-proof.md");
     expect(handoff.output).not.toContain("Share this handoff with the report/replay");
+    expect(handoff.output).not.toContain("Share the local handoff packet for scoped review");
   });
 
   it("suggests test proof first when source and test files both need proof", async () => {

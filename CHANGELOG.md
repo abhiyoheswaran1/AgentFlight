@@ -24,6 +24,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Ready `agentflight handoff` terminal guidance now tells reviewers to share
+  the local handoff packet first, with report/replay as supporting detail
+  artifacts.
 - Current start-only `agentflight history` sessions now guide users to run
   verification before handoff when no proof exists yet, while keeping
   handoff-only guidance once verification has been recorded.
