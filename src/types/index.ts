@@ -147,6 +147,7 @@ export type ReviewReadinessState =
   | "not_ready_for_review"
   | "needs_verification"
   | "blocked_by_failed_verification"
+  | "clean_worktree"
   | "unknown";
 
 export type ReviewProofStatus = "covered" | "missing" | "failed" | "not_required" | "unknown";

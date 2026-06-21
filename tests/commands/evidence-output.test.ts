@@ -129,6 +129,45 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).toContain("Changed files:\n0");
   });
 
+  it("shows clean worktree readiness in status text and JSON", async () => {
+    const command = `${process.execPath} -e "console.log('proof ok')"`;
+    const repoRoot = await startedRepo([command]);
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('proof ok')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: [],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(status.output).toContain("Changed files:\n0");
+    expect(status.output).toContain("Readiness: Clean worktree");
+    expect(status.output).toContain("Reason: No changed files are currently detected.");
+    expect(status.output).toContain(
+      "Next action:\nStart a new AgentFlight session when you begin the next task."
+    );
+
+    const jsonStatus = await runStatusCommand({
+      repoRoot,
+      changedFiles: [],
+      now: new Date("2026-06-13T12:05:00.000Z"),
+      format: "json"
+    });
+    const payload = JSON.parse(jsonStatus.output);
+
+    expect(payload.review.readiness).toMatchObject({
+      state: "clean_worktree",
+      label: "Clean worktree"
+    });
+    expect(payload.nextAction).toBe(
+      "Start a new AgentFlight session when you begin the next task."
+    );
+  });
+
   it("shows the latest snapshot in status", async () => {
     const repoRoot = await startedRepo([]);
     await runSnapshotCommand({

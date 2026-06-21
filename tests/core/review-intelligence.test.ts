@@ -451,6 +451,45 @@ describe("review intelligence", () => {
     });
   });
 
+  it("reports a clean worktree when no files are changed", () => {
+    const changedFiles: string[] = [];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "passed")]
+      })
+    });
+
+    expect(review.focus).toEqual([]);
+    expect(review.proofGaps).toEqual([]);
+    expect(review.readiness).toMatchObject({
+      state: "clean_worktree",
+      label: "Clean worktree",
+      reason: "No changed files are currently detected.",
+      nextAction: "Start a new AgentFlight session when you begin the next task."
+    });
+  });
+
+  it("keeps failed verification blocking even when no files are changed", () => {
+    const changedFiles: string[] = [];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "failed")]
+      })
+    });
+
+    expect(review.readiness).toMatchObject({
+      state: "blocked_by_failed_verification",
+      label: "Blocked by failed verification",
+      suggestedCommand: "npm test"
+    });
+  });
+
   it("handles old sessions without verification runs", () => {
     const changedFiles = ["src/api/users.ts"];
     const session = testSession({

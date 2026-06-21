@@ -55,6 +55,9 @@ All notable AgentFlight changes are documented here.
 - `agentflight init` now reports ProjScan and AgentLoopKit CLI availability
   using the same concise tool formatter as start/report surfaces instead of
   relying on repo marker files.
+- `agentflight status` now reports a clean worktree explicitly instead of
+  calling zero changed files `Unknown` after a completed session has been
+  committed.
 
 ### Changed
 

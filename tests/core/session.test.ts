@@ -203,6 +203,53 @@ describe("session records", () => {
     });
   });
 
+  it("preserves clean-worktree readiness from artifact metadata", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T12:00:00.000Z") });
+
+    const result = await startSession({
+      repoRoot,
+      task: "Clean readiness",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "abc123", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await saveSession(
+      repoRoot,
+      addSessionEvent(result.session, {
+        type: "report_generated",
+        timestamp: "2026-06-13T11:05:00.000Z",
+        title: "Report generated",
+        metadata: {
+          path: ".agentflight/reports/af-test-proof.md",
+          readiness: {
+            state: "clean_worktree",
+            label: "Clean worktree",
+            riskLevel: "unknown",
+            changedFiles: 0,
+            verificationPassed: 1,
+            verificationFailed: 0
+          }
+        }
+      })
+    );
+
+    const history = await listSessionSummaries(repoRoot);
+
+    expect(history.sessions[0]?.latestReview).toMatchObject({
+      state: "clean_worktree",
+      label: "Clean worktree",
+      riskLevel: "unknown",
+      changedFiles: 0,
+      verificationPassed: 1,
+      verificationFailed: 0
+    });
+  });
+
   it("ignores malformed artifact readiness metadata in session summaries", async () => {
     const repoRoot = await createTempRepo();
     await initAgentFlight({ repoRoot, now: new Date("2026-06-13T12:00:00.000Z") });

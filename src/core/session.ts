@@ -403,6 +403,7 @@ function readReviewReadinessState(value: unknown): ReviewReadinessState | null {
     "not_ready_for_review",
     "needs_verification",
     "blocked_by_failed_verification",
+    "clean_worktree",
     "unknown"
   ];
   return typeof value === "string" && states.includes(value as ReviewReadinessState)

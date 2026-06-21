@@ -4,6 +4,59 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clean Worktree Status Readiness
+
+Dogfood finding:
+
+- After committing a completed task, `agentflight status` still showed the
+  previous task but reported `Readiness: Unknown` because no changed files were
+  detected. That made a clean checkout feel ambiguous instead of done.
+
+Persona readout:
+
+- Product Maintainer: clean status should answer whether there is hidden review
+  work, not imply uncertainty after a commit.
+- CLI Engineer: keep the change in shared Review Intelligence so status,
+  JSON, report, replay, and handoff labels stay consistent.
+- Verification Engineer: preserve blocked readiness for unresolved failed
+  verification even when the worktree is currently clean.
+- Security Reviewer: no file writes, network behavior, export, or session
+  storage shape change.
+
+Implemented locally:
+
+- Review Intelligence now has an explicit `clean_worktree` readiness state.
+- Zero changed files with no unresolved failed verification reports
+  `Clean worktree`.
+- Session history metadata parsing now accepts `clean_worktree` so clean
+  report/replay artifact readiness remains visible later.
+
+Verification:
+
+- Red targeted test failed because zero changed files still returned
+  `state: "unknown"`.
+- AgentFlight-captured targeted verification now passes:
+  `npm test -- tests/core/review-intelligence.test.ts tests/commands/evidence-output.test.ts tests/core/session.test.ts`
+  passed: 3 files / 56 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 172 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 148 changed files exceeds the
+  preflight threshold of 50, maximum changed-file risk score `199.1`, and no
+  concrete blockers.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: no cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-04-07-verification-report.md`.
+- Built CLI smoke in a clean temp repo showed status text
+  `Readiness: Clean worktree` and JSON readiness
+  `state: "clean_worktree"`.
+
 ### Init Tool Availability Consistency
 
 Dogfood finding:

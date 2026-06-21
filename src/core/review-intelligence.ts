@@ -78,6 +78,7 @@ const readinessLabels: Record<ReviewReadinessState, string> = {
   not_ready_for_review: "Not ready for review",
   needs_verification: "Needs verification",
   blocked_by_failed_verification: "Blocked by failed verification",
+  clean_worktree: "Clean worktree",
   unknown: "Unknown"
 };
 
@@ -365,9 +366,9 @@ function buildReadinessDecision(input: {
 
   if (input.changedFiles.length === 0) {
     return readinessDecision({
-      state: "unknown",
-      reason: "No changed files were detected for review.",
-      nextAction: "Make changes or inspect git status before requesting review.",
+      state: "clean_worktree",
+      reason: "No changed files are currently detected.",
+      nextAction: "Start a new AgentFlight session when you begin the next task.",
       proofGaps: input.proofGaps
     });
   }
