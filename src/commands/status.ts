@@ -23,6 +23,8 @@ import type {
   VerificationRun
 } from "../types/index.js";
 
+const STATUS_VERIFICATION_RUN_LIMIT = 8;
+
 export interface StatusCommandOptions {
   repoRoot: string;
   now?: Date | undefined;
@@ -230,12 +232,23 @@ function formatChangedAreas(categories: RiskCategorySummary[]): string {
 
 function formatVerificationRuns(runs: VerificationRun[] | undefined): string {
   if (!runs || runs.length === 0) return "- No verification runs recorded.";
-  return runs
+  const displayRuns =
+    runs.length > STATUS_VERIFICATION_RUN_LIMIT ? runs.slice(-STATUS_VERIFICATION_RUN_LIMIT) : runs;
+  const runLines = displayRuns
     .map(
       (run) =>
         `- ${run.status}: ${formatCommandForDisplay(run.command)} (exit ${run.exitCode ?? "unknown"}, ${run.durationMs}ms)`
     )
     .join("\n");
+
+  if (displayRuns.length === runs.length) return runLines;
+
+  const omitted = runs.length - displayRuns.length;
+  const runNoun = omitted === 1 ? "run" : "runs";
+  const verb = omitted === 1 ? "remains" : "remain";
+  return `- Showing latest ${displayRuns.length} of ${runs.length} verification runs.
+- ${omitted} earlier verification ${runNoun} ${verb} in report/replay and JSON output.
+${runLines}`;
 }
 
 function formatReviewFocus(items: ReviewFocusItem[]): string {

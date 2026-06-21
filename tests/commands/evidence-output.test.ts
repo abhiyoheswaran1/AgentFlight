@@ -1,9 +1,9 @@
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
-import { startSession } from "../../src/core/session.js";
+import { saveSession, startSession } from "../../src/core/session.js";
 import { runHandoffCommand } from "../../src/commands/handoff.js";
 import { runReplayCommand } from "../../src/commands/replay.js";
 import { runReportCommand } from "../../src/commands/report.js";
@@ -11,6 +11,7 @@ import { runResumeCommand } from "../../src/commands/resume.js";
 import { runSnapshotCommand } from "../../src/commands/snapshot.js";
 import { runStatusCommand } from "../../src/commands/status.js";
 import { runVerifyCommand } from "../../src/commands/verify.js";
+import type { AgentFlightSession, VerificationRun } from "../../src/types/index.js";
 
 describe("evidence-aware session outputs", () => {
   it("shows verification evidence and readiness in status", async () => {
@@ -68,6 +69,63 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).toContain("status command noise");
     expect(status.output).toContain("…");
     expect(status.output).not.toContain(fullCommand);
+  });
+
+  it("compacts long verification run lists in status text without changing JSON or evidence", async () => {
+    const repoRoot = await startedRepo([]);
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    ) as AgentFlightSession;
+    const evidenceDir = join(repoRoot, ".agentflight", "evidence", session.id);
+    await mkdir(evidenceDir, { recursive: true });
+
+    const runs: VerificationRun[] = [];
+    for (let index = 1; index <= 10; index += 1) {
+      const suffix = String(index).padStart(2, "0");
+      const stdoutPath = `.agentflight/evidence/${session.id}/verification-${suffix}.stdout.txt`;
+      const stderrPath = `.agentflight/evidence/${session.id}/verification-${suffix}.stderr.txt`;
+      await writeFile(join(repoRoot, stdoutPath), `stdout for proof-run-${suffix}\n`, "utf8");
+      await writeFile(join(repoRoot, stderrPath), "", "utf8");
+      runs.push({
+        command: `npm run proof-run-${suffix}`,
+        startedAt: `2026-06-13T12:${suffix}:00.000Z`,
+        finishedAt: `2026-06-13T12:${suffix}:01.000Z`,
+        durationMs: 1000 + index,
+        exitCode: 0,
+        status: "passed",
+        stdoutPath,
+        stderrPath
+      });
+    }
+    await saveSession(repoRoot, { ...session, verificationRuns: runs });
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["src/core/status.ts"],
+      now: new Date("2026-06-13T12:15:00.000Z")
+    });
+
+    expect(status.output).toContain("10 passed, 0 failed");
+    expect(status.output).toContain("- Showing latest 8 of 10 verification runs.");
+    expect(status.output).toContain(
+      "- 2 earlier verification runs remain in report/replay and JSON output."
+    );
+    expect(status.output).not.toContain("proof-run-01");
+    expect(status.output).not.toContain("proof-run-02");
+    expect(status.output).toContain("proof-run-03");
+    expect(status.output).toContain("proof-run-10");
+
+    const jsonStatus = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["src/core/status.ts"],
+      format: "json"
+    });
+    const payload = JSON.parse(jsonStatus.output);
+    expect(payload.verification.runs).toHaveLength(10);
+    expect(payload.verification.runs[0].command).toBe("npm run proof-run-01");
+    await expect(readFile(join(repoRoot, runs[0]!.stdoutPath), "utf8")).resolves.toContain(
+      "stdout for proof-run-01"
+    );
   });
 
   it("emits parseable local JSON status for scripts", async () => {

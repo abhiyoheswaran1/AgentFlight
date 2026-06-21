@@ -58,6 +58,9 @@ All notable AgentFlight changes are documented here.
 - `agentflight status` now reports a clean worktree explicitly instead of
   calling zero changed files `Unknown` after a completed session has been
   committed.
+- `agentflight status` now compacts very long terminal verification run lists
+  while keeping full verification runs in JSON, report/replay, and local
+  evidence files.
 
 ### Changed
 

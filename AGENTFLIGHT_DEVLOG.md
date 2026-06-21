@@ -4,6 +4,62 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Compact Status Verification Lists
+
+Dogfood finding:
+
+- After several verification and bug-pass commands, `agentflight status` became
+  noisy because it printed every verification run even though the count line
+  already summarized the ledger. The full report/replay evidence remains useful,
+  but status should stay quick to scan.
+
+Persona readout:
+
+- Product Maintainer: status should answer "where am I right now?" without
+  overwhelming the user during long sessions.
+- CLI Engineer: compact only terminal status; keep JSON and local evidence
+  complete for scripts and audit.
+- Verification Engineer: add regression coverage proving omitted terminal runs
+  are still present in JSON and raw stdout/stderr evidence.
+- Security Reviewer: no mutation or deletion of evidence, no upload, and no
+  report/replay ledger changes.
+
+Implemented locally:
+
+- Terminal `agentflight status` now shows the latest 8 verification runs when a
+  session has a longer run list.
+- Status prints an explicit omitted-run note pointing to report/replay and JSON
+  for the full ledger.
+- Status JSON and stored verification evidence remain complete.
+
+Verification:
+
+- Red targeted test failed because status still printed every verification run
+  and had no omitted-run note.
+- AgentFlight-captured targeted verification now passes:
+  `npm test -- tests/commands/evidence-output.test.ts` passed: 1 file / 29
+  tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 173 tests, plus build.
+- `npm run format:check` failed during the loop on `src/commands/status.ts`
+  and later on devlog wrapping; `npm run format` applied the mechanical
+  Prettier fixes and the final rerun passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 151 changed files exceeds the
+  preflight threshold of 50, maximum changed-file risk score `203.7`, and no
+  concrete blockers.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: no cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-04-20-verification-report.md`.
+- Built CLI smoke on the current long session showed
+  `Showing latest 8 of 15 verification runs` and
+  `7 earlier verification runs remain in report/replay and JSON output`.
+
 ### Clean Worktree Status Readiness
 
 Dogfood finding:
