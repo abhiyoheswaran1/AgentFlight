@@ -100,6 +100,11 @@ describe("history command", () => {
       "<!doctype html>",
       "utf8"
     );
+    await writeFile(
+      join(repoRoot, ".agentflight", "reports", `${newer.session.id}-handoff.md`),
+      "AgentFlight handoff",
+      "utf8"
+    );
 
     const history = await runHistoryCommand({ repoRoot, limit: 5 });
 
@@ -111,12 +116,16 @@ describe("history command", () => {
     expect(history.output).toContain("feature/history");
     expect(history.output).toContain("Verification: 2 passed, 1 failed (0 unresolved, 1 resolved)");
     expect(history.output).toContain("Readiness: Ready for review (risk medium, 1 changed file)");
+    expect(history.output).toContain(
+      `Handoff: .agentflight/reports/${newer.session.id}-handoff.md`
+    );
     expect(history.output).toContain("Readiness: not recorded");
     expect(history.output).toContain(`Report: .agentflight/reports/${newer.session.id}-proof.md`);
     expect(history.output).toContain(
       `Replay: .agentflight/reports/${newer.session.id}-replay.html`
     );
     expect(history.output).toContain(`Report: missing`);
+    expect(history.output).toContain(`Handoff: missing`);
     expect(history.output).toContain(`Replay: missing`);
     expect(history.output).not.toContain(repoRoot);
     expect(history.output).toContain(older.session.id);

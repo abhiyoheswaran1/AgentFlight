@@ -10,6 +10,8 @@ All notable AgentFlight changes are documented here.
 - Added `agentflight history`, a read-only local command for listing recent
   sessions, proof counts, the current-session marker, and existing report/replay
   artifact paths without search indexing, export, sync, or session switching.
+- Added session-specific handoff artifacts under `.agentflight/reports/` so
+  `agentflight history` can point to stable handoff packets from prior sessions.
 - Added post-v0.6.0 user-research findings and a v0.6.0 website update prompt focused on the local handoff workflow.
 - Added a post-v0.6.0 product direction note that keeps local handoff, first-run
   workspace hygiene, replay ergonomics, proof guidance, and explainable ranking
@@ -29,6 +31,8 @@ All notable AgentFlight changes are documented here.
   wording as the other review surfaces.
 - History now shows unresolved-versus-resolved failed verification counts for
   prior sessions.
+- History now includes stable handoff artifact paths alongside report and
+  replay paths when those artifacts exist.
 - HTML replay now reserves urgent failed-run navigation for unresolved failed
   verification while keeping historical failed runs visible in the ledger.
 - Ready handoffs no longer inline historical failed verification excerpts once

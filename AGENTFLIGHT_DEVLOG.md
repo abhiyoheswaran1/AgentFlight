@@ -4,6 +4,64 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Handoff Artifact Discovery
+
+Research signal:
+
+- `agentflight handoff` is now the golden local review packet, but
+  `agentflight history` only showed report and replay paths. Engineers looking
+  back at a previous session still had to infer where the handoff went, and the
+  current handoff pointer is overwritten by later sessions.
+
+Persona readout:
+
+- Product Maintainer: history should point to the handoff packet first because
+  it is the review artifact users are meant to share.
+- CLI Engineer: preserve `.agentflight/current/handoff.md` as a current-session
+  pointer and add a stable session-specific artifact rather than changing
+  history into a generator or switcher.
+- Security Reviewer: keep everything local and repo-relative; no upload, sync,
+  or PR comment.
+- Docs and DX Writer: describe history as finding handoff/report/replay
+  artifacts, not just report/replay.
+
+Implemented locally:
+
+- `agentflight handoff` now writes both `.agentflight/current/handoff.md` and
+  `.agentflight/reports/<session-id>-handoff.md`.
+- The handoff artifact list shows the stable handoff path plus the current
+  pointer.
+- `agentflight history` now shows a `Handoff:` line before report/replay paths
+  and reports `missing` when no session-specific handoff exists.
+- README and changelog copy now describe history as showing
+  handoff/report/replay artifact paths.
+
+Verification so far:
+
+- Red focused tests failed because no session-specific handoff was written and
+  history had no `Handoff:` line.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/commands/evidence-output.test.ts tests/commands/history.test.ts`
+  passed: 2 files / 31 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 165 tests, plus build.
+- `npm run format:check` passed after a narrow Prettier write on
+  `tests/commands/evidence-output.test.ts`.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 129 changed files, maximum
+  changed-file risk score `199.1`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-03-10-verification-report.md`.
+- Built CLI smoke: `agentflight handoff` wrote
+  `.agentflight/reports/af-20260621-010404-surface-handoff-artifacts-in-history-output-handoff.md`,
+  and `agentflight history --limit 1` listed that path.
+
 ### History Resolved Failure Wording
 
 Dogfood finding:

@@ -485,6 +485,11 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.reportPath).toContain("-proof.md");
     expect(handoff.replayPath).toContain("-replay.html");
     expect(handoff.resumePath).toContain(".agentflight/current/resume-prompt.md");
+    expect(handoff.sessionHandoffPath).toContain("-handoff.md");
+    await expect(readFile(handoff.handoffPath, "utf8")).resolves.toContain("AgentFlight handoff");
+    await expect(readFile(handoff.sessionHandoffPath, "utf8")).resolves.toContain(
+      "AgentFlight handoff"
+    );
     expect(handoff.output).toContain("AgentFlight handoff");
     expect(handoff.output).toContain("Readiness: Ready for review");
     expect(handoff.output).toContain("Open first: replay");
@@ -497,6 +502,8 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("Report:");
     expect(handoff.output).toContain("Replay:");
     expect(handoff.output).toContain("Resume:");
+    expect(handoff.output).toContain("- Handoff: .agentflight/reports/");
+    expect(handoff.output).toContain("- Current handoff: .agentflight/current/handoff.md");
     expect(handoff.output).toContain(".agentflight/current/handoff.md");
     expect(handoff.output).toContain(".agentflight/reports/");
     expect(handoff.output).not.toContain(repoRoot);

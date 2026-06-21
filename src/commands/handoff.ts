@@ -16,6 +16,7 @@ export interface HandoffCommandResult {
   output: string;
   exitCode: number;
   handoffPath: string;
+  sessionHandoffPath: string;
   reportPath: string;
   replayPath: string;
   resumePath: string;
@@ -89,20 +90,25 @@ export async function runHandoffCommand(
     now: options.now
   });
 
-  const handoffPath = resolveAgentFlightPaths(options.repoRoot).currentHandoff;
+  const paths = resolveAgentFlightPaths(options.repoRoot);
+  const handoffPath = paths.currentHandoff;
+  const sessionHandoffPath = `${paths.reports}/${status.sessionId}-handoff.md`;
   const output = renderHandoff({
     status,
-    handoffPath: formatRepoRelativePath(options.repoRoot, handoffPath),
+    handoffPath: formatRepoRelativePath(options.repoRoot, sessionHandoffPath),
+    currentHandoffPath: formatRepoRelativePath(options.repoRoot, handoffPath),
     reportPath: formatRepoRelativePath(options.repoRoot, report.reportPath),
     replayPath: formatRepoRelativePath(options.repoRoot, replay.replayPath),
     resumePath: formatRepoRelativePath(options.repoRoot, resume.resumePath)
   });
   await writeTextFileSafe(handoffPath, output, { overwrite: true });
+  await writeTextFileSafe(sessionHandoffPath, output, { overwrite: true });
 
   return {
     output,
     exitCode: isReadyForSharing(status.review.readiness) ? 0 : 1,
     handoffPath,
+    sessionHandoffPath,
     reportPath: report.reportPath,
     replayPath: replay.replayPath,
     resumePath: resume.resumePath
@@ -122,6 +128,7 @@ async function readHandoffStatus(options: HandoffCommandOptions): Promise<Handof
 function renderHandoff(input: {
   status: HandoffStatus;
   handoffPath: string;
+  currentHandoffPath: string;
   reportPath: string;
   replayPath: string;
   resumePath: string;
@@ -164,6 +171,7 @@ Open first: ${ready ? "replay" : "report"}
 
 Artifacts:
 - Handoff: ${input.handoffPath}
+- Current handoff: ${input.currentHandoffPath}
 - Report: ${input.reportPath}
 - Replay: ${input.replayPath}
 - Resume: ${input.resumePath}

@@ -75,6 +75,7 @@ async function formatSession(
 ): Promise<string> {
   const marker = isCurrent ? " [current]" : "";
   const branch = session.branch ?? "unknown";
+  const handoffPath = await formatArtifactPath(repoRoot, session.id, "handoff.md");
   const reportPath = await formatArtifactPath(repoRoot, session.id, "proof.md");
   const replayPath = await formatArtifactPath(repoRoot, session.id, "replay.html");
 
@@ -88,6 +89,7 @@ async function formatSession(
     resolvedFailed: session.verificationResolvedFailed
   })}
   Readiness: ${formatReadiness(session)}
+  Handoff: ${handoffPath}
   Report: ${reportPath}
   Replay: ${replayPath}`;
 }
@@ -106,7 +108,7 @@ function formatChangedFiles(count: number): string {
 async function formatArtifactPath(
   repoRoot: string,
   sessionId: string,
-  suffix: "proof.md" | "replay.html"
+  suffix: "handoff.md" | "proof.md" | "replay.html"
 ): Promise<string> {
   const artifactPath = `${resolveAgentFlightPaths(repoRoot).reports}/${sessionId}-${suffix}`;
   return (await pathExists(artifactPath))
