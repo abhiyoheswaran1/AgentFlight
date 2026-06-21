@@ -83,6 +83,15 @@ agentflight doctor`);
     expect(start.output).toContain("AgentFlight started");
     expect(start.output).toContain("ProjScan: available");
     expect(start.output).toContain("AgentLoopKit: available 0.28.7 (active task linked)");
+    expect(start.output).toContain(`Suggested proof:
+agentflight verify
+Configured commands:
+- npm run typecheck
+- npm run lint
+- npm test
+- npm run build`);
+    expect(start.output).not.toContain(`Suggested proof:
+npm run typecheck`);
     expect(start.output).toContain("Handoff saved:\n.agentflight/current/handoff.md");
     expect(start.output).not.toContain("\n\n\nDetected:");
     expect(start.output).not.toContain(repoRoot);
@@ -303,6 +312,24 @@ agentflight verify -- npm run typecheck
 agentflight handoff`);
     expect(init.output).not.toContain("agentflight verify -- <proof command>");
     expect(JSON.parse(await readFile(configPath, "utf8")).verification.commands).toEqual([]);
+
+    const start = await runStartCommand({
+      repoRoot,
+      task: "Use detected fallback proof",
+      now: new Date("2026-06-13T12:02:00.000Z"),
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: false,
+        changedFiles: []
+      },
+      packageManager: "npm",
+      tools
+    });
+    expect(start.output).toContain(`Suggested proof:
+npm run typecheck
+npm test`);
+    expect(start.output).not.toContain("Configured commands:");
   });
 
   it("doctors a healthy initialized repo before the first session as OK guidance", async () => {

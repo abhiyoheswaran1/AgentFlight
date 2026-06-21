@@ -1,6 +1,6 @@
 import { inspectAgentLoopKit, linkAgentLoopTask } from "../adapters/agentloopkit.js";
 import { inspectProjScan } from "../adapters/projscan.js";
-import { initAgentFlight } from "../core/config.js";
+import { initAgentFlight, loadConfig } from "../core/config.js";
 import { pathExists } from "../core/fs-safe.js";
 import { getGitInfo } from "../core/git.js";
 import {
@@ -44,8 +44,10 @@ export interface StartCommandResult {
 
 export async function runStartCommand(options: StartCommandOptions): Promise<StartCommandResult> {
   const autoInitNotice = await ensureAgentFlightInitialized(options);
+  const config = await loadConfig(options.repoRoot);
   const packageJson = await readPackageJson(options.repoRoot);
   const verificationCommands = detectVerificationCommands(packageJson);
+  const configuredVerificationCommands = config?.verification.commands ?? [];
   const git = options.git ?? (await getGitInfo(options.repoRoot));
   const packageManager = options.packageManager ?? (await detectPackageManager(options.repoRoot));
   const tools = options.tools ?? (await inspectStartTools(options.repoRoot, options.task));
@@ -76,7 +78,7 @@ ProjScan: ${formatToolForReport("ProjScan", tools.projscan)}
 AgentLoopKit: ${formatToolForReport("AgentLoopKit", tools.agentloopkit)}
 
 Suggested proof:
-${verificationCommands.length ? verificationCommands.join("\n") : "No proof commands detected yet."}
+${formatSuggestedProof(configuredVerificationCommands, verificationCommands)}
 
 Handoff saved:
 ${formatRepoRelativePath(options.repoRoot, result.handoffPath)}
@@ -86,6 +88,16 @@ Now run your coding agent normally.
     sessionId: result.session.id,
     handoffPath: result.handoffPath
   };
+}
+
+function formatSuggestedProof(configuredCommands: string[], detectedCommands: string[]): string {
+  if (configuredCommands.length > 0) {
+    return `agentflight verify
+Configured commands:
+${configuredCommands.map((command) => `- ${command}`).join("\n")}`;
+  }
+
+  return detectedCommands.length ? detectedCommands.join("\n") : "No proof commands detected yet.";
 }
 
 async function ensureAgentFlightInitialized(options: StartCommandOptions): Promise<string> {

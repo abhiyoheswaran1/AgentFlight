@@ -136,6 +136,9 @@ All notable AgentFlight changes are documented here.
 
 ### Changed
 
+- `agentflight start` now prefers configured no-arg `agentflight verify`
+  guidance when `.agentflight/config.json` already has verification commands,
+  while keeping detected package-script fallback guidance for empty configs.
 - Current product copy now uses `coding agent sessions` and agentic engineering
   language instead of assistant-style positioning.
 - Idempotent `agentflight init` now shows a concrete detected proof command

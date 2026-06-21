@@ -4,6 +4,55 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Prefer Configured Proof in Start Output
+
+Dogfood finding:
+
+- AgentFlight's own config now has `verification.commands`, but
+  `agentflight start` still displayed detected package scripts as the suggested
+  proof. That made the no-arg `agentflight verify` path less obvious at the
+  start of a coding agent session.
+
+Team persona notes:
+
+- Product Maintainer: the first instruction after start should match the
+  configured workflow users are expected to run.
+- CLI Engineer: change terminal guidance only; do not alter verification
+  execution, session metadata, or command flags.
+- Verification Engineer: keep detected fallback coverage for repos with empty
+  configs.
+- Docs and DX Writer: make `agentflight verify` the visible primary action when
+  config commands exist.
+- Security Reviewer: keep all commands local and repo-scoped.
+
+Implemented locally:
+
+- `agentflight start` now displays `agentflight verify` plus the configured
+  commands when `.agentflight/config.json` has verification commands.
+- Repos with empty verification config still see detected package proof scripts
+  as the fallback.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/workflow.test.ts` failed
+  because start output still showed detected package scripts first.
+- Green AgentFlight-captured `npm test -- tests/commands/workflow.test.ts`
+  passed with 1 file / 12 tests.
+- AgentFlight-captured `npm run verify` passed with 22 files / 207 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on the new plan
+  Markdown file; Prettier fixed the file and the rerun passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  manual review sign-off recommended for large handoff risk.
+- ProjScan review returned the known scale-only `block` verdict with 48 current
+  changed files and maximum changed-file risk score `212.1 >= 80`; it reported
+  no risky functions, dependency changes, contract changes, new cycles, taint
+  flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-13-23-verification-report.md`.
+
 ### Show Latest Artifact in Clean Status
 
 Dogfood finding:
