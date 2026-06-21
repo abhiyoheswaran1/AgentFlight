@@ -26,6 +26,11 @@ Or configure commands in `.agentflight/config.json`:
 }
 ```
 
+When `agentflight init` creates a new config, it seeds this command list from
+detected package scripts such as `typecheck`, `lint`, `test`, and `build`.
+Existing configs are not overwritten, and repos without detected proof scripts
+keep an empty command list until you add one.
+
 Then run:
 
 ```bash

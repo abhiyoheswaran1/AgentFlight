@@ -98,6 +98,8 @@ All notable AgentFlight changes are documented here.
 - Newly generated `.agentflight/config.json` files now seed detected
   verification commands from package scripts while leaving profiles empty and
   preserving existing configs.
+- README and verification docs now describe the handoff-first first-run workflow
+  and init-seeded verification commands.
 - Kept ready-review report, replay, resume, examples, and demo copy aligned with
   the `agentflight handoff` golden path while keeping report/replay/resume as
   supporting local artifacts.

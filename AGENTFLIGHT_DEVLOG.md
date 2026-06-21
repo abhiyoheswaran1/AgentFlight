@@ -4,6 +4,58 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Docs Init Proof Seeding Alignment
+
+Dogfood finding:
+
+- After init began seeding detected verification commands into
+  `.agentflight/config.json`, README and verification docs still described init
+  more generically. The 60-second workflow also still put `status` before the
+  handoff-first path.
+
+Persona readout:
+
+- First-Time Developer: the quickstart should match the exact first-run output
+  and generated config.
+- Product Maintainer: `handoff` should remain the default post-verification
+  path in public docs.
+- Docs and DX Writer: keep report, replay, resume, status, snapshot, and history
+  visible as supporting artifacts and commands without making the first run feel
+  like five required review steps.
+
+Implemented locally:
+
+- README now describes `init` as seeding detected verification commands when
+  package scripts exist.
+- README 60-second workflow now runs `handoff` immediately after verification,
+  with `status`, `snapshot`, and `history` as follow-up commands.
+- `docs/development/verification.md` now explains that init-created configs can
+  include detected package-script commands, while existing configs remain
+  untouched and repos without proof scripts keep an empty command list.
+
+Verification:
+
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm run verify` passed with 21 files / 188 tests,
+  plus build.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found
+  `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the known accumulated branch scale caution: 204 changed files versus the
+  threshold of 50 and maximum changed-file risk score `207.9 >= 80`.
+- `npx projscan@latest review --format json` returned a scale-only review block
+  on the same max changed-file risk score, with no cycles, risky functions,
+  dependency changes, contract changes, taint flows, or dataflow risks reported.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-07-16-verification-report.md`.
+- Post-handoff AgentFlight-captured `npm run format:check` passed.
+- `npx agentloopkit@latest check-gates` passed with current verification and
+  handoff evidence, while still naming an older archived task contract in the
+  task-contract gate. Treat this as AgentLoopKit stale-task-selection feedback,
+  not a blocker for this docs-only change.
+
 ### Seed Init Verification Commands
 
 Dogfood finding:

@@ -35,23 +35,23 @@ npx agentflight@latest start --task "Add password reset flow"
 # Run Codex, Claude Code, Cursor, or your coding agent normally
 
 npx agentflight@latest verify -- npm test
-npx agentflight@latest snapshot --note "Initial implementation verified"
-npx agentflight@latest status
 npx agentflight@latest handoff
+npx agentflight@latest status
+npx agentflight@latest snapshot --note "Initial implementation verified"
 npx agentflight@latest history
 ```
 
 What you get:
 
-- `init` creates local `.agentflight/` project files.
+- `init` creates local `.agentflight/` project files and seeds detected verification commands into `.agentflight/config.json` when package scripts exist.
 - `start` records the task, git branch, commit, dirty state, package manager, and tool availability.
 - `verify -- npm test` runs the command and stores stdout, stderr, exit code, timing, and pass/fail status.
-- `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.
+- `handoff` generates the local review packet: readiness, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 - `status` answers what changed, how risky it is, what proof exists, what proof is missing, and what to do next.
+- `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.
 - `report` writes a Markdown proof report for review.
 - `replay` writes a local HTML timeline you can open in a browser.
 - `resume` writes a Codex/Claude-ready prompt for the next safe step.
-- `handoff` generates the local review packet: readiness, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 - `history` lists recent local sessions, recorded readiness, which artifact to open first, and existing handoff/report/replay/resume artifacts without uploading, syncing, or switching sessions.
 
 ## Watch The Flow
@@ -253,7 +253,7 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 
 ## Commands
 
-- `agentflight init` initializes `.agentflight/` with safe writes and explains which local files are project config versus runtime evidence.
+- `agentflight init` initializes `.agentflight/` with safe writes, seeds detected verification commands into config when package scripts exist, and explains which local files are project config versus runtime evidence.
 - `agentflight start --task "..."` starts a session and writes the current handoff.
 - `agentflight status` summarizes changed files, risk, verification status, review focus, proof gaps, readiness, snapshots, and next action.
 - `agentflight status --format json` prints the same local status data as structured JSON for scripts.
