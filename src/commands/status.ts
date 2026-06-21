@@ -1,3 +1,4 @@
+import { chooseOpenFirstArtifact, readReviewArtifacts } from "../core/artifacts.js";
 import { listChangedFiles } from "../core/git.js";
 import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
@@ -12,7 +13,7 @@ import {
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
-import { getLatestSessionEvent } from "../core/session.js";
+import { getLatestRecordedReviewSummary, getLatestSessionEvent } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import type {
   AgentFlightSession,
@@ -62,9 +63,13 @@ export async function runStatusCommand(
     review.readiness.nextAction,
     review.readiness.suggestedCommand
   );
+  const cleanOpenFirst =
+    review.readiness.state === "clean_worktree"
+      ? await formatCleanOpenFirst(options.repoRoot, session)
+      : null;
   const statusTextNextAction =
     review.readiness.state === "clean_worktree"
-      ? "Run agentflight history --limit 1 to reopen the latest local artifacts.\nStart a new AgentFlight session when you begin the next task."
+      ? formatCleanStatusNextAction(cleanOpenFirst)
       : nextAction;
   const verificationFailureContext = formatVerificationFailureContext(verification);
 
@@ -203,6 +208,26 @@ function formatLatestSnapshot(event: SessionEvent | null): string {
   return `- ${event.timestamp}${note}
 - Risk: ${riskLevel}
 - Changed files: ${changedFiles}`;
+}
+
+async function formatCleanOpenFirst(
+  repoRoot: string,
+  session: AgentFlightSession
+): Promise<string | null> {
+  const artifacts = await readReviewArtifacts(repoRoot, session.id);
+  const openFirst = chooseOpenFirstArtifact(
+    getLatestRecordedReviewSummary(session)?.state,
+    artifacts
+  );
+  return openFirst === "none yet" ? null : openFirst;
+}
+
+function formatCleanStatusNextAction(openFirst: string | null): string {
+  const openLine = openFirst
+    ? `Open first: ${openFirst}`
+    : "Run agentflight history --limit 1 to reopen the latest local artifacts.";
+  return `${openLine}
+Start a new AgentFlight session when you begin the next task.`;
 }
 
 function readMetadataObject(event: SessionEvent, key: string): Record<string, unknown> {

@@ -327,7 +327,9 @@ export function getLatestSessionEvent(
   );
 }
 
-function getLatestRecordedReviewSummary(session: AgentFlightSession): SessionReviewSummary | null {
+export function getLatestRecordedReviewSummary(
+  session: AgentFlightSession
+): SessionReviewSummary | null {
   const events = getSessionEvents(session);
   let cleanFallback: SessionReviewSummary | null = null;
 

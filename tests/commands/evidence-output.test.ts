@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
@@ -195,6 +195,12 @@ describe("evidence-aware session outputs", () => {
       commandArgs: [process.execPath, "-e", "console.log('proof ok')"],
       now: () => new Date("2026-06-13T12:00:00.000Z")
     });
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:04:00.000Z")
+    });
+    const replayPath = `.agentflight/reports/${basename(handoff.replayPath)}`;
 
     const status = await runStatusCommand({
       repoRoot,
@@ -213,8 +219,11 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).not.toContain("proof ok");
     expect(status.output).toContain("Readiness: Clean worktree");
     expect(status.output).toContain("Reason: No changed files are currently detected.");
+    expect(status.output).toContain(`Open first: replay ${replayPath}`);
+    expect(status.output).not.toContain(handoff.replayPath);
+    expect(status.output).toContain("Next action:\nOpen first: replay .agentflight/reports/");
     expect(status.output).toContain(
-      "Next action:\nRun agentflight history --limit 1 to reopen the latest local artifacts.\nStart a new AgentFlight session when you begin the next task."
+      "Start a new AgentFlight session when you begin the next task."
     );
 
     const jsonStatus = await runStatusCommand({

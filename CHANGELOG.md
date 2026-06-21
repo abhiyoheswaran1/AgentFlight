@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Clean-worktree `agentflight status` now shows the latest local `Open first:`
+  artifact path when current report/replay/handoff evidence exists.
 - `agentflight history` now shows the nearest previous local artifact when the
   current latest session has none yet, while keeping the current-session
   handoff next action.

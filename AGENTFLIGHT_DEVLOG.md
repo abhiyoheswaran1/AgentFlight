@@ -4,6 +4,58 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Show Latest Artifact in Clean Status
+
+Dogfood finding:
+
+- After a clean handoff, `agentflight status` correctly said the worktree was
+  clean, but made the user run `agentflight history --limit 1` to reopen the
+  latest local artifact. That added an avoidable lookup step in the coding agent
+  session review loop.
+
+Team persona notes:
+
+- Product Maintainer: clean status should be a direct review doorway, not just
+  a pointer to another command.
+- CLI Engineer: keep status read-only and repo-relative; reuse history's
+  artifact-selection rule.
+- Verification Engineer: cover the clean-worktree path after artifacts exist.
+- Docs and DX Writer: keep the copy short with a familiar `Open first:` line.
+- Security Reviewer: expose only local repo-relative paths and do not add sync,
+  export, or PR-comment behavior.
+
+Implemented locally:
+
+- Added a shared review-artifact helper for report/replay/handoff/resume paths
+  and open-first selection.
+- `agentflight history` now uses the shared helper instead of owning a duplicate
+  artifact chooser.
+- Clean-worktree `agentflight status` now prints `Open first: ...` when the
+  current session already has a local artifact, while keeping the start-new-task
+  next action.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  failed because clean status did not show the replay artifact path.
+- Green AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts
+tests/commands/history.test.ts` passed with 2 files / 41 tests.
+- AgentFlight-captured `npm run verify` passed with 22 files / 207 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on the updated
+  devlog, plan, and status test formatting; Prettier fixed the files and the
+  rerun passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  manual review sign-off recommended for large handoff risk.
+- ProjScan review returned the known scale-only `block` verdict with 48 current
+  changed files and maximum changed-file risk score `212.1 >= 80`; it reported
+  no risky functions, dependency changes, contract changes, new cycles, taint
+  flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-13-11-verification-report.md`.
+
 ### Configure AgentFlight Repo Default Verification
 
 Dogfood finding:

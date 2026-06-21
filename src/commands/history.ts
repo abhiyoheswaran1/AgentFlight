@@ -1,6 +1,6 @@
-import { pathExists } from "../core/fs-safe.js";
+import { chooseOpenFirstArtifact, readReviewArtifacts } from "../core/artifacts.js";
 import { formatVerificationCountLine } from "../core/output.js";
-import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
+import { formatRepoRelativePath } from "../core/paths.js";
 import { listSessionSummaries } from "../core/session.js";
 import { readCurrentSession } from "./status.js";
 import type { SessionSummary, SkippedSessionFile } from "../core/session.js";
@@ -91,8 +91,8 @@ async function formatLatestAction(
   isCurrent: boolean,
   previousOpenFirst: string | null
 ): Promise<string> {
-  const artifacts = await readHistoryArtifacts(repoRoot, session.id);
-  const openFirst = chooseOpenFirstArtifact(session, artifacts);
+  const artifacts = await readReviewArtifacts(repoRoot, session.id);
+  const openFirst = chooseOpenFirstArtifact(session.latestReview?.state, artifacts);
   const nextAction = isCurrent && openFirst === "none yet" ? "\nNext: run agentflight handoff" : "";
   const previousArtifact =
     isCurrent && openFirst === "none yet" && previousOpenFirst
@@ -112,7 +112,7 @@ async function formatSession(
 ): Promise<string> {
   const marker = isCurrent ? " [current]" : "";
   const branch = session.branch ?? "unknown";
-  const artifacts = await readHistoryArtifacts(repoRoot, session.id);
+  const artifacts = await readReviewArtifacts(repoRoot, session.id);
 
   return `- ${formatStartedAt(session.startedAt)}${marker} ${session.taskTitle}
   ID: ${session.id}
@@ -124,7 +124,7 @@ async function formatSession(
     resolvedFailed: session.verificationResolvedFailed
   })}
   Recorded readiness: ${formatReadiness(session)}
-  Open first: ${chooseOpenFirstArtifact(session, artifacts)}
+  Open first: ${chooseOpenFirstArtifact(session.latestReview?.state, artifacts)}
   Handoff: ${artifacts.handoff}
   Report: ${artifacts.report}
   Replay: ${artifacts.replay}
@@ -143,8 +143,8 @@ async function findPreviousOpenFirstArtifact(
   sessions: SessionSummary[]
 ): Promise<string | null> {
   for (const session of sessions) {
-    const artifacts = await readHistoryArtifacts(repoRoot, session.id);
-    const openFirst = chooseOpenFirstArtifact(session, artifacts);
+    const artifacts = await readReviewArtifacts(repoRoot, session.id);
+    const openFirst = chooseOpenFirstArtifact(session.latestReview?.state, artifacts);
     if (openFirst !== "none yet") return openFirst;
   }
 
@@ -153,76 +153,6 @@ async function findPreviousOpenFirstArtifact(
 
 function formatChangedFiles(count: number): string {
   return `${count} changed ${count === 1 ? "file" : "files"}`;
-}
-
-interface HistoryArtifacts {
-  handoff: string;
-  report: string;
-  replay: string;
-  resume: string;
-}
-
-async function readHistoryArtifacts(
-  repoRoot: string,
-  sessionId: string
-): Promise<HistoryArtifacts> {
-  return {
-    handoff: await formatArtifactPath(repoRoot, sessionId, "handoff.md"),
-    report: await formatArtifactPath(repoRoot, sessionId, "proof.md"),
-    replay: await formatArtifactPath(repoRoot, sessionId, "replay.html"),
-    resume: await formatArtifactPath(repoRoot, sessionId, "resume.md")
-  };
-}
-
-type PrimaryArtifact = "handoff" | "report" | "replay";
-
-function chooseOpenFirstArtifact(session: SessionSummary, artifacts: HistoryArtifacts): string {
-  const readiness = session.latestReview?.state;
-
-  if (readiness === "ready_for_review") {
-    return formatOpenFirstArtifact(
-      firstExistingArtifact(["replay", "handoff", "report"], artifacts),
-      artifacts
-    );
-  }
-
-  if (readiness) {
-    return formatOpenFirstArtifact(
-      firstExistingArtifact(["report", "handoff", "replay"], artifacts),
-      artifacts
-    );
-  }
-
-  return formatOpenFirstArtifact(
-    firstExistingArtifact(["handoff", "replay", "report"], artifacts),
-    artifacts
-  );
-}
-
-function firstExistingArtifact(
-  order: PrimaryArtifact[],
-  artifacts: HistoryArtifacts
-): PrimaryArtifact | null {
-  return order.find((artifact) => artifacts[artifact] !== "missing") ?? null;
-}
-
-function formatOpenFirstArtifact(
-  artifact: PrimaryArtifact | null,
-  artifacts: HistoryArtifacts
-): string {
-  if (!artifact) return "none yet";
-  return `${artifact} ${artifacts[artifact]}`;
-}
-
-async function formatArtifactPath(
-  repoRoot: string,
-  sessionId: string,
-  suffix: "handoff.md" | "proof.md" | "replay.html" | "resume.md"
-): Promise<string> {
-  const artifactPath = `${resolveAgentFlightPaths(repoRoot).reports}/${sessionId}-${suffix}`;
-  return (await pathExists(artifactPath))
-    ? formatRepoRelativePath(repoRoot, artifactPath)
-    : "missing";
 }
 
 function formatStartedAt(startedAt: string): string {
