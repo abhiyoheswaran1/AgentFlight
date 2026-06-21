@@ -161,6 +161,47 @@ describe("AgentFlight command workflow", () => {
     expect(second.output).toContain("- .agentflight/.gitignore");
   });
 
+  it("doctors a healthy initialized repo before the first session as OK guidance", async () => {
+    const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            test: "vitest run",
+            build: "tsc -p tsconfig.build.json",
+            typecheck: "tsc --noEmit",
+            lint: "eslint ."
+          }
+        },
+        null,
+        2
+      )
+    );
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, version: "4.5.0", warnings: [] },
+        agentloopkit: { available: true, version: "0.35.2", warnings: [] }
+      }
+    });
+
+    const doctor = await runDoctorCommand({
+      repoRoot,
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      projscanAvailable: true,
+      agentloopkitAvailable: true
+    });
+
+    expect(doctor.output).toContain("Overall: OK");
+    expect(doctor.output).toContain("OK current session");
+    expect(doctor.output).toContain("Run agentflight start --task");
+  });
+
   it("guides first-run users when generated ProjScan memory is present", async () => {
     const repoRoot = await createTempRepo();
     await writeFile(

@@ -4,6 +4,59 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Doctor Current Session Guidance
+
+Dogfood finding:
+
+- In a freshly initialized repo, `agentflight doctor` warned that no current
+  session existed even though that is normal before work begins. The warning
+  made a healthy first-run setup look less ready than it was.
+
+Persona readout:
+
+- Product Maintainer: doctor should answer whether local setup is healthy, not
+  imply that every repo must have an active session at rest.
+- CLI Engineer: keep session-required command errors unchanged; this is only a
+  doctor check classification change.
+- Docs and DX Writer: keep the start-session instruction visible in the same
+  row so first-run users still know what to do next.
+
+Implemented locally:
+
+- The missing `current session` doctor check now reports OK guidance:
+  `No current session is active. Run agentflight start --task "..." when you begin work.`
+- Existing active-session OK output remains unchanged.
+- Commands that require an active session are unchanged.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because doctor still returned
+  `warning` when only the current session was missing.
+- AgentFlight-captured focused verification now passes:
+  `npm test -- tests/core/doctor.test.ts tests/commands/workflow.test.ts`
+  passed: 2 files / 15 tests.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 184 tests, plus build.
+- `npm run format:check` passed after formatting the new plan file and again
+  after handoff markdown updates.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 182 changed files and maximum
+  changed-file risk score `207.9`.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: maximum changed-file risk score `207.9`, no risky
+  functions, no dependency changes, no contract changes, no taint flows, no
+  dataflow risks, and no new cycles.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-05-50-verification-report.md`.
+- `npx agentloopkit@latest check-gates` passed with current verification and
+  handoff evidence.
+- Built CLI doctor smoke passed: a temp repo with proof scripts configured and
+  no active AgentFlight session reported `Overall: OK` and `OK current session`
+  with the start-session guidance.
+
 ### Replay Historical Failed Ledger Labels
 
 Dogfood finding:

@@ -78,6 +78,8 @@ All notable AgentFlight changes are documented here.
   successful repository-root check.
 - HTML replay now labels resolved failed verification rows as historical when
   no unresolved failed runs remain.
+- `agentflight doctor` now treats a missing current session as OK first-run
+  guidance instead of warning when the rest of the local setup is healthy.
 
 ### Changed
 

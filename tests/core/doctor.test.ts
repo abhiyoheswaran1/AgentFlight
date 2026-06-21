@@ -32,6 +32,39 @@ describe("doctor checks", () => {
         status: "warning"
       })
     );
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "current session",
+        status: "ok",
+        message: expect.stringContaining("Run agentflight start --task")
+      })
+    );
+  });
+
+  it("treats a missing current session as first-run guidance", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      repoRoot: "/repo",
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: false,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      scripts: { test: true, build: true, typecheck: true, lint: true }
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "current session",
+        status: "ok",
+        message: expect.stringContaining("Run agentflight start --task")
+      })
+    );
   });
 
   it("reports an error when Node is below version 20", () => {

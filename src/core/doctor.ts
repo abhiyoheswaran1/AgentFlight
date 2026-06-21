@@ -105,10 +105,9 @@ export function evaluateDoctorChecks(input: DoctorEvaluationInput): DoctorResult
   checks.push(
     input.currentSessionExists
       ? ok("current session", "A current session exists.")
-      : warning(
+      : ok(
           "current session",
-          "No current session exists.",
-          'Run agentflight start --task "...".'
+          'No current session is active. Run agentflight start --task "..." when you begin work.'
         )
   );
 
