@@ -4,6 +4,40 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clean Handoff Exit Success
+
+Dogfood finding:
+
+- After completing and committing a task, `node dist/cli.js handoff` printed a
+  normal clean-worktree handoff but exited with code `1`. That made a calm
+  informational state look like a command failure.
+
+Implemented locally:
+
+- Added a regression test for clean-worktree handoff exit code.
+- Changed only the handoff exit-code predicate so `ready_for_review` and
+  `clean_worktree` return success, while blocked proof states still return
+  nonzero.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  failed with received exit code `1` for the clean-worktree handoff.
+- Green AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  passed with 1 file / 33 tests.
+- AgentFlight-captured `npm run verify` passed with 21 files / 199 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  261 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-11-05-verification-report.md`.
+
 ### Public Positioning Reference Cleanup
 
 Product note:

@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Clean-worktree `agentflight handoff` now exits successfully instead of
+  treating an informational post-commit handoff as a command failure.
 - `agentflight doctor` now suggests concrete detected `agentflight verify -- ...`
   commands when config verification commands are empty.
 - `agentflight verify` now suggests detected package proof commands when no

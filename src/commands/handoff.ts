@@ -108,7 +108,7 @@ export async function runHandoffCommand(
 
   return {
     output,
-    exitCode: isReadyForSharing(status.review.readiness) ? 0 : 1,
+    exitCode: exitsSuccessfully(status.review.readiness) ? 0 : 1,
     handoffPath,
     sessionHandoffPath,
     reportPath: report.reportPath,
@@ -187,6 +187,10 @@ Local only: no upload, no telemetry, no automatic PR comment.
 
 function isReadyForSharing(readiness: HandoffReadiness): boolean {
   return readiness.state === "ready_for_review";
+}
+
+function exitsSuccessfully(readiness: HandoffReadiness): boolean {
+  return readiness.state === "ready_for_review" || readiness.state === "clean_worktree";
 }
 
 function formatOpenFirstArtifact(ready: boolean, reportPath: string, replayPath: string): string {

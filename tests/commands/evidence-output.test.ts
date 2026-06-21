@@ -732,6 +732,23 @@ describe("evidence-aware session outputs", () => {
     );
   });
 
+  it("exits successfully for clean-worktree local handoffs", async () => {
+    const repoRoot = await startedRepo([]);
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: [],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(handoff.exitCode).toBe(0);
+    expect(handoff.output).toContain("Readiness: Clean worktree");
+    expect(handoff.output).toContain(
+      "Start a new AgentFlight session when you begin the next task."
+    );
+    expect(handoff.output).not.toContain("Fix before sharing:");
+  });
+
   it("blocks local handoffs when required proof is missing", async () => {
     const repoRoot = await startedRepo(["npm test"]);
 
