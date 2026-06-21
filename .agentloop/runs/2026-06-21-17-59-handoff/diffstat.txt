@@ -1,0 +1,5 @@
+ AGENTFLIGHT_DEVLOG.md | 26 ++++++++++++++++++++++++++
+ CHANGELOG.md          |  2 +-
+ package-lock.json     |  4 ++--
+ package.json          |  2 +-
+ 4 files changed, 30 insertions(+), 4 deletions(-)

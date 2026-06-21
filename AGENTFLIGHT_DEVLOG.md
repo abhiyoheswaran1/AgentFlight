@@ -4,6 +4,32 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Release AgentFlight v0.7.0
+
+Release decision:
+
+- `agentflight@0.6.0` is already published on npm and tagged as `v0.6.0`, so
+  the current unreleased local branch must cut a new version instead of reusing
+  the existing tag.
+- The unreleased work is minor-release scope because it adds the local handoff
+  command, local session history, replay Review Path guidance, handoff-first
+  ready-review guidance, and first-run proof/workspace-hygiene improvements.
+
+Release pass:
+
+- Bumped package metadata to `0.7.0`.
+- Finalized the changelog `v0.7.0` section from the accumulated unreleased
+  local handoff and history work.
+- Added `docs/development/v0.7.0-release-audit.md` for ProjScan manual
+  sign-off and release verification evidence.
+- Pre-release checks passed: `npm run verify`, `npm run format:check`,
+  `npm pack --dry-run`, `npm audit --audit-level=moderate`, ProjScan doctor,
+  and AgentLoopKit verification.
+- ProjScan preflight/review kept the expected manual release sign-off gate for
+  scale only: 376 changed files, max changed-file risk score `222.8`, no risky
+  functions, no cycles, no dependency changes, no contract changes, and no
+  taint/dataflow risks.
+
 ### Point Ready Status At Existing Handoff
 
 Dogfood finding:

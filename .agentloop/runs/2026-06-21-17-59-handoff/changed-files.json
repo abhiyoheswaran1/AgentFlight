@@ -1,0 +1,58 @@
+[
+  {
+    "status": "M",
+    "path": "AGENTFLIGHT_DEVLOG.md"
+  },
+  {
+    "status": "M",
+    "path": "CHANGELOG.md"
+  },
+  {
+    "status": "M",
+    "path": "package-lock.json"
+  },
+  {
+    "status": "M",
+    "path": "package.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-21-17-56-release-notes.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-21-17-57-release-notes.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-21-17-58-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-17-58-handoff/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-17-58-handoff/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-17-58-handoff/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-21-17-58-handoff/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/state.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/2026-06-21-release-agentflight-v0-7-0.md"
+  },
+  {
+    "status": "??",
+    "path": "docs/development/v0.7.0-release-audit.md"
+  }
+]

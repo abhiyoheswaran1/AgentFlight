@@ -2,7 +2,7 @@
 
 All notable AgentFlight changes are documented here.
 
-## Unreleased
+## [0.7.0] - 2026-06-21
 
 ### Added
 
