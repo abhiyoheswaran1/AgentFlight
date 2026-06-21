@@ -10,6 +10,7 @@ import { getRepositoryRoot } from "../core/git.js";
 import { renderStatus } from "../core/output.js";
 import { detectPackageManager, readPackageJson } from "../core/project.js";
 import { runCommand } from "../core/process.js";
+import { detectVerificationCommands } from "../core/verification.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { appendSessionEvent } from "../core/session.js";
 import { readCurrentSession } from "./status.js";
@@ -37,6 +38,7 @@ export async function runDoctorCommand(
   const paths = resolveAgentFlightPaths(options.repoRoot);
   const packageJson = await readPackageJson(options.repoRoot);
   const scripts = packageJson.scripts ?? {};
+  const detectedVerificationCommands = detectVerificationCommands(packageJson);
   const [npmVersion, repoRoot, packageManager, projscan, agentloopkit] = await Promise.all([
     options.npmVersion !== undefined
       ? Promise.resolve(options.npmVersion)
@@ -81,6 +83,7 @@ export async function runDoctorCommand(
     projscanAvailable: projscan.available,
     agentloopkitAvailable: agentloopkit.available,
     configuredVerificationCommands,
+    detectedVerificationCommands,
     projscanMemoryPresent,
     projscanMemoryIgnored,
     scripts: {

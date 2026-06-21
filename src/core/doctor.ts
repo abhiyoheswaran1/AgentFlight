@@ -13,6 +13,7 @@ export interface DoctorEvaluationInput {
   projscanAvailable: boolean;
   agentloopkitAvailable: boolean;
   configuredVerificationCommands?: number | undefined;
+  detectedVerificationCommands?: string[] | undefined;
   projscanMemoryPresent?: boolean | undefined;
   projscanMemoryIgnored?: boolean | undefined;
   scripts: {
@@ -186,7 +187,7 @@ function verificationCommandsCheck(input: DoctorEvaluationInput): DoctorCheck {
     return warning(
       "verification commands",
       ".agentflight/config.json has no configured verification commands, but package proof scripts are available.",
-      "Add commands under verification.commands or run agentflight verify -- <command> explicitly."
+      buildVerificationCommandsSuggestedFix(input.detectedVerificationCommands)
     );
   }
 
@@ -198,6 +199,19 @@ function verificationCommandsCheck(input: DoctorEvaluationInput): DoctorCheck {
 
 function hasPackageProofScript(input: DoctorEvaluationInput["scripts"]): boolean {
   return input.test || input.build || input.typecheck || input.lint;
+}
+
+function buildVerificationCommandsSuggestedFix(commands: string[] | undefined): string {
+  const suggestions = (commands ?? [])
+    .filter((command) => command.trim().length > 0)
+    .slice(0, 4)
+    .map((command) => `agentflight verify -- ${command}`);
+
+  if (suggestions.length === 0) {
+    return "Add commands under verification.commands or run agentflight verify -- <command> explicitly.";
+  }
+
+  return `Try one of: ${suggestions.join("; ")}. To make this the default, add commands under verification.commands.`;
 }
 
 function parseNodeMajor(version: string): number {

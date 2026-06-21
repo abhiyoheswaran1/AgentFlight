@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight doctor` now suggests concrete detected `agentflight verify -- ...`
+  commands when config verification commands are empty.
 - `agentflight verify` now suggests detected package proof commands when no
   explicit command is provided and config commands are empty.
 - `agentflight doctor` now warns when package proof scripts exist but

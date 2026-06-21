@@ -4,6 +4,59 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Doctor Concrete Verify Suggestions
+
+Dogfood finding:
+
+- After `agentflight verify` learned to suggest detected package proof commands,
+  `agentflight doctor` still warned with the placeholder
+  `agentflight verify -- <command>`. That kept the health check one step less
+  actionable than the failed command it was diagnosing.
+
+Persona readout:
+
+- Product Maintainer: first-run and old-config guidance should converge on the
+  same next action.
+- CLI Engineer: reuse detected proof command ordering; do not mutate config.
+- Docs and DX Writer: doctor warnings should be copy-pasteable without reading
+  implementation docs.
+- Security Reviewer: keep doctor read-only, local-only, and path-safe.
+
+Implemented locally:
+
+- Doctor evaluation now accepts detected verification commands and uses them to
+  render concise `agentflight verify -- ...` suggestions.
+- `runDoctorCommand` passes the same detected package proof commands used by
+  verify/init guidance into core doctor checks.
+- Repos without detected proof commands keep the original concise fallback.
+
+Verification:
+
+- Red AgentFlight-captured core doctor test failed because the warning still
+  used `agentflight verify -- <command>`.
+- Red AgentFlight-captured workflow test failed because real package scripts did
+  not appear in doctor output.
+- Green AgentFlight-captured focused tests passed:
+  `npm test -- tests/core/doctor.test.ts` passed with 1 file / 10 tests, and
+  `npm test -- tests/commands/workflow.test.ts` passed with 1 file / 10 tests.
+- Combined focused run passed:
+  `npm test -- tests/core/doctor.test.ts tests/commands/workflow.test.ts`
+  passed with 2 files / 20 tests.
+- Bug-pass verification passed: `npm run verify` passed with 21 files / 197
+  tests plus build, `npm run format:check` passed, and `npm pack --dry-run`
+  passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight stayed at the known accumulated branch scale caution:
+  241 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-09-48-verification-report.md`.
+- Built CLI smoke `node dist/cli.js doctor` now suggests
+  `agentflight verify -- npm run typecheck`, `agentflight verify -- npm run lint`,
+  `agentflight verify -- npm test`, and `agentflight verify -- npm run build`.
+
 ### Verify Empty Command Guidance
 
 Dogfood finding:

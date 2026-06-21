@@ -16,6 +16,7 @@ describe("doctor checks", () => {
       projscanAvailable: true,
       agentloopkitAvailable: true,
       configuredVerificationCommands: 0,
+      detectedVerificationCommands: ["npm run typecheck", "npm test"],
       scripts: { test: true, build: false, typecheck: false, lint: false }
     });
 
@@ -26,7 +27,7 @@ describe("doctor checks", () => {
         message:
           ".agentflight/config.json has no configured verification commands, but package proof scripts are available.",
         suggestedFix:
-          "Add commands under verification.commands or run agentflight verify -- <command> explicitly."
+          "Try one of: agentflight verify -- npm run typecheck; agentflight verify -- npm test. To make this the default, add commands under verification.commands."
       })
     );
   });

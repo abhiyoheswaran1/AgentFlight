@@ -293,7 +293,9 @@ agentflight handoff`);
     expect(doctor.output).toContain(
       ".agentflight/config.json has no configured verification commands"
     );
-    expect(doctor.output).toContain("agentflight verify -- <command>");
+    expect(doctor.output).toContain("agentflight verify -- npm run typecheck");
+    expect(doctor.output).toContain("agentflight verify -- npm test");
+    expect(doctor.output).not.toContain("agentflight verify -- <command>");
     expect(doctor.output).not.toContain(repoRoot);
   });
 
