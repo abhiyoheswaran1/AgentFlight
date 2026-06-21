@@ -38,15 +38,7 @@ export interface StartCommandResult {
 }
 
 export async function runStartCommand(options: StartCommandOptions): Promise<StartCommandResult> {
-  const paths = resolveAgentFlightPaths(options.repoRoot);
-  if (!(await pathExists(paths.config))) {
-    if (options.yes === true) {
-      await initAgentFlight({ repoRoot: options.repoRoot, now: options.now });
-    } else {
-      throw new Error("AgentFlight is not initialized. Run agentflight init first, or pass --yes.");
-    }
-  }
-
+  const autoInitNotice = await ensureAgentFlightInitialized(options);
   const packageJson = await readPackageJson(options.repoRoot);
   const verificationCommands = detectVerificationCommands(packageJson);
   const git = options.git ?? (await getGitInfo(options.repoRoot));
@@ -62,6 +54,7 @@ export async function runStartCommand(options: StartCommandOptions): Promise<Sta
     verificationCommands,
     tools
   });
+  const initializedSection = autoInitNotice ? `${autoInitNotice}\n` : "";
 
   return {
     output: `AgentFlight started
@@ -72,6 +65,7 @@ ${options.task}
 Session:
 ${result.session.id}
 
+${initializedSection}
 Detected:
 Git branch: ${git.branch ?? "unknown"}
 Package manager: ${packageManager ?? "unknown"}
@@ -89,6 +83,48 @@ Now run your coding agent normally.
     sessionId: result.session.id,
     handoffPath: result.handoffPath
   };
+}
+
+async function ensureAgentFlightInitialized(options: StartCommandOptions): Promise<string> {
+  const paths = resolveAgentFlightPaths(options.repoRoot);
+  if (await pathExists(paths.config)) return "";
+  if (options.yes !== true) {
+    throw new Error("AgentFlight is not initialized. Run agentflight init first, or pass --yes.");
+  }
+
+  const initResult = await initAgentFlight({ repoRoot: options.repoRoot, now: options.now });
+  return formatAutoInitNotice(options.repoRoot, initResult.created);
+}
+
+function formatAutoInitNotice(repoRoot: string, created: string[]): string {
+  if (created.length === 0) return "";
+
+  return `Initialized:
+${formatStartInitFileList(repoRoot, created)}
+.agentflight/config.json is project config; runtime evidence stays local and is excluded from AgentFlight changed-file analysis.
+`;
+}
+
+function formatStartInitFileList(repoRoot: string, files: string[]): string {
+  return files
+    .map((file) => formatRepoRelativePath(repoRoot, file))
+    .sort(compareStartInitFilePaths)
+    .map((file) => `- ${file}`)
+    .join("\n");
+}
+
+function compareStartInitFilePaths(left: string, right: string): number {
+  return (
+    startInitFilePathPriority(left) - startInitFilePathPriority(right) || left.localeCompare(right)
+  );
+}
+
+function startInitFilePathPriority(file: string): number {
+  const priorities = new Map([
+    [".agentflight/config.json", 0],
+    [".agentflight/.gitignore", 1]
+  ]);
+  return priorities.get(file) ?? 10;
 }
 
 export async function inspectStartTools(

@@ -174,6 +174,51 @@ agentflight doctor`);
     expect(second.output).toContain("- .agentflight/.gitignore");
   });
 
+  it("explains generated files when start --yes initializes AgentFlight", async () => {
+    const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            test: "vitest run"
+          }
+        },
+        null,
+        2
+      )
+    );
+
+    const start = await runStartCommand({
+      repoRoot,
+      task: "First run through start yes",
+      yes: true,
+      now: new Date("2026-06-13T12:05:00.000Z"),
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: false,
+        changedFiles: []
+      },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, version: "4.5.0", warnings: [] },
+        agentloopkit: { available: true, version: "0.35.2", warnings: [] }
+      }
+    });
+
+    expect(start.output).toContain("Initialized:");
+    expect(start.output).toContain("- .agentflight/config.json");
+    expect(start.output).toContain("- .agentflight/.gitignore");
+    expect(start.output).toContain(".agentflight/config.json is project config");
+    expect(start.output).toContain("runtime evidence stays local");
+    expect(start.output).not.toContain(repoRoot);
+    expect(
+      JSON.parse(await readFile(join(repoRoot, ".agentflight", "config.json"), "utf8")).verification
+        .commands
+    ).toEqual(["npm test"]);
+  });
+
   it("uses a clear init verification placeholder when no proof command is detected", async () => {
     const repoRoot = await createTempRepo();
     await writeFile(

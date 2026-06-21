@@ -4,6 +4,60 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Explain Start Yes Generated Files
+
+Dogfood finding:
+
+- `agentflight start --yes` safely initialized AgentFlight in a fresh repo, but
+  the output went straight to the started session. First-run users missed the
+  `init` guidance that `.agentflight/config.json` is project config while
+  runtime evidence stays local and excluded from AgentFlight changed-file
+  analysis.
+
+Team persona notes:
+
+- Product Maintainer: first-run trust depends on explaining generated files at
+  the moment they appear.
+- CLI Engineer: keep `start --yes` behavior unchanged except for a concise
+  output block.
+- Docs and DX Writer: reuse the same local-file framing as `init` without
+  adding a long tutorial.
+- Security Reviewer: no hidden ignore behavior; config remains visible and
+  runtime evidence remains local.
+- Repo Steward: keep the change in `start` output and workflow tests only.
+
+Implemented locally:
+
+- `agentflight start --yes` now lists generated AgentFlight files when it
+  auto-initializes a repo.
+- The output explains that `.agentflight/config.json` is project config and
+  runtime evidence stays local/excluded from AgentFlight changed-file analysis.
+- `agentflight start` without `--yes` keeps the existing missing-init error.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/commands/workflow.test.ts` failed
+  because `start --yes` did not print an `Initialized:` block.
+- Green AgentFlight-captured `npm test -- tests/commands/workflow.test.ts`
+  passed with 1 file / 12 tests.
+- AgentFlight-captured `npm run verify` passed with 21 files / 204 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on
+  `src/commands/start.ts`; Prettier fixed the formatting, and later reruns
+  passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight initially reported one high-complexity function signal for
+  `runStartCommand`; the auto-init branch was extracted and the rerun cleared
+  risky functions.
+- Final ProjScan preflight returned the known accumulated branch scale caution:
+  276 changed files and maximum changed-file risk score `212.1 >= 80`.
+- Final ProjScan review returned the known scale-only `block` verdict with 46
+  current changed files; it reported no risky functions, dependency changes,
+  contract changes, new cycles, taint flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-12-15-verification-report.md`.
+
 ### Speed Up First-Run Tool Inspection
 
 Dogfood finding:

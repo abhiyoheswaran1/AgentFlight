@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight start --yes` now explains the AgentFlight files it generated
+  during safe auto-init, including project config and local runtime evidence.
 - `agentflight init` and `agentflight start` now use concise ProjScan version
   checks instead of extra help probing, while `agentflight doctor` keeps deeper
   diagnostics.
