@@ -4,6 +4,56 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Recorded Readiness Label
+
+Dogfood finding:
+
+- After a task is committed, `agentflight status` correctly reports a clean
+  worktree, while `agentflight history` still shows the latest stored review
+  metadata for that session. The data is useful, but the `Readiness:` label can
+  read like a live worktree claim for the current session.
+
+Persona readout:
+
+- Product Maintainer: history should be honest that it is showing recorded
+  artifact state, not recomputing review readiness.
+- CLI Engineer: keep history read-only; change the label rather than adding git
+  status work to session listing.
+- Docs and DX Writer: align the CLI with existing README wording: recorded
+  readiness.
+- Verification Engineer: keep `Open first:` and artifact path behavior
+  unchanged.
+
+Implemented locally:
+
+- `agentflight history` now prints `Recorded readiness:`.
+- Older sessions without metadata now print `Recorded readiness: not recorded`.
+- Session storage, readiness metadata, artifact selection, and open-first
+  guidance are unchanged.
+
+Verification:
+
+- Red focused test failed because history still printed `Readiness:`.
+- AgentFlight-captured focused verification now passes:
+  `npm test -- tests/commands/history.test.ts tests/core/session.test.ts`
+  passed: 2 files / 12 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 180 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: maximum changed-file risk score `207.9`, no
+  risky functions, no dependency changes, no contract changes, and no dataflow
+  risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-05-15-verification-report.md`.
+- Built CLI smoke passed: `agentflight history --limit 2` printed
+  `Recorded readiness:` for recent sessions.
+
 ### Doctor Generated Artifact Guidance
 
 Dogfood finding:

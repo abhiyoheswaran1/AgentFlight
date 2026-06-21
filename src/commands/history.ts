@@ -95,7 +95,7 @@ async function formatSession(
     unresolvedFailed: session.verificationUnresolvedFailed,
     resolvedFailed: session.verificationResolvedFailed
   })}
-  Readiness: ${formatReadiness(session)}
+  Recorded readiness: ${formatReadiness(session)}
   Open first: ${chooseOpenFirstArtifact(session, artifacts)}
   Handoff: ${handoffPath}
   Report: ${reportPath}

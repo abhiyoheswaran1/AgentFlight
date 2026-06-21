@@ -72,6 +72,8 @@ All notable AgentFlight changes are documented here.
 - `agentflight doctor` now warns when `.projscan-memory/memory.json` exists
   without a matching project filter and reports OK once the repo filters it
   through `changedFileFilters.ignore`.
+- `agentflight history` now labels stored review metadata as
+  `Recorded readiness:` so it is not confused with live worktree readiness.
 
 ### Changed
 
