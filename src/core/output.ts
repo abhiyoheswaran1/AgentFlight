@@ -1,4 +1,5 @@
 import type { ToolAdapterResult } from "../types/index.js";
+import { formatRepoRelativePath } from "./paths.js";
 
 export interface CommandOutput {
   output: string;
@@ -12,6 +13,14 @@ export interface VerificationFailureCounts {
 }
 
 const DEFAULT_COMMAND_DISPLAY_LENGTH = 96;
+export const AGENTFLIGHT_PROJECT_CONFIG_GUIDANCE =
+  ".agentflight/config.json is project config. Review or commit it when shared AgentFlight defaults are useful.";
+export const AGENTFLIGHT_RUNTIME_EVIDENCE_GUIDANCE =
+  ".agentflight/sessions/, reports/, evidence/, current/ are local runtime evidence and are excluded from AgentFlight changed-file analysis.";
+export const AGENTFLIGHT_GITIGNORE_GUIDANCE =
+  ".agentflight/.gitignore keeps runtime evidence out of git while leaving config.json visible.";
+export const PROJSCAN_MEMORY_FILTER_GUIDANCE =
+  'If .projscan-memory/memory.json appears as generated tool state, add ".projscan-memory/**" to changedFileFilters.ignore in .agentflight/config.json.';
 
 export function formatToolAvailability(label: string, available: boolean): string {
   return `${label}: ${available ? "available" : "unavailable"}`;
@@ -61,6 +70,39 @@ export function formatVerificationFailureContext(counts: VerificationFailureCoun
     lines.push(`Historical failed runs: ${counts.resolvedFailed} resolved by later passing runs.`);
   }
   return lines.join(" ");
+}
+
+export function formatAgentFlightGeneratedFileList(repoRoot: string, files: string[]): string {
+  if (files.length === 0) return "- none";
+  return files
+    .map((file) => formatRepoRelativePath(repoRoot, file))
+    .sort(compareAgentFlightGeneratedFilePaths)
+    .map((file) => `- ${file}`)
+    .join("\n");
+}
+
+export function formatAgentFlightLocalFilesGuidance(): string {
+  return [
+    AGENTFLIGHT_PROJECT_CONFIG_GUIDANCE,
+    AGENTFLIGHT_RUNTIME_EVIDENCE_GUIDANCE,
+    AGENTFLIGHT_GITIGNORE_GUIDANCE,
+    PROJSCAN_MEMORY_FILTER_GUIDANCE
+  ].join("\n");
+}
+
+function compareAgentFlightGeneratedFilePaths(left: string, right: string): number {
+  return (
+    agentFlightGeneratedFilePathPriority(left) - agentFlightGeneratedFilePathPriority(right) ||
+    left.localeCompare(right)
+  );
+}
+
+function agentFlightGeneratedFilePathPriority(file: string): number {
+  const priorities = new Map([
+    [".agentflight/config.json", 0],
+    [".agentflight/.gitignore", 1]
+  ]);
+  return priorities.get(file) ?? 10;
 }
 
 export function formatToolForReport(label: string, result: ToolAdapterResult): string {

@@ -84,6 +84,7 @@ agentflight doctor`);
     expect(start.output).toContain("ProjScan: available");
     expect(start.output).toContain("AgentLoopKit: available 0.28.7 (active task linked)");
     expect(start.output).toContain("Handoff saved:\n.agentflight/current/handoff.md");
+    expect(start.output).not.toContain("\n\n\nDetected:");
     expect(start.output).not.toContain(repoRoot);
 
     const status = await runStatusCommand({
@@ -211,7 +212,8 @@ agentflight doctor`);
     expect(start.output).toContain("- .agentflight/config.json");
     expect(start.output).toContain("- .agentflight/.gitignore");
     expect(start.output).toContain(".agentflight/config.json is project config");
-    expect(start.output).toContain("runtime evidence stays local");
+    expect(start.output).toContain("local runtime evidence");
+    expect(start.output).toContain("excluded from AgentFlight changed-file analysis");
     expect(start.output).not.toContain(repoRoot);
     expect(
       JSON.parse(await readFile(join(repoRoot, ".agentflight", "config.json"), "utf8")).verification

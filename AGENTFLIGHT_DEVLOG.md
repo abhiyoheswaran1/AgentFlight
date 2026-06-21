@@ -4,6 +4,55 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Share First-Run File Guidance Helpers
+
+Dogfood finding:
+
+- After `start --yes` gained first-run generated-file guidance, `init` and
+  `start` each owned separate path-ordering and local-file guidance helpers.
+  That created drift risk in the first-run workspace-hygiene path.
+
+Team persona notes:
+
+- Product Maintainer: first-run trust should not depend on two copies of the
+  same local-file story staying in sync.
+- CLI Engineer: centralize the formatting helper and keep command behavior
+  unchanged.
+- Docs and DX Writer: preserve the current wording while making future edits
+  safer.
+- Security Reviewer: keep config visible and runtime evidence local; no new
+  ignore behavior.
+- Repo Steward: prefer a small shared helper over duplicated local formatters.
+
+Implemented locally:
+
+- Added shared output helpers for AgentFlight generated-file ordering and
+  first-run local-file guidance.
+- `agentflight init` now uses the shared helpers for created/skipped file lists
+  and the `Local files:` guidance block.
+- `agentflight start --yes` now uses the shared generated-file list helper and
+  shared config/runtime guidance strings.
+
+Verification:
+
+- Red AgentFlight-captured `npm test -- tests/core/output.test.ts
+tests/commands/workflow.test.ts` failed because the shared helper exports did
+  not exist yet.
+- Green AgentFlight-captured `npm test -- tests/core/output.test.ts
+tests/commands/workflow.test.ts` passed with 2 files / 15 tests.
+- AgentFlight-captured `npm run verify` passed with 22 files / 207 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  280 changed files and maximum changed-file risk score `212.1 >= 80`.
+- ProjScan review returned the known scale-only `block` verdict with 47 current
+  changed files; it reported no risky functions, dependency changes, contract
+  changes, new cycles, taint flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-12-33-verification-report.md`.
+
 ### Explain Start Yes Generated Files
 
 Dogfood finding:

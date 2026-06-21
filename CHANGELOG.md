@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- First-run AgentFlight generated-file lists and local-file guidance now use
+  shared output helpers, keeping `init` and `start --yes` copy consistent.
 - `agentflight start --yes` now explains the AgentFlight files it generated
   during safe auto-init, including project config and local runtime evidence.
 - `agentflight init` and `agentflight start` now use concise ProjScan version
