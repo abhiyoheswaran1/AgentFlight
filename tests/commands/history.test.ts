@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runHistoryCommand } from "../../src/commands/history.js";
@@ -138,6 +138,67 @@ describe("history command", () => {
     expect(history.output).toContain(older.session.id);
   });
 
+  it("recommends which existing artifact to open first", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+
+    const unknown = await startSession({
+      repoRoot,
+      task: "Unknown readiness",
+      now: new Date("2026-06-13T10:00:00.000Z"),
+      git: { branch: "main", commit: "unknown", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const blocked = await startSession({
+      repoRoot,
+      task: "Blocked readiness",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "blocked", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const ready = await startSession({
+      repoRoot,
+      task: "Ready readiness",
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      git: { branch: "main", commit: "ready", dirty: false, changedFiles: [] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    await writeReportReviewSummary(repoRoot, blocked.session.id, {
+      state: "blocked_by_failed_verification",
+      label: "Blocked by failed verification"
+    });
+    await writeReportReviewSummary(repoRoot, ready.session.id, {
+      state: "ready_for_review",
+      label: "Ready for review"
+    });
+    await writeArtifact(repoRoot, unknown.session.id, "handoff.md", "AgentFlight handoff");
+    await writeArtifact(repoRoot, blocked.session.id, "proof.md", "# proof");
+    await writeArtifact(repoRoot, ready.session.id, "proof.md", "# proof");
+    await writeArtifact(repoRoot, ready.session.id, "replay.html", "<!doctype html>");
+
+    const history = await runHistoryCommand({ repoRoot, limit: 5 });
+
+    expect(history.output).toContain("Ready readiness");
+    expect(history.output).toContain("Open first: replay");
+    expect(history.output).toContain("Blocked readiness");
+    expect(history.output).toContain("Open first: report");
+    expect(history.output).toContain("Unknown readiness");
+    expect(history.output).toContain("Open first: handoff");
+  });
+
   it("summarizes malformed session files without crashing", async () => {
     const repoRoot = await createTempRepo();
     await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
@@ -170,3 +231,46 @@ describe("history command", () => {
     }
   });
 });
+
+async function writeReportReviewSummary(
+  repoRoot: string,
+  sessionId: string,
+  readiness: { state: string; label: string }
+): Promise<void> {
+  const sessionPath = join(repoRoot, ".agentflight", "sessions", `${sessionId}.json`);
+  const session = JSON.parse(await readFile(sessionPath, "utf8"));
+
+  await saveSession(
+    repoRoot,
+    addSessionEvent(session, {
+      type: "report_generated",
+      timestamp: "2026-06-13T12:30:00.000Z",
+      title: "Report generated",
+      metadata: {
+        path: `.agentflight/reports/${sessionId}-proof.md`,
+        readiness: {
+          state: readiness.state,
+          label: readiness.label,
+          riskLevel: "medium",
+          changedFiles: 1,
+          verificationPassed: 1,
+          verificationFailed: readiness.state === "ready_for_review" ? 0 : 1
+        }
+      }
+    })
+  );
+}
+
+async function writeArtifact(
+  repoRoot: string,
+  sessionId: string,
+  suffix: "handoff.md" | "proof.md" | "replay.html",
+  content: string
+): Promise<void> {
+  await mkdir(join(repoRoot, ".agentflight", "reports"), { recursive: true });
+  await writeFile(
+    join(repoRoot, ".agentflight", "reports", `${sessionId}-${suffix}`),
+    content,
+    "utf8"
+  );
+}

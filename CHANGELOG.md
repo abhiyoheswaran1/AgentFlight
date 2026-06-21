@@ -39,6 +39,8 @@ All notable AgentFlight changes are documented here.
 - History now includes stable handoff artifact paths alongside report and
   replay paths when those artifacts exist.
 - History now includes stable resume artifact paths when those artifacts exist.
+- History now suggests which existing local artifact to open first for each
+  session.
 - HTML replay now reserves urgent failed-run navigation for unresolved failed
   verification while keeping historical failed runs visible in the ledger.
 - Ready handoffs no longer inline historical failed verification excerpts once

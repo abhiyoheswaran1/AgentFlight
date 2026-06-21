@@ -4,6 +4,59 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### History Open-First Guidance
+
+Research signal:
+
+- `agentflight history` now points to stable local handoff/report/replay/resume
+  artifacts, but users still had to infer which one to open first when scanning
+  older sessions.
+
+Persona readout:
+
+- Product Maintainer: history should answer the same "what should I open?"
+  question as the handoff command.
+- CLI Engineer: keep history read-only and derive guidance from recorded
+  readiness plus existing artifact paths.
+- Docs and DX Writer: describe the behavior in command docs without adding a
+  new workflow concept.
+- Security Reviewer: no search index, session switching, export, upload, or PR
+  comment behavior.
+
+Implemented locally:
+
+- `agentflight history` now prints `Open first:` for each session.
+- Ready sessions prefer `replay` when replay exists.
+- Blocked, not-ready, or needs-verification sessions prefer `report` when the
+  report exists.
+- Sessions without recorded readiness prefer an existing `handoff` artifact.
+
+Verification:
+
+- Red focused test failed because history had no `Open first:` line.
+- Focused AgentFlight-captured verification now passes:
+  `npm test -- tests/commands/history.test.ts` passed: 1 file / 5 tests.
+- Adjacent AgentFlight-captured command verification now passes:
+  `npm test -- tests/commands/history.test.ts tests/cli-entrypoint.test.ts tests/commands/evidence-output.test.ts`
+  passed: 3 files / 37 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 167 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 139 changed files, maximum
+  changed-file risk score `199.1`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-03-42-verification-report.md`.
+- Built CLI smoke: `agentflight history --limit 1` showed
+  `Open first: replay` with stable handoff/report/replay/resume paths for the
+  current session.
+
 ### Concurrent Verification Evidence Collision
 
 Dogfood finding:

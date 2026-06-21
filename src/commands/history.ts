@@ -79,6 +79,12 @@ async function formatSession(
   const reportPath = await formatArtifactPath(repoRoot, session.id, "proof.md");
   const replayPath = await formatArtifactPath(repoRoot, session.id, "replay.html");
   const resumePath = await formatArtifactPath(repoRoot, session.id, "resume.md");
+  const artifacts = {
+    handoff: handoffPath,
+    report: reportPath,
+    replay: replayPath,
+    resume: resumePath
+  };
 
   return `- ${formatStartedAt(session.startedAt)}${marker} ${session.taskTitle}
   ID: ${session.id}
@@ -90,6 +96,7 @@ async function formatSession(
     resolvedFailed: session.verificationResolvedFailed
   })}
   Readiness: ${formatReadiness(session)}
+  Open first: ${chooseOpenFirstArtifact(session, artifacts)}
   Handoff: ${handoffPath}
   Report: ${reportPath}
   Replay: ${replayPath}
@@ -105,6 +112,33 @@ function formatReadiness(session: SessionSummary): string {
 
 function formatChangedFiles(count: number): string {
   return `${count} changed ${count === 1 ? "file" : "files"}`;
+}
+
+interface HistoryArtifacts {
+  handoff: string;
+  report: string;
+  replay: string;
+  resume: string;
+}
+
+type PrimaryArtifact = "handoff" | "report" | "replay";
+
+function chooseOpenFirstArtifact(session: SessionSummary, artifacts: HistoryArtifacts): string {
+  const readiness = session.latestReview?.state;
+
+  if (readiness === "ready_for_review") {
+    return firstExistingArtifact(["replay", "handoff", "report"], artifacts);
+  }
+
+  if (readiness) {
+    return firstExistingArtifact(["report", "handoff", "replay"], artifacts);
+  }
+
+  return firstExistingArtifact(["handoff", "replay", "report"], artifacts);
+}
+
+function firstExistingArtifact(order: PrimaryArtifact[], artifacts: HistoryArtifacts): string {
+  return order.find((artifact) => artifacts[artifact] !== "missing") ?? "missing";
 }
 
 async function formatArtifactPath(
