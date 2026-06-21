@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- `agentflight resume` now includes unresolved and historical failed-run context
+  below the verification count, matching status/report trust cues.
 - Clean-worktree `agentflight resume` prompts now include the latest local
   `Open first:` artifact path when current report/replay/handoff evidence
   exists.

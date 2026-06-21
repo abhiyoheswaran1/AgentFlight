@@ -20,6 +20,7 @@ export interface ResumePromptInput {
   openFirstArtifact?: string | undefined;
   latestSnapshotNote?: string | undefined;
   verificationState?: string | undefined;
+  verificationContext?: string | undefined;
   nextAction: string;
 }
 
@@ -44,7 +45,7 @@ ${renderList(input.riskReasons, "No specific risks detected yet.")}
 ${input.latestSnapshotNote ?? "No snapshot recorded."}
 
 ## Verification State
-${input.verificationState ?? "No verification state recorded."}
+${renderVerificationState(input)}
 
 ## Review Focus
 ${renderReviewFocus(input.reviewFocus ?? [])}
@@ -79,6 +80,11 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
         `${item.rank}. ${item.file}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
+}
+
+function renderVerificationState(input: ResumePromptInput): string {
+  const state = input.verificationState ?? "No verification state recorded.";
+  return input.verificationContext ? `${state}\n${input.verificationContext}` : state;
 }
 
 function renderProofGaps(input: ResumePromptInput): string {

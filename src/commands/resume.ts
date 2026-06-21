@@ -12,7 +12,7 @@ import {
   getLatestSessionEvent
 } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
-import { formatVerificationCountLine } from "../core/output.js";
+import { formatVerificationCountLine, formatVerificationFailureContext } from "../core/output.js";
 import { renderResumePrompt } from "../renderers/resume-prompt.js";
 import { readCurrentSession } from "./status.js";
 
@@ -74,6 +74,7 @@ export async function runResumeCommand(
     openFirstArtifact: cleanOpenFirst ?? undefined,
     latestSnapshotNote: latestSnapshot?.message,
     verificationState: formatVerificationCountLine(verification),
+    verificationContext: formatVerificationFailureContext(verification),
     nextAction: review.readiness.nextAction
   });
   const paths = resolveAgentFlightPaths(options.repoRoot);

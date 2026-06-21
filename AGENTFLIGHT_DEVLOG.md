@@ -4,6 +4,53 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Show Resolved Failure Context in Resume
+
+Dogfood finding:
+
+- `agentflight resume` showed resolved failed-run counts, but omitted the
+  historical-failure context that status and reports show. In clean or ready
+  prompts, that made resolved failures look less trustworthy than the rest of
+  the review surfaces.
+
+Team persona notes:
+
+- Product Maintainer: resume should carry the same trust cues as status/report
+  when failures are historical.
+- CLI Engineer: reuse the existing verification failure-context formatter.
+- Verification Engineer: cover both unresolved and resolved failed-run resume
+  output.
+- Docs and DX Writer: keep the line concise and avoid duplicating excerpts.
+- Security Reviewer: keep local evidence paths and raw output unchanged.
+
+Implemented locally:
+
+- `agentflight resume` now renders unresolved and historical failed-run context
+  below the verification count.
+- The change reuses `formatVerificationFailureContext`, so wording stays aligned
+  with status/report.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  failed because resume omitted the historical failed-run context.
+- Green AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  passed with 1 file / 34 tests.
+- AgentFlight-captured `npm run verify` passed with 22 files / 207 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on the new plan
+  Markdown file; Prettier fixed the file and the rerun passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  manual review sign-off recommended for large handoff risk.
+- ProjScan review returned the known scale-only `block` verdict with 49 current
+  changed files and maximum changed-file risk score `212.1 >= 80`; it reported
+  no risky functions, dependency changes, contract changes, new cycles, taint
+  flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-13-43-verification-report.md`.
+
 ### Show Latest Artifact in Clean Resume
 
 Dogfood finding:

@@ -317,6 +317,13 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(status.output).toContain("- failed:");
     expect(status.output).toContain("process.exit(4)");
     expect(status.output).not.toContain("Verification run details are tucked");
+
+    const resume = await runResumeCommand({
+      repoRoot,
+      changedFiles: [],
+      now: new Date("2026-06-13T12:06:00.000Z")
+    });
+    expect(resume.output).toContain("Unresolved failed runs: 1.");
   });
 
   it("does not call status clean while verification is incomplete", async () => {
@@ -931,6 +938,7 @@ Start a new AgentFlight session when you begin the next task.`);
       now: new Date("2026-06-13T12:04:50.000Z")
     });
     expect(resume.output).toContain("1 passed, 1 failed (0 unresolved, 1 resolved)");
+    expect(resume.output).toContain("Historical failed runs: 1 resolved by later passing runs.");
     expect(resume.output).not.toContain("## Verification State\n1 passed, 1 failed\n");
 
     const handoff = await runHandoffCommand({
