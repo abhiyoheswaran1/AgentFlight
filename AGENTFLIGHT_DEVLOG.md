@@ -4,6 +4,61 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clean Status History Guidance
+
+Dogfood finding:
+
+- After committing a completed session, `agentflight status` correctly reports a
+  clean worktree but only tells the user to start a new session. The just-built
+  local report/replay/handoff artifacts are discoverable through
+  `agentflight history`, but status does not point there.
+
+Persona readout:
+
+- Product Maintainer: clean status should close the loop by pointing to the
+  latest local artifacts and then the next session.
+- CLI Engineer: keep this as text guidance only; do not change Review
+  Intelligence, JSON status, or artifact generation.
+- Docs and DX Writer: make the command exact and short:
+  `agentflight history --limit 1`.
+- Security Reviewer: status remains read-only and local-only.
+
+Implemented locally:
+
+- Text status now adds a clean-worktree line:
+  `Run agentflight history --limit 1 to reopen the latest local artifacts.`
+- The existing next line remains visible:
+  `Start a new AgentFlight session when you begin the next task.`
+- JSON status `nextAction` remains unchanged so scripted callers do not see a
+  behavior shift.
+
+Verification:
+
+- Red AgentFlight-captured focused test failed because clean status did not
+  mention `agentflight history --limit 1`.
+- Green AgentFlight-captured focused test passed:
+  `npm test -- tests/commands/evidence-output.test.ts` passed with 1 file / 32
+  tests.
+- AgentFlight-captured `npm run format:check` passed after formatting the
+  devlog and plan.
+- AgentFlight-captured `npm run verify` passed with 21 files / 190 tests, plus
+  build.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found
+  `0 vulnerabilities`.
+- AgentFlight-captured `npx projscan@latest doctor --format json` passed with
+  health `100/A`.
+- AgentFlight-captured
+  `npx projscan@latest preflight --mode before_commit --format json` returned
+  the known accumulated branch scale caution: 225 changed files and maximum
+  changed-file risk score `212.1 >= 80`.
+- AgentFlight-captured `npx projscan@latest review --format json` exited `0`
+  but returned a scale-only `block` verdict for manual release signoff. Saved
+  evidence reported risky functions `0`, dependency changes `0`, contract
+  changes `0`, and dataflow risks `0`.
+- Final AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-08-44-verification-report.md`.
+
 ### History Latest Action Readiness
 
 Dogfood finding:

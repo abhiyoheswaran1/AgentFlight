@@ -34,6 +34,8 @@ All notable AgentFlight changes are documented here.
   verification from historical failed runs that later passed.
 - Resume prompts now use the same unresolved-versus-resolved verification count
   wording as the other review surfaces.
+- Clean-worktree status now points users to `agentflight history --limit 1` to
+  reopen the latest local artifacts before starting the next session.
 - History now shows unresolved-versus-resolved failed verification counts for
   prior sessions.
 - History now includes stable handoff artifact paths alongside report and

@@ -214,7 +214,7 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).toContain("Readiness: Clean worktree");
     expect(status.output).toContain("Reason: No changed files are currently detected.");
     expect(status.output).toContain(
-      "Next action:\nStart a new AgentFlight session when you begin the next task."
+      "Next action:\nRun agentflight history --limit 1 to reopen the latest local artifacts.\nStart a new AgentFlight session when you begin the next task."
     );
 
     const jsonStatus = await runStatusCommand({

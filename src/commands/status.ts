@@ -62,6 +62,10 @@ export async function runStatusCommand(
     review.readiness.nextAction,
     review.readiness.suggestedCommand
   );
+  const statusTextNextAction =
+    review.readiness.state === "clean_worktree"
+      ? "Run agentflight history --limit 1 to reopen the latest local artifacts.\nStart a new AgentFlight session when you begin the next task."
+      : nextAction;
   const verificationFailureContext = formatVerificationFailureContext(verification);
 
   if (format === "json") {
@@ -124,7 +128,7 @@ Readiness: ${review.readiness.label}
 Reason: ${readinessReason}
 
 Next action:
-${nextAction}
+${statusTextNextAction}
 `
   };
 }
