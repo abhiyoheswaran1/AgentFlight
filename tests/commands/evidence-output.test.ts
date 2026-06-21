@@ -714,6 +714,35 @@ Open first: handoff ${handoffPath}`);
     expect(resume.output).not.toContain(handoff.sessionHandoffPath);
   });
 
+  it("points ready status output at an existing handoff artifact", async () => {
+    const command = `${process.execPath} -e "console.log('proof ok')"`;
+    const repoRoot = await startedRepo([command]);
+    const changedFiles = ["docs/development/verification.md"];
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, "-e", "console.log('proof ok')"],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles,
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+    const handoffPath = `.agentflight/reports/${basename(handoff.sessionHandoffPath)}`;
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles,
+      now: new Date("2026-06-13T12:06:00.000Z")
+    });
+
+    expect(status.output).toContain(`Next action:\nOpen first: handoff ${handoffPath}`);
+    expect(status.output).not.toContain(
+      "Run agentflight handoff to generate the local review packet."
+    );
+    expect(status.output).not.toContain(handoff.sessionHandoffPath);
+  });
+
   it("points ready report and replay recommendations to the handoff packet", async () => {
     const command = `${process.execPath} -e "console.log('proof ok')"`;
     const repoRoot = await startedRepo([command]);

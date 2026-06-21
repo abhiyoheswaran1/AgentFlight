@@ -19,12 +19,14 @@ import type {
   AgentFlightSession,
   ProofGap,
   ReviewFocusItem,
+  ReviewReadinessState,
   RiskCategorySummary,
   SessionEvent,
   VerificationRun
 } from "../types/index.js";
 
 const STATUS_VERIFICATION_RUN_LIMIT = 8;
+const readyHandoffNextAction = "Run agentflight handoff to generate the local review packet.";
 
 export interface StatusCommandOptions {
   repoRoot: string;
@@ -63,18 +65,12 @@ export async function runStatusCommand(
     review.readiness.nextAction,
     review.readiness.suggestedCommand
   );
-  const cleanOpenFirst =
-    review.readiness.state === "clean_worktree"
-      ? await readOpenFirstArtifact(
-          options.repoRoot,
-          session.id,
-          getLatestRecordedReviewSummary(session)?.state
-        )
-      : null;
-  const statusTextNextAction =
-    review.readiness.state === "clean_worktree"
-      ? formatCleanStatusNextAction(cleanOpenFirst)
-      : nextAction;
+  const statusTextNextAction = await buildStatusTextNextAction({
+    repoRoot: options.repoRoot,
+    session,
+    readinessState: review.readiness.state,
+    nextAction
+  });
   const verificationFailureContext = formatVerificationFailureContext(verification);
 
   if (format === "json") {
@@ -220,6 +216,38 @@ function formatCleanStatusNextAction(openFirst: string | null): string {
     : "Run agentflight history --limit 1 to reopen the latest local artifacts.";
   return `${openLine}
 Start a new AgentFlight session when you begin the next task.`;
+}
+
+async function buildStatusTextNextAction(input: {
+  repoRoot: string;
+  session: AgentFlightSession;
+  readinessState: ReviewReadinessState;
+  nextAction: string;
+}): Promise<string> {
+  const openFirstReadiness = statusOpenFirstReadiness(input.readinessState, input.session);
+  if (openFirstReadiness === undefined) return input.nextAction;
+
+  const openFirst = await readOpenFirstArtifact(
+    input.repoRoot,
+    input.session.id,
+    openFirstReadiness
+  );
+  if (input.readinessState === "clean_worktree") return formatCleanStatusNextAction(openFirst);
+  return formatReadyStatusNextAction(input.nextAction, openFirst);
+}
+
+function statusOpenFirstReadiness(
+  readinessState: ReviewReadinessState,
+  session: AgentFlightSession
+): ReviewReadinessState | undefined {
+  if (readinessState === "clean_worktree") return getLatestRecordedReviewSummary(session)?.state;
+  if (readinessState === "ready_for_review") return readinessState;
+  return undefined;
+}
+
+function formatReadyStatusNextAction(nextAction: string, openFirst: string | null): string {
+  if (openFirst && nextAction === readyHandoffNextAction) return `Open first: ${openFirst}`;
+  return nextAction;
 }
 
 function readMetadataObject(event: SessionEvent, key: string): Record<string, unknown> {

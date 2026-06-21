@@ -4,6 +4,55 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Point Ready Status At Existing Handoff
+
+Dogfood finding:
+
+- After generating a ready local handoff, dirty-session `agentflight status`
+  still told the user to run `agentflight handoff` again. Resume and handoff had
+  already moved to the existing open-first artifact path, so status was the
+  remaining stale review-readiness surface.
+
+Implemented locally:
+
+- Ready-session `agentflight status` now reuses the existing open-first artifact
+  selector when a handoff, replay, or report artifact already exists.
+- Status text keeps clean-worktree and blocked-session guidance unchanged.
+- Status JSON remains parseable and unchanged for the existing local evidence
+  fields.
+- A ProjScan high-complexity warning on `runStatusCommand` was addressed by
+  extracting open-first next-action selection into small helpers.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  failed because ready status still showed `Run agentflight handoff...` after
+  handoff generation.
+- Green AgentFlight-captured
+  `npm test -- tests/commands/evidence-output.test.ts` passed with 1 file / 37
+  tests.
+- Initial ProjScan review after the status change reported a concrete blocker:
+  `runStatusCommand` crossed the high-cyclomatic-complexity threshold. After
+  helper extraction, ProjScan review returned only the known manual release
+  sign-off condition.
+- Final AgentFlight-captured `npm run verify` passed with 23 files / 222 tests
+  plus build.
+- AgentFlight-captured `npm run format:check` initially caught formatting in
+  the new plan doc and `src/commands/status.ts`; after formatting, it passed.
+- AgentFlight-captured `npm pack --dry-run` passed and kept the local package
+  version at `0.6.0`.
+- AgentFlight-captured `npm audit --audit-level=moderate` found 0
+  vulnerabilities.
+- AgentFlight-captured ProjScan doctor passed with score 100/A.
+- AgentFlight-captured ProjScan preflight returned `caution` for manual review
+  sign-off. Full ProjScan review returned the known manual release sign-off
+  block: maximum changed-file risk score 222.8 >= 80, with no concrete cycle,
+  risky-function, contract, taint, or dataflow defect reported after the
+  complexity refactor.
+- AgentFlight dogfood confirmed `agentflight status` now renders
+  `Open first: handoff ...` after handoff generation.
+- AgentFlight-captured AgentLoopKit verification passed.
+
 ### Point Ready Resume At Existing Handoff
 
 Dogfood finding:

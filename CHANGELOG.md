@@ -32,6 +32,9 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Ready `agentflight status` output now points at an existing local handoff,
+  replay, or report artifact when one already exists, instead of repeating
+  handoff-generation guidance.
 - Ready `agentflight resume` prompts now point at an existing local handoff,
   replay, or report artifact when one already exists, instead of repeating
   handoff-generation guidance.

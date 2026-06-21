@@ -1,0 +1,5 @@
+ AGENTFLIGHT_DEVLOG.md                  | 49 ++++++++++++++++++++++++++++++++
+ CHANGELOG.md                           |  3 ++
+ src/commands/status.ts                 | 52 ++++++++++++++++++++++++++--------
+ tests/commands/evidence-output.test.ts | 29 +++++++++++++++++++
+ 4 files changed, 121 insertions(+), 12 deletions(-)
