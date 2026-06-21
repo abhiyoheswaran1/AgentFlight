@@ -4,6 +4,54 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Resume Resolved Failure Wording
+
+Dogfood finding:
+
+- After the replay resolved-failure tone fix, `agentflight resume` still showed
+  total failed verification counts beside `Ready for review`. That made a
+  continuation prompt look more blocked than status/report/replay/handoff.
+
+Persona readout:
+
+- Product Maintainer: continuation prompts should match the current review
+  state, not just the raw historical ledger.
+- CLI Engineer: reuse the shared verification count formatter rather than
+  introducing resume-only wording.
+- Verification Engineer: keep raw verification runs and failure excerpts intact.
+- Docs and DX Writer: keep the prompt compact; the count line is enough.
+
+Implemented locally:
+
+- `agentflight resume` now formats verification counts with the shared
+  unresolved/resolved helper.
+- The resume renderer input shape and captured verification evidence remain
+  unchanged.
+
+Verification so far:
+
+- Red command regression failed because a resolved historical failure still
+  rendered as `1 passed, 1 failed`.
+- AgentFlight-captured focused verification passed:
+  `npm test -- tests/commands/evidence-output.test.ts tests/core/verification.test.ts`
+  passed: 2 files / 39 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 165 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 122 changed files, maximum
+  changed-file risk score `199.1`, and no concrete blockers.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: no cycles, risky functions, dependency changes, contract
+  changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-02-46-verification-report.md`.
+- Built CLI smoke: `agentflight resume` on this dogfood session showed
+  `8 passed, 1 failed (0 unresolved, 1 resolved)`.
+
 ### Replay Resolved Failure Tone
 
 Research signal:

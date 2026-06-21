@@ -7,6 +7,7 @@ import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { addSessionEvent, getLatestSessionEvent, saveSession } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
+import { formatVerificationCountLine } from "../core/output.js";
 import { renderResumePrompt } from "../renderers/resume-prompt.js";
 import { readCurrentSession } from "./status.js";
 
@@ -57,7 +58,7 @@ export async function runResumeCommand(
     proofGaps: review.proofGaps,
     readiness: review.readiness,
     latestSnapshotNote: latestSnapshot?.message,
-    verificationState: `${verification.passed} passed, ${verification.failed} failed`,
+    verificationState: formatVerificationCountLine(verification),
     nextAction: review.readiness.nextAction
   });
   const resumePath = resolveAgentFlightPaths(options.repoRoot).currentResumePrompt;

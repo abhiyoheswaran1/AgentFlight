@@ -622,6 +622,14 @@ describe("evidence-aware session outputs", () => {
     expect(html).toContain("1 passed / 0 unresolved failed / 1 historical failed");
     expect(html).toContain("historical failure excerpt");
 
+    const resume = await runResumeCommand({
+      repoRoot,
+      changedFiles: ["docs/development/verification.md"],
+      now: new Date("2026-06-13T12:04:50.000Z")
+    });
+    expect(resume.output).toContain("1 passed, 1 failed (0 unresolved, 1 resolved)");
+    expect(resume.output).not.toContain("## Verification State\n1 passed, 1 failed\n");
+
     const handoff = await runHandoffCommand({
       repoRoot,
       changedFiles: ["docs/development/verification.md"],

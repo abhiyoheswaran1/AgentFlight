@@ -25,6 +25,8 @@ All notable AgentFlight changes are documented here.
   not leave handoffs permanently blocked.
 - Status, report, replay, and handoff now distinguish unresolved failed
   verification from historical failed runs that later passed.
+- Resume prompts now use the same unresolved-versus-resolved verification count
+  wording as the other review surfaces.
 - HTML replay now reserves urgent failed-run navigation for unresolved failed
   verification while keeping historical failed runs visible in the ledger.
 - Ready handoffs no longer inline historical failed verification excerpts once
