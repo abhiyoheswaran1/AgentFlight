@@ -7,6 +7,8 @@ import {
   writeTextFileSafe
 } from "./fs-safe.js";
 import { resolveAgentFlightPaths } from "./paths.js";
+import { readPackageJson } from "./project.js";
+import { detectVerificationCommands } from "./verification.js";
 import type { AgentFlightConfig, AgentFlightPaths } from "../types/index.js";
 
 const runtimeGitignore = ["/sessions/", "/reports/", "/evidence/", "/current/", ""].join("\n");
@@ -14,6 +16,7 @@ const runtimeGitignore = ["/sessions/", "/reports/", "/evidence/", "/current/", 
 export interface CreateDefaultConfigOptions {
   repoRoot: string;
   now?: Date | undefined;
+  verificationCommands?: string[] | undefined;
 }
 
 export interface InitAgentFlightOptions {
@@ -50,7 +53,7 @@ export function createDefaultConfig(options: CreateDefaultConfigOptions): AgentF
       }
     },
     verification: {
-      commands: [],
+      commands: options.verificationCommands ?? [],
       profiles: {}
     },
     changedFileFilters: {
@@ -80,7 +83,12 @@ export async function initAgentFlight(
   if (runtimeIgnoreWrite.status === "created") created.push(runtimeIgnoreWrite.path);
   if (runtimeIgnoreWrite.status === "skipped") skipped.push(runtimeIgnoreWrite.path);
 
-  const defaultConfig = createDefaultConfig({ repoRoot: options.repoRoot, now: options.now });
+  const verificationCommands = detectVerificationCommands(await readPackageJson(options.repoRoot));
+  const defaultConfig = createDefaultConfig({
+    repoRoot: options.repoRoot,
+    now: options.now,
+    verificationCommands
+  });
   const configWrite = await writeJsonFileSafe(paths.config, defaultConfig);
   if (configWrite.status === "created") created.push(configWrite.path);
   if (configWrite.status === "skipped") skipped.push(configWrite.path);

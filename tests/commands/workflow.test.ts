@@ -58,6 +58,10 @@ agentflight handoff`);
     expect(init.output).toContain(`Supporting checks:
 agentflight status
 agentflight doctor`);
+    expect(
+      JSON.parse(await readFile(join(repoRoot, ".agentflight", "config.json"), "utf8")).verification
+        .commands
+    ).toEqual(["npm run typecheck", "npm run lint", "npm test", "npm run build"]);
 
     const start = await runStartCommand({
       repoRoot,
@@ -201,6 +205,10 @@ agentflight start --task "Describe the work"
 agentflight verify -- <proof command>
 agentflight handoff`);
     expect(init.output).not.toContain("agentflight verify -- npm test");
+    expect(
+      JSON.parse(await readFile(join(repoRoot, ".agentflight", "config.json"), "utf8")).verification
+        .commands
+    ).toEqual([]);
   });
 
   it("doctors a healthy initialized repo before the first session as OK guidance", async () => {

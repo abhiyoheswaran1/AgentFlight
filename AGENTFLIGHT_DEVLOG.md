@@ -4,6 +4,71 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Seed Init Verification Commands
+
+Dogfood finding:
+
+- `agentflight init` could display a detected proof command, but the generated
+  `.agentflight/config.json` still contained an empty `verification.commands`
+  list. That made the visible project config less useful on first run and
+  weakened the connection between init guidance and project defaults.
+
+Persona readout:
+
+- First-Time Developer: the config created by init should explain the same
+  proof path the terminal just suggested.
+- Docs and DX Writer: keep the generated config useful without making users
+  learn profiles on day one.
+- Verification Engineer: use the existing deterministic package-script
+  detector and cover both detected and no-proof-script repos.
+- Repo Steward: never overwrite existing configs; first-run seeding should only
+  apply when AgentFlight creates the config.
+
+Implemented locally:
+
+- `initAgentFlight` now seeds newly created configs with detected verification
+  commands such as `npm run typecheck`, `npm run lint`, `npm test`, and
+  `npm run build`.
+- Repos without proof scripts still get an empty `verification.commands` array.
+- Existing configs are still skipped and not overwritten.
+- `agentflight init` now uses `result.config.verification.commands` for its
+  primary workflow line, so terminal guidance and generated config agree.
+
+Verification:
+
+- Red AgentFlight-captured focused tests failed because new configs still had
+  an empty `verification.commands` array.
+- AgentFlight-captured focused tests now pass:
+  `npm test -- tests/core/config.test.ts tests/commands/workflow.test.ts`
+  passed: 2 files / 14 tests.
+- AgentFlight-captured `npm run build` passed.
+- Built CLI smoke passed in temp repos: detected proof scripts were written to
+  `.agentflight/config.json`, profiles stayed empty, init output pointed to
+  `agentflight verify -- npm run typecheck`, and a repo with only `dev` script
+  kept empty commands with the `<proof command>` fallback.
+- AgentFlight-captured full verification passed: `npm run verify` passed with
+  21 files / 188 tests, plus build.
+- First format pass caught Prettier drift in
+  `tests/commands/workflow.test.ts`; after formatting,
+  `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 200 changed files and maximum
+  changed-file risk score `207.9`.
+- `npx projscan@latest review --format json` returned the same manual-signoff
+  scale block only: maximum changed-file risk score `207.9`, no risky
+  functions, no dependency changes, no contract changes, no taint flows, no
+  dataflow risks, and no cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-07-05-verification-report.md`.
+- Post-handoff `npm run format:check` passed under AgentFlight capture.
+- `npx agentloopkit@latest check-gates` passed. The output still named an
+  older archived task contract while using the current verification report and
+  handoff, which remains AgentLoopKit feedback rather than an AgentFlight
+  blocker.
+
 ### Init Detected Proof Guidance
 
 Dogfood finding:

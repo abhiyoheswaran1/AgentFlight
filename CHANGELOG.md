@@ -95,6 +95,9 @@ All notable AgentFlight changes are documented here.
 - `agentflight init` now uses the first detected verification command in its
   primary workflow guidance, falling back to `<proof command>` when no proof
   script is detected.
+- Newly generated `.agentflight/config.json` files now seed detected
+  verification commands from package scripts while leaving profiles empty and
+  preserving existing configs.
 - Kept ready-review report, replay, resume, examples, and demo copy aligned with
   the `agentflight handoff` golden path while keeping report/replay/resume as
   supporting local artifacts.

@@ -3,8 +3,6 @@ import { inspectProjScan } from "../adapters/projscan.js";
 import { initAgentFlight } from "../core/config.js";
 import { formatToolForReport } from "../core/output.js";
 import { formatRepoRelativePath } from "../core/paths.js";
-import { readPackageJson } from "../core/project.js";
-import { detectVerificationCommands } from "../core/verification.js";
 import type { ToolAdapterResult } from "../types/index.js";
 
 export interface InitCommandOptions {
@@ -24,10 +22,10 @@ export interface InitCommandResult {
 
 export async function runInitCommand(options: InitCommandOptions): Promise<InitCommandResult> {
   const result = await initAgentFlight(options);
-  const [tools, verificationCommands] = await Promise.all([
-    options.tools ? Promise.resolve(options.tools) : inspectInitTools(options.repoRoot),
-    detectInitVerificationCommands(options.repoRoot)
-  ]);
+  const tools = options.tools ?? (await inspectInitTools(options.repoRoot));
+  const verificationCommands = Array.isArray(result.config.verification?.commands)
+    ? result.config.verification.commands
+    : [];
   const primaryVerificationCommand = verificationCommands[0] ?? "<proof command>";
 
   return {
@@ -62,10 +60,6 @@ agentflight status
 agentflight doctor
 `
   };
-}
-
-async function detectInitVerificationCommands(repoRoot: string): Promise<string[]> {
-  return detectVerificationCommands(await readPackageJson(repoRoot));
 }
 
 async function inspectInitTools(

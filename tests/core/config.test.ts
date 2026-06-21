@@ -83,4 +83,64 @@ describe("AgentFlight config", () => {
     await expect(readFile(join(root, "evidence", ".gitkeep"), "utf8")).rejects.toThrow();
     await expect(readFile(join(root, "current", ".gitkeep"), "utf8")).rejects.toThrow();
   });
+
+  it("seeds detected verification commands into newly created configs", async () => {
+    const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            typecheck: "tsc --noEmit",
+            test: "vitest run",
+            build: "vite build"
+          }
+        },
+        null,
+        2
+      )
+    );
+
+    const result = await initAgentFlight({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    expect(result.config.verification).toEqual({
+      commands: ["npm run typecheck", "npm test", "npm run build"],
+      profiles: {}
+    });
+    await expect(loadConfig(repoRoot)).resolves.toMatchObject({
+      verification: {
+        commands: ["npm run typecheck", "npm test", "npm run build"],
+        profiles: {}
+      }
+    });
+  });
+
+  it("keeps verification commands empty when no proof scripts are detected", async () => {
+    const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            dev: "vite"
+          }
+        },
+        null,
+        2
+      )
+    );
+
+    const result = await initAgentFlight({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z")
+    });
+
+    expect(result.config.verification).toEqual({ commands: [], profiles: {} });
+    await expect(loadConfig(repoRoot)).resolves.toMatchObject({
+      verification: { commands: [], profiles: {} }
+    });
+  });
 });
