@@ -236,6 +236,8 @@ describe("evidence-aware session outputs", () => {
 Open first: replay ${replayPath}
 Start a new AgentFlight session when you begin the next task.`);
     expect(resume.output).not.toContain(handoff.replayPath);
+    expect(resume.output).toContain("Start a new AgentFlight session before unrelated work.");
+    expect(resume.output).not.toContain("- Do not start unrelated work.");
 
     const jsonStatus = await runStatusCommand({
       repoRoot,
@@ -968,6 +970,7 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(resume.output).toContain("Review Focus");
     expect(resume.output).toContain("npm test");
     expect(resume.output).toContain("Stay scoped to the current task.");
+    expect(resume.output).toContain("Do not start unrelated work.");
     expect(resume.output).toContain("Do not claim completion without proof.");
     expect(resume.output).toContain("Run relevant verification before declaring success.");
   });

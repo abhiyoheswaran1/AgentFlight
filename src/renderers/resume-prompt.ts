@@ -60,11 +60,7 @@ ${renderReadiness(input.readiness, input.openFirstArtifact)}
 ${renderNextRecommendedAction(input.nextAction, input.openFirstArtifact)}
 
 ## Constraints
-- Stay scoped to the current task.
-- Do not start unrelated work.
-- Do not claim completion without proof.
-- Run relevant verification before declaring success.
-- Keep changes scoped.
+${renderConstraints(input.readiness)}
 `;
 }
 
@@ -121,4 +117,24 @@ function renderNextRecommendedAction(
   if (!openFirstArtifact) return nextAction;
   return `Open first: ${openFirstArtifact}
 ${nextAction}`;
+}
+
+function renderConstraints(readiness: ReviewReadinessDecision | undefined): string {
+  if (readiness?.state === "clean_worktree") {
+    return [
+      "- Open the listed local artifact if you need review context.",
+      "- Start a new AgentFlight session before unrelated work.",
+      "- Do not claim completion without proof.",
+      "- Run relevant verification before declaring success.",
+      "- Keep changes scoped."
+    ].join("\n");
+  }
+
+  return [
+    "- Stay scoped to the current task.",
+    "- Do not start unrelated work.",
+    "- Do not claim completion without proof.",
+    "- Run relevant verification before declaring success.",
+    "- Keep changes scoped."
+  ].join("\n");
 }

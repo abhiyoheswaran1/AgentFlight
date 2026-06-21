@@ -141,6 +141,9 @@ All notable AgentFlight changes are documented here.
 
 ### Changed
 
+- Clean-worktree `agentflight resume` constraints now tell agents to start a new
+  AgentFlight session before unrelated work instead of applying active-task
+  constraints to a completed clean session.
 - `agentflight start` now prefers configured no-arg `agentflight verify`
   guidance when `.agentflight/config.json` already has verification commands,
   while keeping detected package-script fallback guidance for empty configs.

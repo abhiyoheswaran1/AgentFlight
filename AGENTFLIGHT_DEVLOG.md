@@ -4,6 +4,53 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Clarify Clean Resume Constraints
+
+Dogfood finding:
+
+- Clean `agentflight resume` prompts correctly told the user to start a new
+  AgentFlight session for the next task, but the generic constraints still said
+  to stay scoped to the current task and not start unrelated work. That could
+  confuse a follow-on coding agent.
+
+Team persona notes:
+
+- Product Maintainer: clean handoff/resume should make the next-task boundary
+  explicit.
+- CLI Engineer: keep this as prompt copy only; no command behavior changes.
+- Docs and DX Writer: use direct wording that says unrelated work belongs in a
+  new AgentFlight session.
+- Verification Engineer: cover clean and non-clean resume constraints.
+- Security Reviewer: no artifact, evidence, or upload behavior changes.
+
+Implemented locally:
+
+- Clean-worktree resume constraints now say to open the local artifact for
+  review context and start a new AgentFlight session before unrelated work.
+- Non-clean resume prompts keep the stricter current-task constraints.
+
+Verification so far:
+
+- Red AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  failed because clean resume did not include the new-session constraint.
+- Green AgentFlight-captured `npm test -- tests/commands/evidence-output.test.ts`
+  passed with 1 file / 34 tests.
+- AgentFlight-captured `npm run verify` passed with 22 files / 207 tests plus
+  build.
+- AgentFlight-captured `npm run format:check` initially failed on the new plan
+  Markdown file and test formatting; Prettier fixed the files and the rerun
+  passed.
+- AgentFlight-captured `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight returned the known accumulated branch scale caution:
+  manual review sign-off recommended for large handoff risk.
+- ProjScan review returned the known scale-only `block` verdict with 49 current
+  changed files and maximum changed-file risk score `212.1 >= 80`; it reported
+  no risky functions, dependency changes, contract changes, new cycles, taint
+  flows, or dataflow risks.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-13-54-verification-report.md`.
+
 ### Show Resolved Failure Context in Resume
 
 Dogfood finding:
