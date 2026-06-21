@@ -40,6 +40,9 @@ describe("AgentFlight command workflow", () => {
       }
     });
     expect(init.output).toContain("AgentFlight initialized");
+    expect(init.output).toContain("Created files:\n- .agentflight/config.json");
+    expect(init.output).toContain("- .agentflight/.gitignore");
+    expect(init.output).toContain("Skipped existing files:\n- none");
     expect(init.output).toContain("ProjScan: available 4.5.0");
     expect(init.output).toContain("AgentLoopKit: available 0.35.2");
     expect(init.output).toContain(".agentflight/config.json is project config");
@@ -132,6 +135,29 @@ describe("AgentFlight command workflow", () => {
     });
     expect(doctor.output).toContain("AgentFlight Doctor");
     expect(doctor.output).toContain("OK");
+  });
+
+  it("lists skipped files on repeated init", async () => {
+    const repoRoot = await createTempRepo();
+    const tools = {
+      projscan: { available: true, version: "4.5.0", warnings: [] },
+      agentloopkit: { available: true, version: "0.35.2", warnings: [] }
+    };
+
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools
+    });
+    const second = await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:01:00.000Z"),
+      tools
+    });
+
+    expect(second.output).toContain("Created files:\n- none");
+    expect(second.output).toContain("Skipped existing files:\n- .agentflight/config.json");
+    expect(second.output).toContain("- .agentflight/.gitignore");
   });
 
   it("summarizes unavailable init tools with the same guidance as start/report surfaces", async () => {

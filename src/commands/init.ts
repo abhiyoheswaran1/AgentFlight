@@ -2,6 +2,7 @@ import { inspectAgentLoopKit } from "../adapters/agentloopkit.js";
 import { inspectProjScan } from "../adapters/projscan.js";
 import { initAgentFlight } from "../core/config.js";
 import { formatToolForReport } from "../core/output.js";
+import { formatRepoRelativePath } from "../core/paths.js";
 import type { ToolAdapterResult } from "../types/index.js";
 
 export interface InitCommandOptions {
@@ -29,11 +30,11 @@ export async function runInitCommand(options: InitCommandOptions): Promise<InitC
 Project:
 ${result.config.projectName}
 
-Created:
-${result.created.length}
+Created files:
+${formatInitFileList(options.repoRoot, result.created)}
 
 Skipped existing files:
-${result.skipped.length}
+${formatInitFileList(options.repoRoot, result.skipped)}
 
 Detected:
 ProjScan: ${formatToolForReport("ProjScan", tools.projscan)}
@@ -62,4 +63,25 @@ async function inspectInitTools(
   ]);
 
   return { projscan, agentloopkit };
+}
+
+function formatInitFileList(repoRoot: string, files: string[]): string {
+  if (files.length === 0) return "- none";
+  return files
+    .map((file) => formatRepoRelativePath(repoRoot, file))
+    .sort(compareInitFilePaths)
+    .map((file) => `- ${file}`)
+    .join("\n");
+}
+
+function compareInitFilePaths(left: string, right: string): number {
+  return initFilePathPriority(left) - initFilePathPriority(right) || left.localeCompare(right);
+}
+
+function initFilePathPriority(file: string): number {
+  const priorities = new Map([
+    [".agentflight/config.json", 0],
+    [".agentflight/.gitignore", 1]
+  ]);
+  return priorities.get(file) ?? 10;
 }

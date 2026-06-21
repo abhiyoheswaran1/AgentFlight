@@ -4,6 +4,57 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Init Created/Skipped File Lists
+
+Dogfood finding:
+
+- Fresh `agentflight init` output said `Created: 2` and
+  `Skipped existing files: 0`. The local-file guidance was good, but first-run
+  trust is stronger when the CLI names the project config and local `.gitignore`
+  it touched.
+
+Persona readout:
+
+- Product Maintainer: first-run output should make local file creation obvious
+  without requiring users to inspect the worktree.
+- CLI Engineer: reuse the existing `created` and `skipped` arrays; do not change
+  init behavior or config shape.
+- Docs and DX Writer: keep paths repo-relative and line-oriented for scanning.
+- Security Reviewer: avoid absolute user paths in first-run output.
+
+Implemented locally:
+
+- `agentflight init` now prints `Created files:` and
+  `Skipped existing files:` lists.
+- Empty lists render as `- none`.
+- Paths are repo-relative and sorted so `.agentflight/config.json` appears
+  before `.agentflight/.gitignore`.
+
+Verification:
+
+- Red targeted test failed because init still printed only counts.
+- AgentFlight-captured targeted verification now passes:
+  `npm test -- tests/commands/workflow.test.ts tests/core/config.test.ts`
+  passed: 2 files / 9 tests.
+- Final AgentFlight-captured full verification passed: `npm run verify` passed
+  with 21 files / 177 tests, plus build.
+- `npm run format:check` passed.
+- `npm pack --dry-run` passed for `agentflight@0.6.0`.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx projscan@latest doctor --format json` passed with health `100/A`.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  the existing accumulated branch-scale caution: 160 changed files exceeds the
+  preflight threshold of 50, maximum changed-file risk score `207.9`, and no
+  concrete blockers.
+- `npx projscan@latest review --format json` returned the same
+  manual-signoff scale block only: no cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+- `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-04-52-verification-report.md`.
+- Built CLI smoke in a temp repo showed fresh init listing
+  `.agentflight/config.json` and `.agentflight/.gitignore` under created files,
+  and a second init listing the same files under skipped existing files.
+
 ### Incomplete Verification Blocks Clean Readiness
 
 Dogfood finding:

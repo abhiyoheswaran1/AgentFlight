@@ -67,6 +67,8 @@ All notable AgentFlight changes are documented here.
 - Review Intelligence now treats incomplete verification attempts as blocking
   before clean-worktree readiness, so live status cannot call a session clean
   while verification is still in progress.
+- `agentflight init` now lists created and skipped files by repo-relative path
+  instead of only showing counts.
 
 ### Changed
 
