@@ -114,6 +114,8 @@ All notable AgentFlight changes are documented here.
 
 ### Changed
 
+- Idempotent `agentflight init` now shows a concrete detected proof command
+  when existing config verification commands are empty.
 - First-run `agentflight init` now points seeded configs at no-arg
   `agentflight verify` in the primary workflow.
 - `agentflight init` now points first-run users through the handoff golden path:

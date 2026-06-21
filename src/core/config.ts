@@ -29,6 +29,7 @@ export interface InitAgentFlightResult {
   config: AgentFlightConfig;
   created: string[];
   skipped: string[];
+  detectedVerificationCommands: string[];
   detections: {
     agentloopkit: boolean;
     projscan: boolean;
@@ -103,6 +104,7 @@ export async function initAgentFlight(
     config,
     created,
     skipped,
+    detectedVerificationCommands: verificationCommands,
     detections: {
       agentloopkit: await pathExists(`${options.repoRoot}/.agentloop`),
       projscan: await pathExists(`${options.repoRoot}/.projscanrc.json`)

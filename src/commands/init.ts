@@ -29,7 +29,7 @@ export async function runInitCommand(options: InitCommandOptions): Promise<InitC
   const verificationStep =
     verificationCommands.length > 0
       ? "agentflight verify"
-      : "agentflight verify -- <proof command>";
+      : `agentflight verify -- ${result.detectedVerificationCommands[0] ?? "<proof command>"}`;
 
   return {
     output: `AgentFlight initialized

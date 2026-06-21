@@ -58,6 +58,19 @@ describe("AgentFlight config", () => {
 
   it("initialises .agentflight without overwriting an existing config", async () => {
     const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            typecheck: "tsc --noEmit",
+            test: "vitest run"
+          }
+        },
+        null,
+        2
+      )
+    );
     const root = join(repoRoot, ".agentflight");
     const configPath = join(root, "config.json");
     await mkdir(root, { recursive: true });
@@ -73,6 +86,7 @@ describe("AgentFlight config", () => {
     expect(result.paths.config).toBe(configPath);
     expect(result.skipped).toContain(configPath);
     expect(result.created).toContain(gitignorePath);
+    expect(result.detectedVerificationCommands).toEqual(["npm run typecheck", "npm test"]);
     expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual({ version: 99, keep: true });
 
     await expect(readFile(gitignorePath, "utf8")).resolves.toBe(

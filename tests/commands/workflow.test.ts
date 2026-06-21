@@ -212,6 +212,52 @@ agentflight handoff`);
     ).toEqual([]);
   });
 
+  it("uses detected proof guidance for idempotent init when existing config commands are empty", async () => {
+    const repoRoot = await createTempRepo();
+    await writeFile(
+      join(repoRoot, "package.json"),
+      JSON.stringify(
+        {
+          scripts: {
+            typecheck: "tsc --noEmit",
+            test: "vitest run"
+          }
+        },
+        null,
+        2
+      )
+    );
+    const tools = {
+      projscan: { available: true, version: "4.5.0", warnings: [] },
+      agentloopkit: { available: true, version: "0.35.2", warnings: [] }
+    };
+
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools
+    });
+    const configPath = join(repoRoot, ".agentflight", "config.json");
+    const config = JSON.parse(await readFile(configPath, "utf8")) as {
+      verification: { commands: string[] };
+    };
+    config.verification.commands = [];
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    const init = await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:01:00.000Z"),
+      tools
+    });
+
+    expect(init.output).toContain(`Primary workflow:
+agentflight start --task "Describe the work"
+agentflight verify -- npm run typecheck
+agentflight handoff`);
+    expect(init.output).not.toContain("agentflight verify -- <proof command>");
+    expect(JSON.parse(await readFile(configPath, "utf8")).verification.commands).toEqual([]);
+  });
+
   it("doctors a healthy initialized repo before the first session as OK guidance", async () => {
     const repoRoot = await createTempRepo();
     await writeFile(

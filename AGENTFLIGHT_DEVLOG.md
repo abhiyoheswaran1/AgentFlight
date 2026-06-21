@@ -4,6 +4,64 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Idempotent Init Detected Proof
+
+Dogfood finding:
+
+- Running `agentflight init` again in this repo skipped the existing
+  `.agentflight/config.json` as intended, but because that older config has
+  empty `verification.commands`, the primary workflow fell back to
+  `agentflight verify -- <proof command>` even though package proof scripts were
+  detected.
+
+Persona readout:
+
+- Product Maintainer: idempotent init should be safe and still useful as a
+  setup-health reminder.
+- CLI Engineer: do not mutate existing config; choose copy based on loaded
+  config plus detected package scripts.
+- Docs and DX Writer: avoid placeholders when AgentFlight can name a real next
+  command.
+- Security Reviewer: no migration, no upload, no telemetry, no extra writes.
+
+Implemented locally:
+
+- `initAgentFlight` now returns detected package proof commands alongside the
+  loaded or generated config.
+- `agentflight init` uses no-arg `agentflight verify` when config commands are
+  present, a concrete explicit command when config commands are empty but proof
+  scripts are detected, and `<proof command>` only when nothing is detected.
+- Existing config files remain unchanged.
+
+Verification:
+
+- Red AgentFlight-captured core config test failed because detected commands
+  were not returned from idempotent init.
+- Red AgentFlight-captured workflow test initially exposed a test-harness
+  timeout from unstubbed tool inspection, then failed as expected because init
+  still printed `<proof command>`.
+- Green AgentFlight-captured focused tests passed:
+  `npm test -- tests/core/config.test.ts` passed with 1 file / 5 tests, and
+  `npm test -- tests/commands/workflow.test.ts` passed with 1 file / 11 tests.
+- Combined focused run passed:
+  `npm test -- tests/core/config.test.ts tests/commands/workflow.test.ts`
+  passed with 2 files / 16 tests.
+- Bug-pass verification passed after formatting the workflow test and plan:
+  `npm run verify` passed with 21 files / 198 tests plus build,
+  `npm run format:check` passed, and `npm pack --dry-run` passed for
+  `agentflight@0.6.0`.
+- ProjScan doctor passed with health `100/A`.
+- ProjScan preflight stayed at the known accumulated branch scale caution:
+  247 changed files and manual review signoff recommended.
+- ProjScan review returned the known scale-only `block` verdict with maximum
+  changed-file risk score `212.1 >= 80`; it reported no risky functions,
+  dependency changes, contract changes, dataflow risks, or cycles.
+- AgentFlight-captured `npx agentloopkit@latest verify` passed and wrote
+  `.agentloop/reports/2026-06-21-10-20-verification-report.md`.
+- Built CLI smoke `node dist/cli.js init` in this repo printed
+  `agentflight verify -- npm run typecheck`; `.agentflight/config.json` still
+  had an empty `verification.commands` array afterward.
+
 ### Init Configured Verify Workflow
 
 Dogfood finding:
