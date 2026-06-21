@@ -24,6 +24,8 @@ All notable AgentFlight changes are documented here.
 
 ### Fixed
 
+- Review Intelligence now keeps generated `.agentflight/.gitignore` helper files
+  below real first-run review targets while leaving them visible.
 - `agentflight resume` now includes unresolved and historical failed-run context
   below the verification count, matching status/report trust cues.
 - Clean-worktree `agentflight resume` prompts now include the latest local

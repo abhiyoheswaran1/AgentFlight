@@ -1229,6 +1229,32 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(resume.output).toContain("changedFileFilters.ignore");
   });
 
+  it("keeps generated AgentFlight gitignore below real app changes in handoff focus", async () => {
+    const repoRoot = await startedRepo([]);
+    const changedFiles = [
+      ".agentflight/.gitignore",
+      ".agentflight/config.json",
+      "README.md",
+      ".projscan-memory/memory.json"
+    ];
+
+    const handoff = await runHandoffCommand({ repoRoot, changedFiles });
+    const handoffReviewFirst = handoff.output.slice(
+      handoff.output.indexOf("Review first:"),
+      handoff.output.indexOf("Proof gaps:")
+    );
+
+    expect(handoffReviewFirst.indexOf(".agentflight/config.json")).toBeLessThan(
+      handoffReviewFirst.indexOf(".agentflight/.gitignore")
+    );
+    expect(handoffReviewFirst.indexOf("README.md")).toBeLessThan(
+      handoffReviewFirst.indexOf(".agentflight/.gitignore")
+    );
+    expect(handoffReviewFirst).toContain(
+      "Check that AgentFlight runtime evidence stays ignored while config.json remains visible."
+    );
+  });
+
   it("keeps status, report, replay, and resume compatible with older session shapes", async () => {
     const repoRoot = await createTempRepo();
     await initAgentFlight({ repoRoot, now: new Date("2026-06-13T11:00:00.000Z") });

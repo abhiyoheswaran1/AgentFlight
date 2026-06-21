@@ -42,6 +42,10 @@ User problem: first-time users decide whether to trust a tool quickly. Review
 focus should not lead with generated tool memory when a real app file or
 project config needs attention.
 
+Generated helper files such as `.agentflight/.gitignore` should remain visible,
+but should not outrank `.agentflight/config.json` or real app changes in the
+first-run review path.
+
 ### 3. Local Session Discovery
 
 Users should be able to find recent local sessions and existing report/replay

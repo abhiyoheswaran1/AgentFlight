@@ -71,7 +71,29 @@ const categoryLabels = new Map<RiskCategory, string>([
   ["config", "configuration or CI path"]
 ]);
 
-const generatedGuidanceFiles = new Set([".projscan-memory/memory.json"]);
+interface GeneratedGuidanceFile {
+  reason: string;
+  suggestedReviewerFocus: string;
+}
+
+const generatedGuidanceFiles = new Map<string, GeneratedGuidanceFile>([
+  [
+    ".agentflight/.gitignore",
+    {
+      reason: "generated AgentFlight helper",
+      suggestedReviewerFocus:
+        "Check that AgentFlight runtime evidence stays ignored while config.json remains visible."
+    }
+  ],
+  [
+    ".projscan-memory/memory.json",
+    {
+      reason: "generated tool state",
+      suggestedReviewerFocus:
+        "Review only if generated ProjScan memory is meant to be tracked; otherwise add .projscan-memory/** to changedFileFilters.ignore."
+    }
+  ]
+]);
 
 const readinessLabels: Record<ReviewReadinessState, string> = {
   ready_for_review: "Ready for review",
@@ -288,11 +310,11 @@ function buildReviewFocus(input: {
     const category = categorizeFile(file);
     const relatedGaps = input.proofGaps.filter((gap) => gap.relatedFiles.includes(file));
     const projscanHint = projscanHints.get(normalizeFilePath(file));
-    const generatedGuidanceFile = isGeneratedGuidanceFile(file);
+    const generatedGuidanceFile = getGeneratedGuidanceFile(file);
     const proofStatus = determineProofStatus({
       category,
       relatedGaps,
-      generatedGuidanceFile,
+      generatedGuidanceFile: Boolean(generatedGuidanceFile),
       hasFailedVerification,
       proofKinds: input.proofKinds
     });
@@ -315,9 +337,8 @@ function buildReviewFocus(input: {
       riskLevel: riskLevelForCategory(category),
       score,
       reasons,
-      suggestedReviewerFocus: generatedGuidanceFile
-        ? "Review only if generated ProjScan memory is meant to be tracked; otherwise add .projscan-memory/** to changedFileFilters.ignore."
-        : suggestedReviewerFocus(category),
+      suggestedReviewerFocus:
+        generatedGuidanceFile?.suggestedReviewerFocus ?? suggestedReviewerFocus(category),
       proofStatus,
       ...(suggestedCommand ? { suggestedCommand } : {}),
       relatedProofGapIds: relatedGaps.map((gap) => gap.id)
@@ -463,7 +484,11 @@ function categoryGapScore(
 }
 
 function isGeneratedGuidanceFile(file: string): boolean {
-  return generatedGuidanceFiles.has(normalizeFilePath(file));
+  return Boolean(getGeneratedGuidanceFile(file));
+}
+
+function getGeneratedGuidanceFile(file: string): GeneratedGuidanceFile | undefined {
+  return generatedGuidanceFiles.get(normalizeFilePath(file));
 }
 
 function scoreProjScanHint(hint: NormalizedProjScanHint | undefined): number {
@@ -476,10 +501,10 @@ function buildFocusReasons(input: {
   proofStatus: ReviewProofStatus;
   relatedGaps: ProofGap[];
   projscanHint?: NormalizedProjScanHint | undefined;
-  generatedGuidanceFile?: boolean;
+  generatedGuidanceFile?: GeneratedGuidanceFile | undefined;
 }): string[] {
   const { category, proofStatus, relatedGaps, projscanHint, generatedGuidanceFile } = input;
-  if (generatedGuidanceFile) return ["generated tool state"];
+  if (generatedGuidanceFile) return [generatedGuidanceFile.reason];
 
   const reasons = [categoryLabel(category)];
   if (proofStatus === "failed") reasons.push("verification failed");

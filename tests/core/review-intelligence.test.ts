@@ -246,6 +246,39 @@ describe("review intelligence", () => {
     ).toContain("generated tool state");
   });
 
+  it("keeps generated AgentFlight gitignore below first-run review targets", () => {
+    const changedFiles = [
+      ".agentflight/.gitignore",
+      ".agentflight/config.json",
+      "README.md",
+      ".projscan-memory/memory.json"
+    ];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.focus.map((item) => item.file)).toEqual([
+      ".agentflight/config.json",
+      "README.md",
+      ".agentflight/.gitignore",
+      ".projscan-memory/memory.json"
+    ]);
+    expect(review.focus.find((item) => item.file === ".agentflight/.gitignore")).toMatchObject({
+      category: "agentflight/config",
+      proofStatus: "not_required",
+      suggestedReviewerFocus:
+        "Check that AgentFlight runtime evidence stays ignored while config.json remains visible."
+    });
+    expect(review.focus.find((item) => item.file === ".agentflight/.gitignore")?.reasons).toContain(
+      "generated AgentFlight helper"
+    );
+  });
+
   it("does not let ProjScan risk hints make generated memory outrank real first-run files", () => {
     const changedFiles = [".projscan-memory/memory.json", ".agentflight/config.json", "README.md"];
     const review = buildReviewIntelligence({
