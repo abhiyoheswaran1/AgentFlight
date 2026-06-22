@@ -1,5 +1,8 @@
 import type {
+  ReviewContract,
+  ReviewContractClaim,
   ReviewContractClaimStatus,
+  ReviewContractProofReference,
   ReviewProofStatus,
   ToolAdapterResult
 } from "../types/index.js";
@@ -79,6 +82,49 @@ export function formatReviewContractStatusForDisplay(status: ReviewContractClaim
     unknown: "unknown"
   };
   return labels[status];
+}
+
+export function formatReviewContractReviewPathForDisplay(
+  contract: ReviewContract | undefined,
+  options: { includeNextAction?: boolean } = {}
+): string {
+  if (!contract?.reviewPath) return "";
+  const lines = [`Review path: ${contract.reviewPath.summary}`];
+  if (options.includeNextAction ?? true) {
+    lines.push(`Next action: ${contract.reviewPath.nextAction}`);
+  }
+  return lines.join("\n");
+}
+
+export function getReviewContractPathClaims(
+  contract: ReviewContract | undefined,
+  limit = 5
+): ReviewContractClaim[] {
+  if (!contract) return [];
+  const claimsById = new Map(contract.claims.map((claim) => [claim.id, claim]));
+  const pathClaims = (contract.reviewPath?.inspectClaimIds ?? [])
+    .map((id) => claimsById.get(id))
+    .filter((claim): claim is ReviewContractClaim => Boolean(claim));
+  if (pathClaims.length > 0) return pathClaims.slice(0, limit);
+  return contract.claims.slice(0, limit);
+}
+
+export function formatReviewContractProofReferencesForDisplay(
+  claim: Pick<ReviewContractClaim, "proofReferences">
+): string {
+  const references = claim.proofReferences ?? [];
+  if (references.length === 0) return "";
+  return `Proof refs: ${references.map(formatReviewContractProofReferenceLabelForDisplay).join("; ")}`;
+}
+
+export function formatReviewContractProofReferenceLabelForDisplay(
+  reference: ReviewContractProofReference
+): string {
+  const suggestedProofPrefix = "Suggested proof: ";
+  if (reference.kind === "suggested_command" && reference.label.startsWith(suggestedProofPrefix)) {
+    return `${suggestedProofPrefix}${formatCommandForDisplay(reference.label.slice(suggestedProofPrefix.length))}`;
+  }
+  return reference.label;
 }
 
 export function formatVerificationCountLine(counts: VerificationFailureCounts): string {

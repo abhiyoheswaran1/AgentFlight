@@ -2,6 +2,8 @@ import {
   compactCommandInText,
   formatCommandForDisplay,
   formatProofStatusForDisplay,
+  formatReviewContractProofReferencesForDisplay,
+  formatReviewContractReviewPathForDisplay,
   formatReviewContractStatusForDisplay,
   formatToolForReport,
   formatVerificationCountLine,
@@ -259,16 +261,20 @@ function renderReviewContract(input: MarkdownReportInput): string {
   const contract = input.review?.contract;
   if (!contract || contract.claims.length === 0) return "- No review contract claims recorded.";
 
-  return contract.claims
+  const reviewPath = formatReviewContractReviewPathForDisplay(contract);
+  const claims = contract.claims
     .map((claim) => {
       const files = claim.files.length ? `\n  - Files: ${claim.files.join(", ")}` : "";
       const evidence = claim.evidence.length ? `\n  - Evidence: ${claim.evidence.join("; ")}` : "";
+      const proofReferences = formatReviewContractProofReferencesForDisplay(claim);
+      const proofReferenceLine = proofReferences ? `\n  - ${proofReferences}` : "";
       const command = claim.suggestedCommand
         ? `\n  - Suggested proof: ${formatVerifyCommandForDisplay(claim.suggestedCommand)}`
         : "";
-      return `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}${files}${evidence}${command}`;
+      return `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}${files}${evidence}${proofReferenceLine}${command}`;
     })
     .join("\n");
+  return [reviewPath, claims].filter(Boolean).join("\n\n");
 }
 
 function renderPrCommentProofGaps(input: MarkdownReportInput): string {

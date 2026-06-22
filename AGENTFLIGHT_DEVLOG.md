@@ -2,6 +2,34 @@
 
 This log records setup, dogfooding, and verification evidence for the AgentFlight MVP.
 
+## 2026-06-22
+
+### Build Actionable Review Contract Review Path
+
+Product direction:
+
+- The v0.9.0 Review Contract made claims explicit, but reviewers still needed
+  stronger traceability from each claim to the proof, file, gap, command, or
+  readiness reason behind it.
+- The next local trust layer keeps existing commands and makes the contract the
+  shared review spine across status, report, replay, resume, and handoff.
+
+Implemented locally:
+
+- Added source-free proof references to Review Contract claims.
+- Added a compact Review Contract review path with a summary, next action, and
+  ordered claim ids to inspect first.
+- Threaded the review path and proof references through Markdown reports,
+  HTML replays, resume prompts, status, and handoff output.
+- Added replay anchors for claim, review-focus, and proof-gap navigation.
+- Updated README samples and added an ASCII local-review-flow diagram.
+
+Bug pass notes:
+
+- Resume prompts with an existing handoff artifact no longer repeat the stale
+  contract next action to run `agentflight handoff` again; the existing
+  `Open first` guidance remains authoritative.
+
 ## 2026-06-21
 
 ### Prepare AgentFlight v0.9.0 Release Candidate

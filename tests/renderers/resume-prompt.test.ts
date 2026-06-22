@@ -54,6 +54,11 @@ describe("resume prompt", () => {
           notTestable: 0,
           unknown: 0
         },
+        reviewPath: {
+          summary: "Review 4 unsupported claims before sharing.",
+          nextAction: "Run agentflight verify -- npm test",
+          inspectClaimIds: ["file-src-auth-reset-ts"]
+        },
         claims: [
           {
             id: "file-src-auth-reset-ts",
@@ -63,6 +68,18 @@ describe("resume prompt", () => {
             reason: "identity/session path; no passing test evidence",
             files: ["src/auth/reset.ts"],
             evidence: ["Proof: missing", "Gap: missing-auth-test-proof"],
+            proofReferences: [
+              {
+                kind: "changed_file",
+                label: "Changed file: src/auth/reset.ts",
+                target: "review-focus-file-src-auth-reset-ts"
+              },
+              {
+                kind: "proof_gap",
+                label: "Proof gap: missing-auth-test-proof",
+                target: "proof-gap-missing-auth-test-proof"
+              }
+            ],
             relatedProofGapIds: ["missing-auth-test-proof"],
             suggestedCommand: "npm test"
           }
@@ -81,7 +98,11 @@ describe("resume prompt", () => {
     expect(prompt).toContain("0 passed, 0 failed");
     expect(prompt).toContain("Review Focus");
     expect(prompt).toContain("Review Contract");
+    expect(prompt).toContain("Review path: Review 4 unsupported claims before sharing.");
     expect(prompt).toContain("unsupported - Changed file reviewed: src/auth/reset.ts");
+    expect(prompt).toContain(
+      "Proof refs: Changed file: src/auth/reset.ts; Proof gap: missing-auth-test-proof"
+    );
     expect(prompt).toContain("src/auth/reset.ts");
     expect(prompt).toContain("identity/session path");
     expect(prompt).toContain("Proof Gaps");

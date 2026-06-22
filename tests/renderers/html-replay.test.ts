@@ -264,6 +264,11 @@ describe("HTML replay", () => {
             notTestable: 0,
             unknown: 0
           },
+          reviewPath: {
+            summary: "All 3 supported claims are ready for review.",
+            nextAction: "Review changed files and replay evidence.",
+            inspectClaimIds: ["file-src-renderers-html-replay-ts"]
+          },
           claims: [
             {
               id: "file-src-renderers-html-replay-ts",
@@ -273,6 +278,18 @@ describe("HTML replay", () => {
               reason: "replay surface",
               files: ["src/renderers/<html-replay>.ts"],
               evidence: ["Proof: covered"],
+              proofReferences: [
+                {
+                  kind: "changed_file",
+                  label: "Changed file: src/renderers/<html-replay>.ts",
+                  target: "review-focus-file-src-renderers-html-replay-ts"
+                },
+                {
+                  kind: "verification_run",
+                  label: "Verification run: npm test",
+                  target: "verification-run-1"
+                }
+              ],
               relatedProofGapIds: []
             }
           ]
@@ -291,6 +308,12 @@ describe("HTML replay", () => {
     expect(html).toContain('<section class="section" id="review-focus">');
     expect(html).toContain('<section class="section" id="review-contract">');
     expect(html).toContain("Review Contract");
+    expect(html).toContain("All 3 supported claims are ready for review.");
+    expect(html).toContain('href="#claim-file-src-renderers-html-replay-ts"');
+    expect(html).toContain('id="claim-file-src-renderers-html-replay-ts"');
+    expect(html).toContain('id="review-focus-file-src-renderers-html-replay-ts"');
+    expect(html).toContain('href="#review-focus-file-src-renderers-html-replay-ts"');
+    expect(html).toContain('href="#verification-run-1"');
     expect(html).toContain("Changed file reviewed: src/renderers/&lt;html-replay&gt;.ts");
     expect(html).toContain('<section class="section" id="proof-gaps">');
     expect(html).toContain('<section class="section" id="timeline">');

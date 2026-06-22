@@ -1,6 +1,8 @@
 import {
   compactCommandInText,
   formatProofStatusForDisplay,
+  formatReviewContractProofReferencesForDisplay,
+  formatReviewContractReviewPathForDisplay,
   formatReviewContractStatusForDisplay,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
@@ -60,7 +62,7 @@ ${renderVerificationState(input)}
 ${renderReviewFocus(input.reviewFocus ?? [])}
 
 ## Review Contract
-${renderReviewContract(input.reviewContract)}
+${renderReviewContract(input.reviewContract, Boolean(input.openFirstArtifact))}
 
 ## Proof Gaps
 ${renderProofGaps(input)}
@@ -90,16 +92,25 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
     .join("\n");
 }
 
-function renderReviewContract(contract: ReviewContract | undefined): string {
+function renderReviewContract(
+  contract: ReviewContract | undefined,
+  suppressReviewPathNextAction = false
+): string {
   if (!contract || contract.claims.length === 0) return "No review contract claims recorded.";
-  return contract.claims
+  const reviewPath = formatReviewContractReviewPathForDisplay(contract, {
+    includeNextAction: !suppressReviewPathNextAction
+  });
+  const claims = contract.claims
     .map((claim) => {
+      const proofReferences = formatReviewContractProofReferencesForDisplay(claim);
+      const proofReferenceLine = proofReferences ? `\n   - ${proofReferences}` : "";
       const command = claim.suggestedCommand
         ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(claim.suggestedCommand)}`
         : "";
-      return `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}${command}`;
+      return `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}${proofReferenceLine}${command}`;
     })
     .join("\n");
+  return [reviewPath, claims].filter(Boolean).join("\n\n");
 }
 
 function renderVerificationState(input: ResumePromptInput): string {

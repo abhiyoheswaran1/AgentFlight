@@ -1,13 +1,17 @@
 import {
   compactCommandInText,
   formatCommandForDisplay,
+  getReviewContractPathClaims,
   formatProofStatusForDisplay,
+  formatReviewContractProofReferenceLabelForDisplay,
   formatReviewContractStatusForDisplay,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
 import type { VerificationFailureCounts } from "../core/output.js";
 import type {
   ProofGap,
+  ReviewContractClaim,
+  ReviewContractProofReference,
   ReviewFocusItem,
   ReviewIntelligence,
   RiskCategorySummary,
@@ -577,58 +581,101 @@ function buildReviewPathItems(
   const review = input.review;
   if (!review) return [];
 
-  const items: ReviewPathItem[] = [];
-  if (review.proofGaps.length > 0) {
-    items.push({
+  const items = [
+    ...buildContractPathItems(review),
+    ...buildProofGapPathItems(review.proofGaps),
+    ...buildFailedRunPathItems(firstFailedRunIndex),
+    ...buildFocusPathItems(review.focus),
+    ...buildVerificationPathItems(input),
+    ...buildChangedFilePathItems(input)
+  ];
+
+  return items.length > 0 ? items : [buildFallbackPathItem(review)];
+}
+
+function buildContractPathItems(review: ReviewIntelligence): ReviewPathItem[] {
+  const contract = review.contract;
+  if (!contract?.reviewPath) return [];
+  return [
+    {
+      href: "#review-contract",
+      title: "Read Review Contract",
+      detail: contract.reviewPath.summary
+    },
+    ...getReviewContractPathClaims(contract, 3).map((claim) => ({
+      href: `#${claimAnchorId(claim)}`,
+      title: `${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}`,
+      detail: claim.reason,
+      urgent: claim.status === "failed"
+    }))
+  ];
+}
+
+function buildProofGapPathItems(gaps: ProofGap[]): ReviewPathItem[] {
+  if (gaps.length === 0) return [];
+  return [
+    {
       href: "#proof-gaps",
       title: "Fix proof gaps",
-      detail: formatProofGapDetail(review.proofGaps)
-    });
-  }
+      detail: formatProofGapDetail(gaps)
+    }
+  ];
+}
 
-  if (firstFailedRunIndex >= 0) {
-    items.push({
+function buildFailedRunPathItems(firstFailedRunIndex: number): ReviewPathItem[] {
+  if (firstFailedRunIndex < 0) return [];
+  return [
+    {
       href: `#verification-run-${firstFailedRunIndex + 1}`,
       title: "Open first failed run",
       detail: "Use the inline excerpt before reading full evidence files.",
       urgent: true
-    });
-  }
+    }
+  ];
+}
 
-  const firstFocus = review.focus[0];
-  if (firstFocus) {
-    items.push({
+function buildFocusPathItems(focus: ReviewFocusItem[]): ReviewPathItem[] {
+  const firstFocus = focus[0];
+  if (!firstFocus) return [];
+  return [
+    {
       href: "#review-focus",
       title: "Review highest-risk files",
       detail: `Start with ${firstFocus.file}.`
-    });
-  }
+    }
+  ];
+}
 
+function buildVerificationPathItems(input: HtmlReplayInput): ReviewPathItem[] {
   if (input.verificationEvidence.length > 0) {
-    items.push({
-      href: "#verification-evidence",
-      title: "Confirm verification evidence",
-      detail: formatReviewPathProof(input)
-    });
+    return [
+      {
+        href: "#verification-evidence",
+        title: "Confirm verification evidence",
+        detail: formatReviewPathProof(input)
+      }
+    ];
   }
+  return [];
+}
 
-  if (input.changedFiles.length > 0) {
-    items.push({
+function buildChangedFilePathItems(input: HtmlReplayInput): ReviewPathItem[] {
+  if (input.changedFiles.length === 0) return [];
+  return [
+    {
       href: "#changed-files",
       title: "Inspect changed files",
       detail: `${input.changedFiles.length} changed ${input.changedFiles.length === 1 ? "file" : "files"} listed below.`
-    });
-  }
+    }
+  ];
+}
 
-  if (items.length === 0) {
-    items.push({
-      href: "#recommendation",
-      title: "Read recommendation",
-      detail: compactCommandInText(review.readiness.nextAction, review.readiness.suggestedCommand)
-    });
-  }
-
-  return items;
+function buildFallbackPathItem(review: ReviewIntelligence): ReviewPathItem {
+  return {
+    href: "#recommendation",
+    title: "Read recommendation",
+    detail: compactCommandInText(review.readiness.nextAction, review.readiness.suggestedCommand)
+  };
 }
 
 function formatProofGapDetail(gaps: ProofGap[]): string {
@@ -723,7 +770,7 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
   return `<div class="records">${items
     .map(
       (item) =>
-        `<div class="record"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Proof:</span> ${escapeHtml(formatProofStatusForDisplay(item.proofStatus))}</div><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
+        `<div class="record" id="${escapeHtml(reviewFocusAnchorId(item.file))}"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Proof:</span> ${escapeHtml(formatProofStatusForDisplay(item.proofStatus))}</div><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
     )
     .join("")}</div>`;
 }
@@ -734,7 +781,11 @@ function renderReviewContract(review: ReviewIntelligence): string {
     return `<p class="empty">No review contract claims recorded.</p>`;
   }
 
-  return `<div class="records">${contract.claims
+  const reviewPath = contract.reviewPath
+    ? `<div class="callout"><div class="callout-state">Review path</div><div class="callout-reason">${escapeHtml(contract.reviewPath.summary)}</div><div class="callout-next"><span class="label">Next</span>${escapeHtml(contract.reviewPath.nextAction)}</div>${renderReviewPathClaimLinks(contract.claims, contract.reviewPath.inspectClaimIds)}</div>`
+    : "";
+
+  return `${reviewPath}<div class="records">${contract.claims
     .map((claim) => {
       const files = claim.files.length
         ? `<div class="reason"><span class="reason-strong">Files:</span> ${escapeHtml(claim.files.join(", "))}</div>`
@@ -742,10 +793,11 @@ function renderReviewContract(review: ReviewIntelligence): string {
       const evidence = claim.evidence.length
         ? `<div class="reason"><span class="reason-strong">Evidence:</span> ${escapeHtml(claim.evidence.join("; "))}</div>`
         : "";
+      const proofReferences = renderProofReferences(claim.proofReferences ?? []);
       const command = claim.suggestedCommand
         ? `<div class="reason">Suggested proof: ${renderSuggestedProof(claim.suggestedCommand)}</div>`
         : "";
-      return `<div class="record"><div class="record-key"><span class="record-cat">${escapeHtml(formatReviewContractStatusForDisplay(claim.status))}</span></div><div class="record-body"><div>${escapeHtml(claim.text)}</div><div class="reason">${escapeHtml(claim.reason)}</div>${files}${evidence}${command}</div></div>`;
+      return `<div class="record" id="${escapeHtml(claimAnchorId(claim))}"><div class="record-key"><span class="record-cat">${escapeHtml(formatReviewContractStatusForDisplay(claim.status))}</span></div><div class="record-body"><div>${escapeHtml(claim.text)}</div><div class="reason">${escapeHtml(claim.reason)}</div>${files}${evidence}${proofReferences}${command}</div></div>`;
     })
     .join("")}</div>`;
 }
@@ -755,15 +807,61 @@ function renderProofGaps(gaps: ProofGap[]): string {
   return `<ul class="gaps">${gaps
     .map(
       (gap) =>
-        `<li><span class="gap-sev sev-${escapeHtml(gap.severity.toLowerCase())}">${escapeHtml(gap.severity)}</span><span>${escapeHtml(compactCommandInText(gap.message, gap.suggestedCommand))}${gap.suggestedCommand ? ` ${renderSuggestedProof(gap.suggestedCommand)}` : ""}</span></li>`
+        `<li id="${escapeHtml(proofGapAnchorId(gap.id))}"><span class="gap-sev sev-${escapeHtml(gap.severity.toLowerCase())}">${escapeHtml(gap.severity)}</span><span>${escapeHtml(compactCommandInText(gap.message, gap.suggestedCommand))}${gap.suggestedCommand ? ` ${renderSuggestedProof(gap.suggestedCommand)}` : ""}</span></li>`
     )
     .join("")}</ul>`;
+}
+
+function renderReviewPathClaimLinks(claims: ReviewContractClaim[], ids: string[]): string {
+  const claimsById = new Map(claims.map((claim) => [claim.id, claim]));
+  const links = ids
+    .map((id) => claimsById.get(id))
+    .filter((claim): claim is ReviewContractClaim => Boolean(claim))
+    .map(
+      (claim) =>
+        `<a href="#${escapeHtml(claimAnchorId(claim))}">${escapeHtml(formatReviewContractStatusForDisplay(claim.status))}: ${escapeHtml(claim.text)}</a>`
+    );
+  if (links.length === 0) return "";
+  return `<div class="review-shortcuts">${links.join("")}</div>`;
+}
+
+function renderProofReferences(references: ReviewContractProofReference[]): string {
+  if (references.length === 0) return "";
+  return `<div class="reason"><span class="reason-strong">Proof refs:</span> ${references
+    .map(renderProofReference)
+    .join("; ")}</div>`;
+}
+
+function renderProofReference(reference: ReviewContractProofReference): string {
+  const label = formatReviewContractProofReferenceLabelForDisplay(reference);
+  if (!reference.target) return escapeHtml(label);
+  return `<a href="#${escapeHtml(anchorId(reference.target))}">${escapeHtml(label)}</a>`;
 }
 
 function renderSuggestedProof(command: string): string {
   const full = `agentflight verify -- ${command}`;
   const display = formatVerifyCommandForDisplay(command);
   return `<code title="${escapeHtml(full)}">${escapeHtml(display)}</code>`;
+}
+
+function claimAnchorId(claim: ReviewContractClaim): string {
+  return `claim-${anchorId(claim.id)}`;
+}
+
+function reviewFocusAnchorId(file: string): string {
+  return `review-focus-file-${anchorId(file)}`;
+}
+
+function proofGapAnchorId(id: string): string {
+  return `proof-gap-${anchorId(id)}`;
+}
+
+function anchorId(value: string): string {
+  return value
+    .toLowerCase()
+    .replaceAll("\\", "/")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function renderLedgerCommand(command: string): string {

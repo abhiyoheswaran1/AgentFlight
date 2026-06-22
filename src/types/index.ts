@@ -241,6 +241,21 @@ export type ReviewContractClaimStatus =
 
 export type ReviewContractClaimSource = "task" | "file" | "proof_gap" | "readiness";
 
+export type ReviewContractProofReferenceKind =
+  | "changed_file"
+  | "failure_excerpt"
+  | "proof_gap"
+  | "proof_snapshot"
+  | "readiness_reason"
+  | "suggested_command"
+  | "verification_run";
+
+export interface ReviewContractProofReference {
+  kind: ReviewContractProofReferenceKind;
+  label: string;
+  target?: string;
+}
+
 export interface ReviewContractClaim {
   id: string;
   text: string;
@@ -249,6 +264,7 @@ export interface ReviewContractClaim {
   reason: string;
   files: string[];
   evidence: string[];
+  proofReferences?: ReviewContractProofReference[];
   relatedProofGapIds: string[];
   suggestedCommand?: string;
   nextAction?: string;
@@ -267,6 +283,11 @@ export interface ReviewContractSummary {
 
 export interface ReviewContract {
   summary: ReviewContractSummary;
+  reviewPath?: {
+    summary: string;
+    nextAction: string;
+    inspectClaimIds: string[];
+  };
   claims: ReviewContractClaim[];
 }
 

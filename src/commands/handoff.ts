@@ -71,6 +71,11 @@ interface HandoffProofGap {
 }
 
 interface HandoffContract {
+  reviewPath?: {
+    summary: string;
+    nextAction: string;
+    inspectClaimIds: string[];
+  };
   claims: HandoffContractClaim[];
 }
 
@@ -357,7 +362,11 @@ function formatReviewContract(contract: HandoffContract, limit: number): string 
   if (remaining > 0) {
     rows.push(`- ${remaining} more claim${remaining === 1 ? "" : "s"} in report/replay.`);
   }
-  return rows.join("\n");
+  return [formatHandoffReviewPath(contract), ...rows].filter(Boolean).join("\n");
+}
+
+function formatHandoffReviewPath(contract: HandoffContract): string {
+  return contract.reviewPath ? `Review path: ${contract.reviewPath.summary}` : "";
 }
 
 function formatProofGap(gap: HandoffProofGap): string {
@@ -405,7 +414,22 @@ function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
 
 function parseContract(value: Record<string, unknown>): HandoffContract {
   return {
+    ...parseContractReviewPath(value.reviewPath),
     claims: readArray(value.claims).map(parseContractClaim)
+  };
+}
+
+function parseContractReviewPath(value: unknown): Pick<HandoffContract, "reviewPath"> {
+  const reviewPath = readObject(value);
+  const summary = readString(reviewPath.summary, "");
+  const nextAction = readString(reviewPath.nextAction, "");
+  if (!summary || !nextAction) return {};
+  return {
+    reviewPath: {
+      summary,
+      nextAction,
+      inspectClaimIds: readArray(reviewPath.inspectClaimIds).map((id) => readString(id, ""))
+    }
   };
 }
 

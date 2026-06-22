@@ -6,6 +6,24 @@ All notable AgentFlight changes are documented here.
 
 No unreleased changes.
 
+## [0.10.0] - 2026-06-22
+
+### Added
+
+- Review Contract claims now include source-free proof references for changed
+  files, proof statuses, proof gaps, readiness reasons, and suggested proof
+  commands so reviewers can see why each claim exists.
+- Review Contract output now includes a compact review path summary and next
+  action across status, Markdown reports, HTML replays, resume prompts, and
+  handoffs.
+- HTML replays now add stable anchors for Review Contract claims, review-focus
+  rows, and proof gaps, allowing claim-to-proof navigation in the local replay.
+
+### Changed
+
+- README samples now show the local Review Contract path and include an ASCII
+  local-review-flow diagram.
+
 ## [0.9.0] - 2026-06-22
 
 ### Added

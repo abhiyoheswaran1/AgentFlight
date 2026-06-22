@@ -174,6 +174,27 @@ describe("review contract", () => {
       files: ["src/core/session.ts"],
       evidence: ["Proof: missing", "Gap: missing-source-proof"]
     });
+    expect(contract.claims[1]!.proofReferences).toEqual([
+      {
+        kind: "changed_file",
+        label: "Changed file: src/core/session.ts",
+        target: "review-focus-file-src-core-session-ts"
+      },
+      {
+        kind: "proof_snapshot",
+        label: "Proof status: missing",
+        target: "review-focus-file-src-core-session-ts"
+      },
+      {
+        kind: "proof_gap",
+        label: "Proof gap: missing-source-proof",
+        target: "proof-gap-missing-source-proof"
+      },
+      {
+        kind: "suggested_command",
+        label: "Suggested proof: npm test"
+      }
+    ]);
   });
 
   it("marks docs and generated helpers as manual review claims when proof is not required", () => {
@@ -215,6 +236,97 @@ describe("review contract", () => {
       })
     ]);
     expect(contract.summary.needsReview).toBe(2);
+  });
+
+  it("builds an actionable review path from the highest-friction claims", () => {
+    const failedGap = proofGap({
+      id: "failed-verification",
+      severity: "blocking",
+      message: "A verification command failed and must be fixed or rerun successfully: npm test",
+      suggestedCommand: "npm test",
+      relatedFiles: ["src/auth/reset.ts"]
+    });
+    const staleGap = proofGap({
+      id: "stale-verification-proof",
+      severity: "warning",
+      message:
+        "Verification proof is stale. Changed files were added or changed after proof was captured.",
+      suggestedCommand: "npm run verify",
+      relatedFiles: ["src/ui/form.tsx"]
+    });
+
+    const contract = buildReviewContract({
+      taskTitle: "Review contract traceability",
+      focus: [
+        focusItem({
+          file: "src/docs/readme.md",
+          category: "docs",
+          proofStatus: "not_required",
+          reasons: ["docs file"]
+        }),
+        focusItem({
+          rank: 2,
+          file: "src/ui/form.tsx",
+          category: "frontend",
+          proofStatus: "stale",
+          relatedProofGapIds: ["stale-verification-proof"],
+          suggestedCommand: "npm run verify"
+        }),
+        focusItem({
+          rank: 3,
+          file: "src/auth/reset.ts",
+          category: "auth",
+          proofStatus: "failed",
+          relatedProofGapIds: ["failed-verification"],
+          suggestedCommand: "npm test"
+        })
+      ],
+      proofGaps: [failedGap, staleGap],
+      readiness: readiness({
+        state: "blocked_by_failed_verification",
+        label: "Blocked by failed verification",
+        reason: failedGap.message,
+        suggestedCommand: "npm test",
+        proofGaps: [failedGap],
+        nextAction: "Fix the failed command, then rerun agentflight verify -- npm test."
+      })
+    });
+
+    expect(contract.reviewPath).toEqual({
+      summary: "Review 4 failed claims, 2 stale claims, and 1 manual-review claim before sharing.",
+      nextAction: "Fix the failed command, then rerun agentflight verify -- npm test.",
+      inspectClaimIds: [
+        "file-src-auth-reset-ts",
+        "proof-gap-failed-verification",
+        "readiness-review-readiness",
+        "task-session-task",
+        "file-src-ui-form-tsx"
+      ]
+    });
+  });
+
+  it("does not describe manual-review claims as release blockers when proof is otherwise ready", () => {
+    const contract = buildReviewContract({
+      taskTitle: "Update docs",
+      focus: [
+        focusItem({
+          file: "README.md",
+          category: "docs",
+          proofStatus: "not_required",
+          reasons: ["docs file"]
+        })
+      ],
+      proofGaps: [],
+      readiness: readiness({
+        state: "ready_for_review",
+        label: "Ready for review",
+        reason: "Verification evidence matches the observed review risk."
+      })
+    });
+
+    expect(contract.reviewPath?.summary).toBe(
+      "Ready for review with 2 supported claims and 1 manual-review claim."
+    );
   });
 });
 

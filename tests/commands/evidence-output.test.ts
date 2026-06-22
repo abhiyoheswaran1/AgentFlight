@@ -214,6 +214,9 @@ describe("evidence-aware session outputs", () => {
 
     expect(status.output).toContain("Proof: stale");
     expect(status.output).toContain("Review Contract:");
+    expect(status.output).toContain(
+      "Review path: Review 2 stale claims and 2 unsupported claims before sharing."
+    );
     expect(status.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
     expect(status.output).toContain("Verification proof is stale");
     expect(status.output).toContain("Readiness: Needs verification");
@@ -257,6 +260,9 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.exitCode).toBe(1);
     expect(handoff.output).toContain("Proof: stale");
     expect(handoff.output).toContain("Review contract:");
+    expect(handoff.output).toContain(
+      "Review path: Review 2 stale claims and 2 unsupported claims before sharing."
+    );
     expect(handoff.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
     expect(handoff.output).toContain("Verification proof is stale");
     expect(handoff.output).toContain("Fix before sharing:");

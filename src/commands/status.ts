@@ -7,6 +7,7 @@ import {
   compactCommandInText,
   formatCommandForDisplay,
   formatProofStatusForDisplay,
+  formatReviewContractReviewPathForDisplay,
   formatReviewContractStatusForDisplay,
   formatVerificationCountLine,
   formatVerificationFailureContext,
@@ -359,7 +360,9 @@ function formatReviewContract(contract: ReviewContract | undefined, limit: numbe
   if (remaining > 0) {
     rows.push(`- ${remaining} more claim${remaining === 1 ? "" : "s"} in report/replay.`);
   }
-  return rows.join("\n");
+  return [formatReviewContractReviewPathForDisplay(contract, { includeNextAction: false }), ...rows]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function formatProofGaps(gaps: ProofGap[]): string {
