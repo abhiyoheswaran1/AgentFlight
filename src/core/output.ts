@@ -1,4 +1,8 @@
-import type { ReviewProofStatus, ToolAdapterResult } from "../types/index.js";
+import type {
+  ReviewContractClaimStatus,
+  ReviewProofStatus,
+  ToolAdapterResult
+} from "../types/index.js";
 import { formatRepoRelativePath } from "./paths.js";
 
 export interface CommandOutput {
@@ -59,6 +63,19 @@ export function formatProofStatusForDisplay(status: ReviewProofStatus): string {
     missing: "missing",
     failed: "failed",
     not_required: "not required",
+    unknown: "unknown"
+  };
+  return labels[status];
+}
+
+export function formatReviewContractStatusForDisplay(status: ReviewContractClaimStatus): string {
+  const labels: Record<ReviewContractClaimStatus, string> = {
+    supported: "supported",
+    needs_review: "needs review",
+    unsupported: "unsupported",
+    failed: "failed",
+    stale: "stale",
+    not_testable: "not testable",
     unknown: "unknown"
   };
   return labels[status];

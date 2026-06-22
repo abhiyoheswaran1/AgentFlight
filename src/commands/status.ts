@@ -7,6 +7,7 @@ import {
   compactCommandInText,
   formatCommandForDisplay,
   formatProofStatusForDisplay,
+  formatReviewContractStatusForDisplay,
   formatVerificationCountLine,
   formatVerificationFailureContext,
   formatVerifyCommandForDisplay
@@ -20,6 +21,7 @@ import { buildVerificationSummary } from "../core/verification.js";
 import type {
   AgentFlightSession,
   ProofGap,
+  ReviewContract,
   ReviewFocusItem,
   ReviewReadinessState,
   RiskCategorySummary,
@@ -132,6 +134,9 @@ ${verificationFailureContext ? `${verificationFailureContext}\n` : ""}${formatVe
 Review first:
 ${formatReviewFocus(review.focus.slice(0, 5))}
 
+Review Contract:
+${formatReviewContract(review.contract, 5)}
+
 Proof gaps:
 ${formatProofGaps(review.proofGaps)}
 
@@ -187,7 +192,8 @@ function buildStatusJson(input: {
     review: {
       focus: input.review.focus,
       proofGaps: input.review.proofGaps,
-      readiness: input.review.readiness
+      readiness: input.review.readiness,
+      contract: input.review.contract
     },
     latestSnapshot: formatLatestSnapshotJson(input.latestSnapshot),
     reason: input.readinessReason,
@@ -341,6 +347,19 @@ function formatReviewFocus(items: ReviewFocusItem[]): string {
         `${item.rank}. ${item.file}\n   Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
+}
+
+function formatReviewContract(contract: ReviewContract | undefined, limit: number): string {
+  if (!contract || contract.claims.length === 0) return "- No review contract claims recorded.";
+  const visibleClaims = contract.claims.slice(0, limit);
+  const rows = visibleClaims.map(
+    (claim) => `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}`
+  );
+  const remaining = contract.claims.length - visibleClaims.length;
+  if (remaining > 0) {
+    rows.push(`- ${remaining} more claim${remaining === 1 ? "" : "s"} in report/replay.`);
+  }
+  return rows.join("\n");
 }
 
 function formatProofGaps(gaps: ProofGap[]): string {

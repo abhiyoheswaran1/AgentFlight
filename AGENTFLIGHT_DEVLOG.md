@@ -4,6 +4,75 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-21
 
+### Prepare AgentFlight v0.9.0 Release Candidate
+
+Release decision:
+
+- `agentflight@latest` is `0.8.0`.
+- The local Review Contract claim ledger work is minor-release scope because it
+  adds a new structured local review artifact across status, report, replay,
+  resume, and handoff surfaces.
+- Local package metadata was bumped to `0.9.0` without committing, tagging,
+  pushing, publishing, or releasing.
+
+Verification so far:
+
+- Focused Review Contract and dogfood regression suite passed with 7 files /
+  100 tests.
+- `npm run verify` passed with 25 files / 237 tests plus typecheck, lint, and
+  build.
+- `npm run format:check`, `npm pack --dry-run`, and
+  `npm audit --audit-level=moderate` passed.
+- `node dist/cli.js --version` reports `0.9.0`.
+- ProjScan doctor passed with score `100/A`; ProjScan preflight/review reported
+  the expected manual release sign-off caution for scale risk only, with no
+  concrete cycles, risky functions, dependency changes, contract changes, taint
+  flows, or dataflow risks.
+- AgentLoopKit verification passed.
+
+### Build Local Review Contract Claim Ledger
+
+Product direction:
+
+- Proof freshness answers whether evidence still applies, but reviewers still
+  have to infer which concrete claims are supported, stale, failed, or missing.
+- The next local trust layer is a deterministic Review Contract: a compact
+  claim ledger generated from existing local evidence, not from model-based
+  source analysis or external services.
+
+Implemented locally:
+
+- Added a pure Review Contract builder that emits task, file, proof-gap, and
+  readiness claims.
+- Claim statuses cover supported, needs review, unsupported, failed, stale, not
+  testable, and unknown states.
+- Status JSON, terminal status, Markdown reports, HTML replays, resume prompts,
+  and handoffs now surface the Review Contract.
+- Kept the data boundary source-free: claims use file paths, proof-gap IDs,
+  commands, status labels, and short reasons only.
+- Bug pass: `agentflight doctor` now avoids warning about missing root
+  `test`, `build`, `typecheck`, or `lint` scripts when configured
+  `.agentflight/config.json` verification commands exist, which better fits
+  monorepos that verify through subpackage commands.
+- Dogfood bug pass: Review Intelligence now treats passed `verify` scripts such
+  as `npm run verify` as proof, so AgentFlight's own configured verification
+  command can satisfy source and test proof gaps.
+
+Verification so far:
+
+- Red/green core tests added for supported, stale, failed, unsupported, and
+  manual-review claims.
+- Red/green Review Intelligence integration tests added for current, stale, and
+  failed contract summaries.
+- Red/green renderer and command tests added for status, report, replay,
+  resume, and handoff contract sections.
+- Red/green doctor regression test added for configured verification commands
+  without root npm scripts.
+- Red/green Review Intelligence regression test added for `npm run verify`
+  satisfying source and test proof gaps.
+- Focused Review Contract and doctor regression suite passed with 7 files / 100
+  tests.
+
 ### Build Proof Freshness Review Contract
 
 Product direction:

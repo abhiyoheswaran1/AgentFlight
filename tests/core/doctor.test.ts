@@ -58,6 +58,50 @@ describe("doctor checks", () => {
     );
   });
 
+  it("does not warn about missing root scripts when configured verification commands exist", () => {
+    const result = evaluateDoctorChecks({
+      nodeVersion: "v20.11.0",
+      npmVersion: "10.5.0",
+      gitAvailable: true,
+      packageManager: "npm",
+      repoRoot: "/repo",
+      agentFlightExists: true,
+      configValid: true,
+      writable: true,
+      currentSessionExists: true,
+      projscanAvailable: true,
+      agentloopkitAvailable: true,
+      configuredVerificationCommands: 3,
+      scripts: { test: false, build: false, typecheck: false, lint: false }
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "build script",
+        status: "ok",
+        message:
+          "No root npm run build script detected; configured verification commands will be used."
+      })
+    );
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "typecheck script",
+        status: "ok",
+        message:
+          "No root npm run typecheck script detected; configured verification commands will be used."
+      })
+    );
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        name: "lint script",
+        status: "ok",
+        message:
+          "No root npm run lint script detected; configured verification commands will be used."
+      })
+    );
+  });
+
   it("does not warn about empty verification commands when no proof scripts exist", () => {
     const result = evaluateDoctorChecks({
       nodeVersion: "v20.11.0",

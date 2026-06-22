@@ -1,10 +1,12 @@
 import {
   compactCommandInText,
   formatProofStatusForDisplay,
+  formatReviewContractStatusForDisplay,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
 import type {
   ProofGap,
+  ReviewContract,
   ReviewFocusItem,
   ReviewReadinessDecision,
   RiskLevel
@@ -19,6 +21,7 @@ export interface ResumePromptInput {
   riskReasons: string[];
   verificationGaps: string[];
   reviewFocus?: ReviewFocusItem[] | undefined;
+  reviewContract?: ReviewContract | undefined;
   proofGaps?: ProofGap[] | undefined;
   readiness?: ReviewReadinessDecision | undefined;
   openFirstArtifact?: string | undefined;
@@ -56,6 +59,9 @@ ${renderVerificationState(input)}
 ## Review Focus
 ${renderReviewFocus(input.reviewFocus ?? [])}
 
+## Review Contract
+${renderReviewContract(input.reviewContract)}
+
 ## Proof Gaps
 ${renderProofGaps(input)}
 
@@ -81,6 +87,18 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
       (item) =>
         `${item.rank}. ${item.file}\n   - Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
+    .join("\n");
+}
+
+function renderReviewContract(contract: ReviewContract | undefined): string {
+  if (!contract || contract.claims.length === 0) return "No review contract claims recorded.";
+  return contract.claims
+    .map((claim) => {
+      const command = claim.suggestedCommand
+        ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(claim.suggestedCommand)}`
+        : "";
+      return `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}${command}`;
+    })
     .join("\n");
 }
 

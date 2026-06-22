@@ -79,6 +79,7 @@ export async function runResumeCommand(
     riskReasons: risk.reasons,
     verificationGaps: verification.gaps,
     reviewFocus: review.focus.slice(0, 5),
+    reviewContract: review.contract,
     proofGaps: review.proofGaps,
     readiness: review.readiness,
     openFirstArtifact: openFirstArtifact ?? undefined,

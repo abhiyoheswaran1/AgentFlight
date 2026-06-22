@@ -153,15 +153,7 @@ export function evaluateDoctorChecks(input: DoctorEvaluationInput): DoctorResult
   }
 
   for (const script of ["test", "build", "typecheck", "lint"] as const) {
-    checks.push(
-      input.scripts[script]
-        ? ok(`${script} script`, `npm run ${script} is configured.`)
-        : warning(
-            `${script} script`,
-            `npm run ${script} is not configured.`,
-            `Add a ${script} script to package.json.`
-          )
-    );
+    checks.push(rootScriptCheck(script, input));
   }
 
   return {
@@ -199,6 +191,28 @@ function verificationCommandsCheck(input: DoctorEvaluationInput): DoctorCheck {
 
 function hasPackageProofScript(input: DoctorEvaluationInput["scripts"]): boolean {
   return input.test || input.build || input.typecheck || input.lint;
+}
+
+function rootScriptCheck(
+  script: "test" | "build" | "typecheck" | "lint",
+  input: DoctorEvaluationInput
+): DoctorCheck {
+  if (input.scripts[script]) {
+    return ok(`${script} script`, `npm run ${script} is configured.`);
+  }
+
+  if ((input.configuredVerificationCommands ?? 0) > 0) {
+    return ok(
+      `${script} script`,
+      `No root npm run ${script} script detected; configured verification commands will be used.`
+    );
+  }
+
+  return warning(
+    `${script} script`,
+    `npm run ${script} is not configured.`,
+    `Add a ${script} script to package.json.`
+  );
 }
 
 function buildVerificationCommandsSuggestedFix(commands: string[] | undefined): string {

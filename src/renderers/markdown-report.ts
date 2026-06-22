@@ -2,6 +2,7 @@ import {
   compactCommandInText,
   formatCommandForDisplay,
   formatProofStatusForDisplay,
+  formatReviewContractStatusForDisplay,
   formatToolForReport,
   formatVerificationCountLine,
   formatVerificationFailureContext,
@@ -72,6 +73,9 @@ ${renderVerification(input)}
 ## Review First
 ${renderReviewFirst(input)}
 
+## Review Contract
+${renderReviewContract(input)}
+
 ## Proof Gaps
 ${renderProofGaps(input)}
 
@@ -134,6 +138,9 @@ ${renderReviewReadiness(input)}
 
 ## Review First
 ${renderReviewFirst(input)}
+
+## Review Contract
+${renderReviewContract(input)}
 
 ## Proof Gaps
 ${renderProofGaps(input)}
@@ -246,6 +253,22 @@ function renderProofGaps(input: MarkdownReportInput): string {
   }
 
   return input.verificationGaps?.length ? renderList(input.verificationGaps) : "- none";
+}
+
+function renderReviewContract(input: MarkdownReportInput): string {
+  const contract = input.review?.contract;
+  if (!contract || contract.claims.length === 0) return "- No review contract claims recorded.";
+
+  return contract.claims
+    .map((claim) => {
+      const files = claim.files.length ? `\n  - Files: ${claim.files.join(", ")}` : "";
+      const evidence = claim.evidence.length ? `\n  - Evidence: ${claim.evidence.join("; ")}` : "";
+      const command = claim.suggestedCommand
+        ? `\n  - Suggested proof: ${formatVerifyCommandForDisplay(claim.suggestedCommand)}`
+        : "";
+      return `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}${files}${evidence}${command}`;
+    })
+    .join("\n");
 }
 
 function renderPrCommentProofGaps(input: MarkdownReportInput): string {

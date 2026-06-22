@@ -2,6 +2,36 @@
 
 All notable AgentFlight changes are documented here.
 
+## Unreleased
+
+No unreleased changes.
+
+## [0.9.0] - 2026-06-22
+
+### Added
+
+- Added a deterministic local Review Contract claim ledger that turns task,
+  file, proof-gap, and readiness signals into explicit supported, stale,
+  failed, unsupported, manual-review, not-testable, or unknown claims.
+- Status JSON, terminal status, Markdown reports, HTML replays, resume prompts,
+  and handoffs now expose Review Contract claims without adding cloud, PR
+  comments, CI JSON, telemetry, or model-based claim extraction.
+
+### Fixed
+
+- `agentflight doctor` now treats configured `.agentflight/config.json`
+  verification commands as satisfying proof-command setup, avoiding misleading
+  missing root-script warnings in monorepos that verify through subpackage
+  commands.
+- Review Intelligence now recognizes passed `verify` scripts such as
+  `npm run verify` as proof, so AgentFlight's own default verification command
+  can satisfy source and test review gaps.
+
+### Verification
+
+- Release-candidate verification is tracked in
+  `docs/development/v0.9.0-release-audit.md`.
+
 ## [0.8.0] - 2026-06-21
 
 ### Added

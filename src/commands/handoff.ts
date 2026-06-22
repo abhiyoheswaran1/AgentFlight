@@ -2,6 +2,7 @@ import { pathExists, writeTextFileSafe } from "../core/fs-safe.js";
 import {
   compactCommandInText,
   formatProofStatusForDisplay,
+  formatReviewContractStatusForDisplay,
   formatVerificationCountLine
 } from "../core/output.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
@@ -41,6 +42,7 @@ interface HandoffStatus {
   };
   review: {
     focus: HandoffFocusItem[];
+    contract: HandoffContract;
     proofGaps: HandoffProofGap[];
     readiness: HandoffReadiness;
   };
@@ -65,6 +67,16 @@ interface HandoffProofGap {
   id: string;
   severity: string;
   message: string;
+  suggestedCommand?: string;
+}
+
+interface HandoffContract {
+  claims: HandoffContractClaim[];
+}
+
+interface HandoffContractClaim {
+  text: string;
+  status: Parameters<typeof formatReviewContractStatusForDisplay>[0];
   suggestedCommand?: string;
 }
 
@@ -228,6 +240,9 @@ ${formatVerificationDetails(
 Review first:
 ${formatReviewFocus(input.status.review.focus.slice(0, 3))}
 
+Review contract:
+${formatReviewContract(input.status.review.contract, 5)}
+
 Proof gaps:
 ${formatProofGaps(input.status.review.proofGaps)}
 
@@ -332,6 +347,19 @@ function formatProofGaps(gaps: HandoffProofGap[]): string {
   return gaps.map(formatProofGap).join("\n");
 }
 
+function formatReviewContract(contract: HandoffContract, limit: number): string {
+  if (contract.claims.length === 0) return "- No review contract claims recorded.";
+  const visibleClaims = contract.claims.slice(0, limit);
+  const rows = visibleClaims.map(
+    (claim) => `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}`
+  );
+  const remaining = contract.claims.length - visibleClaims.length;
+  if (remaining > 0) {
+    rows.push(`- ${remaining} more claim${remaining === 1 ? "" : "s"} in report/replay.`);
+  }
+  return rows.join("\n");
+}
+
 function formatProofGap(gap: HandoffProofGap): string {
   if (gap.id === "failed-verification") {
     return `- ${gap.severity}: A verification command failed and must be fixed or rerun successfully.`;
@@ -366,11 +394,28 @@ function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
     },
     review: {
       focus: readArray(review.focus).map(parseFocusItem),
+      contract: parseContract(readObject(review.contract)),
       proofGaps: readArray(review.proofGaps).map(parseProofGap),
       readiness
     },
     reason: readString(payload.reason, readiness.reason),
     nextAction: readString(payload.nextAction, readiness.nextAction)
+  };
+}
+
+function parseContract(value: Record<string, unknown>): HandoffContract {
+  return {
+    claims: readArray(value.claims).map(parseContractClaim)
+  };
+}
+
+function parseContractClaim(value: unknown): HandoffContractClaim {
+  const claim = readObject(value);
+  const suggestedCommand = readString(claim.suggestedCommand, "");
+  return {
+    text: readString(claim.text, "Unknown claim"),
+    status: parseContractStatus(claim.status),
+    ...(suggestedCommand ? { suggestedCommand } : {})
   };
 }
 
@@ -441,6 +486,23 @@ function parseProofStatus(value: unknown): Parameters<typeof formatProofStatusFo
     value === "missing" ||
     value === "failed" ||
     value === "not_required" ||
+    value === "unknown"
+  ) {
+    return value;
+  }
+  return "unknown";
+}
+
+function parseContractStatus(
+  value: unknown
+): Parameters<typeof formatReviewContractStatusForDisplay>[0] {
+  if (
+    value === "supported" ||
+    value === "needs_review" ||
+    value === "unsupported" ||
+    value === "failed" ||
+    value === "stale" ||
+    value === "not_testable" ||
     value === "unknown"
   ) {
     return value;

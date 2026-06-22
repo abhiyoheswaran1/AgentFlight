@@ -252,6 +252,30 @@ describe("HTML replay", () => {
           reason: "Passing verification evidence is present.",
           nextAction: "Review changed files and replay evidence.",
           proofGaps: []
+        },
+        contract: {
+          summary: {
+            total: 3,
+            supported: 3,
+            needsReview: 0,
+            unsupported: 0,
+            failed: 0,
+            stale: 0,
+            notTestable: 0,
+            unknown: 0
+          },
+          claims: [
+            {
+              id: "file-src-renderers-html-replay-ts",
+              text: "Changed file reviewed: src/renderers/<html-replay>.ts",
+              status: "supported",
+              source: "file",
+              reason: "replay surface",
+              files: ["src/renderers/<html-replay>.ts"],
+              evidence: ["Proof: covered"],
+              relatedProofGapIds: []
+            }
+          ]
         }
       },
       recommendation: "Review the replay."
@@ -265,6 +289,9 @@ describe("HTML replay", () => {
     expect(html).toContain('href="#verification-evidence"');
     expect(html).toContain('<section class="section review-path" id="review-path">');
     expect(html).toContain('<section class="section" id="review-focus">');
+    expect(html).toContain('<section class="section" id="review-contract">');
+    expect(html).toContain("Review Contract");
+    expect(html).toContain("Changed file reviewed: src/renderers/&lt;html-replay&gt;.ts");
     expect(html).toContain('<section class="section" id="proof-gaps">');
     expect(html).toContain('<section class="section" id="timeline">');
     expect(html).toContain('<section class="section" id="verification-evidence">');

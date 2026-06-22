@@ -36,6 +36,9 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).toContain("1 passed, 0 failed");
     expect(status.output).toContain("Review first:");
     expect(status.output).toContain("docs/development/verification.md");
+    expect(status.output).toContain("Review Contract:");
+    expect(status.output).toContain("Session task: Capture verification");
+    expect(status.output).toContain("Changed file reviewed: docs/development/verification.md");
     expect(status.output).toContain("Readiness: Ready for review");
     expect(status.output).toContain("Proof gaps:");
     expect(status.output).toContain("- none");
@@ -154,7 +157,14 @@ describe("evidence-aware session outputs", () => {
       verification: { passed: 1, failed: 0 },
       review: {
         readiness: { state: "ready_for_review", label: "Ready for review" },
-        proofGaps: []
+        proofGaps: [],
+        contract: {
+          summary: {
+            total: 3,
+            supported: 2,
+            needsReview: 1
+          }
+        }
       }
     });
     expect(payload.review.focus[0]).toMatchObject({
@@ -203,6 +213,8 @@ describe("evidence-aware session outputs", () => {
     });
 
     expect(status.output).toContain("Proof: stale");
+    expect(status.output).toContain("Review Contract:");
+    expect(status.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
     expect(status.output).toContain("Verification proof is stale");
     expect(status.output).toContain("Readiness: Needs verification");
     expect(status.output).toContain("agentflight verify -- npm test");
@@ -244,6 +256,8 @@ describe("evidence-aware session outputs", () => {
     });
     expect(handoff.exitCode).toBe(1);
     expect(handoff.output).toContain("Proof: stale");
+    expect(handoff.output).toContain("Review contract:");
+    expect(handoff.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
     expect(handoff.output).toContain("Verification proof is stale");
     expect(handoff.output).toContain("Fix before sharing:");
     await expect(readFile(handoff.reportPath, "utf8")).resolves.toContain("- Proof: stale");
@@ -530,6 +544,8 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(markdown).toContain(".agentflight/evidence/");
     expect(markdown).toContain("## Timeline");
     expect(markdown).toContain("## Review First");
+    expect(markdown).toContain("## Review Contract");
+    expect(markdown).toContain("Changed file reviewed: src/auth/reset.ts");
     expect(markdown).toContain("## Proof Gaps");
     expect(markdown).toContain("## Review Readiness");
     expect(markdown).toContain("Session started");
@@ -554,6 +570,8 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(html).toContain("1 passed / 0 failed");
     expect(html).toContain("Needs verification");
     expect(html).toContain("Review Focus");
+    expect(html).toContain("Review Contract");
+    expect(html).toContain("Changed file reviewed: src/auth/reset.ts");
     expect(html).toContain("Proof Gaps");
     expect(html).toContain("Evidence files");
     expect(html).toContain("passed");
@@ -768,6 +786,8 @@ Start a new AgentFlight session when you begin the next task.`);
     expect(resume.output).toContain("Verification State");
     expect(resume.output).toContain("1 passed, 0 failed");
     expect(resume.output).toContain("Review Focus");
+    expect(resume.output).toContain("Review Contract");
+    expect(resume.output).toContain("Changed file reviewed: docs/development/verification.md");
     expect(resume.output).toContain("Run agentflight handoff to generate the local review packet");
     expect(resume.output).not.toContain("Generate a report and");
     expect(resume.output).not.toContain("Use the generated report or replay");
@@ -900,6 +920,8 @@ Open first: handoff ${handoffPath}`);
     expect(handoff.output).toContain("No failed verification excerpts recorded.");
     expect(handoff.output).not.toContain("Run agentflight handoff");
     expect(handoff.output).toContain("Review first:");
+    expect(handoff.output).toContain("Review contract:");
+    expect(handoff.output).toContain("Session task: Capture verification");
     expect(handoff.output).toContain("docs/development/verification.md");
     expect(handoff.output).toContain("Artifacts:");
     expect(handoff.output).toContain("Report:");

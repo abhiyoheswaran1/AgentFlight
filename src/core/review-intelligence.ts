@@ -1,5 +1,6 @@
 import { categorizeFile } from "./risk.js";
 import { compareProofSnapshotToCurrent } from "./proof-snapshot.js";
+import { buildReviewContract } from "./review-contract.js";
 import { getVerificationRuns } from "./session.js";
 import { getUnresolvedFailedRuns } from "./verification.js";
 import type {
@@ -204,11 +205,18 @@ export function buildReviewIntelligence(
     focus,
     unresolvedFailedRuns
   });
+  const contract = buildReviewContract({
+    taskTitle: options.session.task.title,
+    focus,
+    proofGaps,
+    readiness
+  });
 
   return {
     focus,
     proofGaps,
-    readiness
+    readiness,
+    contract
   };
 }
 
@@ -216,7 +224,7 @@ export function classifyVerificationProofKind(command: string): VerificationProo
   const normalized = command.toLowerCase();
 
   if (/\b(npm|pnpm|yarn|bun)\s+(ci|install)\b/.test(normalized)) return "install";
-  if (/\b(vitest|jest|mocha|playwright|cypress|test)\b/.test(normalized)) return "test";
+  if (/\b(vitest|jest|mocha|playwright|cypress|test|verify)\b/.test(normalized)) return "test";
   if (/\bbuild\b/.test(normalized)) return "build";
   if (/\b(typecheck|tsc)\b/.test(normalized)) return "typecheck";
   if (/\b(lint|eslint)\b/.test(normalized)) return "lint";

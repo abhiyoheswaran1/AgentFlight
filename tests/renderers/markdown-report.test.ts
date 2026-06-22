@@ -50,6 +50,31 @@ describe("markdown proof report", () => {
           nextAction: "Run agentflight verify -- npm test",
           suggestedCommand: "npm test",
           proofGaps: []
+        },
+        contract: {
+          summary: {
+            total: 4,
+            supported: 0,
+            needsReview: 0,
+            unsupported: 4,
+            failed: 0,
+            stale: 0,
+            notTestable: 0,
+            unknown: 0
+          },
+          claims: [
+            {
+              id: "file-src-auth-reset-ts",
+              text: "Changed file reviewed: src/auth/reset.ts",
+              status: "unsupported",
+              source: "file",
+              reason: "identity/session path; no passing test evidence",
+              files: ["src/auth/reset.ts"],
+              evidence: ["Proof: missing", "Gap: missing-auth-test-proof"],
+              relatedProofGapIds: ["missing-auth-test-proof"],
+              suggestedCommand: "npm test"
+            }
+          ]
         }
       },
       tooling: {
@@ -64,6 +89,8 @@ describe("markdown proof report", () => {
     expect(markdown).toContain("## Verification Evidence");
     expect(markdown).toContain("No verification evidence recorded.");
     expect(markdown).toContain("## Review First");
+    expect(markdown).toContain("## Review Contract");
+    expect(markdown).toContain("unsupported - Changed file reviewed: src/auth/reset.ts");
     expect(markdown).toContain("src/auth/reset.ts");
     expect(markdown).toContain("identity/session path");
     expect(markdown).toContain("## Proof Gaps");
@@ -79,6 +106,7 @@ describe("markdown proof report", () => {
       "## Risk Summary",
       "## Verification Evidence",
       "## Review First",
+      "## Review Contract",
       "## Proof Gaps",
       "## Review Readiness",
       "## Recommendation",

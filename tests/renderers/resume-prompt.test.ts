@@ -43,6 +43,31 @@ describe("resume prompt", () => {
         suggestedCommand: "npm test",
         proofGaps: []
       },
+      reviewContract: {
+        summary: {
+          total: 4,
+          supported: 0,
+          needsReview: 0,
+          unsupported: 4,
+          failed: 0,
+          stale: 0,
+          notTestable: 0,
+          unknown: 0
+        },
+        claims: [
+          {
+            id: "file-src-auth-reset-ts",
+            text: "Changed file reviewed: src/auth/reset.ts",
+            status: "unsupported",
+            source: "file",
+            reason: "identity/session path; no passing test evidence",
+            files: ["src/auth/reset.ts"],
+            evidence: ["Proof: missing", "Gap: missing-auth-test-proof"],
+            relatedProofGapIds: ["missing-auth-test-proof"],
+            suggestedCommand: "npm test"
+          }
+        ]
+      },
       latestSnapshotNote: "Initial implementation completed",
       verificationState: "0 passed, 0 failed",
       nextAction: "Run npm test."
@@ -55,6 +80,8 @@ describe("resume prompt", () => {
     expect(prompt).toContain("Verification State");
     expect(prompt).toContain("0 passed, 0 failed");
     expect(prompt).toContain("Review Focus");
+    expect(prompt).toContain("Review Contract");
+    expect(prompt).toContain("unsupported - Changed file reviewed: src/auth/reset.ts");
     expect(prompt).toContain("src/auth/reset.ts");
     expect(prompt).toContain("identity/session path");
     expect(prompt).toContain("Proof Gaps");

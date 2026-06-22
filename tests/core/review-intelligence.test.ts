@@ -64,6 +64,12 @@ describe("review intelligence", () => {
       suggestedCommand: "npm test"
     });
     expect(review.focus[0]?.proofStatus).toBe("failed");
+    expect(review.contract).toMatchObject({
+      summary: {
+        failed: 4,
+        supported: 0
+      }
+    });
   });
 
   it("does not block readiness when the same failed verification later passes", () => {
@@ -88,6 +94,22 @@ describe("review intelligence", () => {
     expect(review.focus[0]).toMatchObject({
       proofStatus: "covered"
     });
+  });
+
+  it("treats a passed configured verify script as proof for source and test changes", () => {
+    const changedFiles = ["src/api/users.ts", "tests/api/users.test.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm run verify"],
+        verificationRuns: [verificationRun("npm run verify", "passed")]
+      })
+    });
+
+    expect(review.proofGaps).toEqual([]);
+    expect(review.readiness.state).toBe("ready_for_review");
+    expect(review.focus.map((item) => item.proofStatus)).toEqual(["covered", "covered"]);
   });
 
   it("marks incomplete verification events as proof gaps and blocks readiness", () => {
@@ -580,6 +602,13 @@ describe("review intelligence", () => {
       proofStatus: "current"
     });
     expect(review.focus[0]?.reasons).toContain("proof current");
+    expect(review.contract).toMatchObject({
+      summary: {
+        supported: 3,
+        stale: 0,
+        unsupported: 0
+      }
+    });
     expect(review.readiness).toMatchObject({
       state: "ready_for_review",
       label: "Ready for review"
@@ -616,6 +645,12 @@ describe("review intelligence", () => {
       relatedProofGapIds: ["stale-verification-proof"]
     });
     expect(review.focus[0]?.reasons).toContain("proof stale");
+    expect(review.contract).toMatchObject({
+      summary: {
+        stale: 2,
+        unsupported: 2
+      }
+    });
     expect(review.readiness).toMatchObject({
       state: "needs_verification",
       label: "Needs verification",
@@ -715,6 +750,7 @@ describe("review intelligence", () => {
 
   it("classifies verification commands into proof kinds", () => {
     expect(classifyVerificationProofKind("npm test")).toBe("test");
+    expect(classifyVerificationProofKind("npm run verify")).toBe("test");
     expect(classifyVerificationProofKind("npm run build")).toBe("build");
     expect(classifyVerificationProofKind("npm run typecheck")).toBe("typecheck");
     expect(classifyVerificationProofKind("eslint .")).toBe("lint");

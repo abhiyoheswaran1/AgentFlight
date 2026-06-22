@@ -230,10 +230,51 @@ export interface ReviewReadinessDecision {
   failedVerificationSummary?: string;
 }
 
+export type ReviewContractClaimStatus =
+  | "supported"
+  | "needs_review"
+  | "unsupported"
+  | "failed"
+  | "stale"
+  | "not_testable"
+  | "unknown";
+
+export type ReviewContractClaimSource = "task" | "file" | "proof_gap" | "readiness";
+
+export interface ReviewContractClaim {
+  id: string;
+  text: string;
+  status: ReviewContractClaimStatus;
+  source: ReviewContractClaimSource;
+  reason: string;
+  files: string[];
+  evidence: string[];
+  relatedProofGapIds: string[];
+  suggestedCommand?: string;
+  nextAction?: string;
+}
+
+export interface ReviewContractSummary {
+  total: number;
+  supported: number;
+  needsReview: number;
+  unsupported: number;
+  failed: number;
+  stale: number;
+  notTestable: number;
+  unknown: number;
+}
+
+export interface ReviewContract {
+  summary: ReviewContractSummary;
+  claims: ReviewContractClaim[];
+}
+
 export interface ReviewIntelligence {
   focus: ReviewFocusItem[];
   proofGaps: ProofGap[];
   readiness: ReviewReadinessDecision;
+  contract?: ReviewContract;
 }
 
 export interface VerificationEvidence {

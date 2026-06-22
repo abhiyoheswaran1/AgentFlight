@@ -2,6 +2,7 @@ import {
   compactCommandInText,
   formatCommandForDisplay,
   formatProofStatusForDisplay,
+  formatReviewContractStatusForDisplay,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
 import type { VerificationFailureCounts } from "../core/output.js";
@@ -524,6 +525,7 @@ function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): str
   if (input.review) {
     links.push({ href: "#review-path", label: "Review Path" });
     links.push({ href: "#review-focus", label: "Review Focus" });
+    links.push({ href: "#review-contract", label: "Review Contract" });
     links.push({ href: "#proof-gaps", label: "Proof Gaps" });
   }
   if (firstFailedRunIndex >= 0) {
@@ -700,6 +702,10 @@ function renderReview(review: ReviewIntelligence | undefined, firstFailedRunInde
       <div class="section-head"><h2 class="label">Review Focus</h2><span class="count">${escapeHtml(String(review.focus.length))} files</span></div>
       ${renderReviewFocus(review.focus)}
     </section>
+    <section class="section" id="review-contract">
+      <div class="section-head"><h2 class="label">Review Contract</h2><span class="count">${escapeHtml(String(review.contract?.claims.length ?? 0))} claims</span></div>
+      ${renderReviewContract(review)}
+    </section>
     <section class="section" id="proof-gaps">
       <div class="section-head"><h2 class="label">Proof Gaps</h2><span class="count">${escapeHtml(String(review.proofGaps.length))} gaps</span></div>
       ${renderProofGaps(review.proofGaps)}
@@ -719,6 +725,28 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
       (item) =>
         `<div class="record"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Proof:</span> ${escapeHtml(formatProofStatusForDisplay(item.proofStatus))}</div><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
     )
+    .join("")}</div>`;
+}
+
+function renderReviewContract(review: ReviewIntelligence): string {
+  const contract = review.contract;
+  if (!contract || contract.claims.length === 0) {
+    return `<p class="empty">No review contract claims recorded.</p>`;
+  }
+
+  return `<div class="records">${contract.claims
+    .map((claim) => {
+      const files = claim.files.length
+        ? `<div class="reason"><span class="reason-strong">Files:</span> ${escapeHtml(claim.files.join(", "))}</div>`
+        : "";
+      const evidence = claim.evidence.length
+        ? `<div class="reason"><span class="reason-strong">Evidence:</span> ${escapeHtml(claim.evidence.join("; "))}</div>`
+        : "";
+      const command = claim.suggestedCommand
+        ? `<div class="reason">Suggested proof: ${renderSuggestedProof(claim.suggestedCommand)}</div>`
+        : "";
+      return `<div class="record"><div class="record-key"><span class="record-cat">${escapeHtml(formatReviewContractStatusForDisplay(claim.status))}</span></div><div class="record-body"><div>${escapeHtml(claim.text)}</div><div class="reason">${escapeHtml(claim.reason)}</div>${files}${evidence}${command}</div></div>`;
+    })
     .join("")}</div>`;
 }
 
