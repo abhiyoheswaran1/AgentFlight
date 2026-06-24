@@ -609,4 +609,101 @@ describe("HTML replay", () => {
     expect(html).not.toContain("First failed run");
     expect(html).not.toContain("Jump to first failed run");
   });
+
+  it("renders escaped project review contract requirements with proof anchors", () => {
+    const html = renderHtmlReplay({
+      task: "Contract escape",
+      sessionId: "af-contract-html",
+      startedAt: "2026-06-23T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/auth/session.ts"],
+      riskBadges: ["high"],
+      verificationEvidence: [],
+      reviewReadiness: "Needs verification",
+      review: {
+        focus: [
+          {
+            rank: 1,
+            file: "src/auth/session.ts",
+            category: "auth",
+            riskLevel: "high",
+            score: 130,
+            reasons: ["identity/session path"],
+            suggestedReviewerFocus: "Check session, permission, and identity boundaries first.",
+            proofStatus: "missing",
+            suggestedCommand: "npm test",
+            relatedProofGapIds: ["auth-contract"]
+          }
+        ],
+        projectReviewContract: {
+          enabled: true,
+          requirements: [
+            {
+              id: "auth-contract",
+              label: "Auth <session> contract",
+              status: "missing",
+              proofStatus: "missing",
+              severity: "blocking",
+              requiredProof: ["test"],
+              manualReview: ["Review <script>alert(1)</script> manually."],
+              relatedFiles: ["src/auth/session.ts"],
+              matchedCategories: [{ category: "auth", files: ["src/auth/session.ts"] }],
+              matchReason: "Matched <auth> changes: src/auth/session.ts",
+              proofReason: "No passing <test> proof recorded.",
+              remainingReview: [
+                "Run agentflight verify -- npm test && echo '<unsafe>'.",
+                "Review <script>alert(1)</script> manually."
+              ],
+              suggestedCommand: "npm test && echo '<unsafe>'",
+              relatedProofGapIds: ["auth-contract"]
+            }
+          ],
+          summary: {
+            total: 1,
+            supported: 0,
+            needsReview: 0,
+            missing: 1,
+            failed: 0,
+            stale: 0,
+            manualReview: 1,
+            notRequired: 0,
+            unknown: 0
+          }
+        },
+        proofGaps: [
+          {
+            id: "auth-contract",
+            severity: "blocking",
+            message: "Auth <session> contract requires passing test proof.",
+            suggestedCommand: "npm test && echo '<unsafe>'",
+            relatedFiles: ["src/auth/session.ts"]
+          }
+        ],
+        readiness: {
+          state: "needs_verification",
+          label: "Needs verification",
+          reason: "Auth <session> contract requires passing test proof.",
+          nextAction: "Run agentflight verify -- npm test && echo '<unsafe>'",
+          suggestedCommand: "npm test && echo '<unsafe>'",
+          proofGaps: []
+        }
+      },
+      recommendation: "Needs verification."
+    });
+
+    expect(html).toContain('id="required-proof"');
+    expect(html).toContain("Auth &lt;session&gt; contract");
+    expect(html).toContain("Accepted proof:");
+    expect(html).toContain("Matched &lt;auth&gt; changes: src/auth/session.ts");
+    expect(html).toContain("No passing &lt;test&gt; proof recorded.");
+    expect(html).toContain(
+      "Run agentflight verify -- npm test &amp;&amp; echo &#39;&lt;unsafe&gt;&#39;."
+    );
+    expect(html).toContain("Review &lt;script&gt;alert(1)&lt;/script&gt; manually.");
+    expect(html).toContain('href="#proof-gap-auth-contract"');
+    expect(html).toContain(
+      'title="agentflight verify -- npm test &amp;&amp; echo &#39;&lt;unsafe&gt;&#39;"'
+    );
+    expect(html).not.toContain("<script>alert(1)</script>");
+  });
 });

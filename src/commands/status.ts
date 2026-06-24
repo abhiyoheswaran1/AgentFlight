@@ -6,6 +6,10 @@ import { pathExists, readJsonFile } from "../core/fs-safe.js";
 import {
   compactCommandInText,
   formatCommandForDisplay,
+  formatProjectRequirementDetailsForDisplay,
+  formatProjectReviewDecisionForDisplay,
+  formatProjectReviewDecisionReasonsForDisplay,
+  formatProjectRequirementStatusForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractReviewPathForDisplay,
   formatReviewContractStatusForDisplay,
@@ -15,6 +19,7 @@ import {
 } from "../core/output.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { buildProofSnapshot } from "../core/proof-snapshot.js";
+import { resolveProjectReviewContractConfig } from "../core/project-review-contract.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { getLatestRecordedReviewSummary, getLatestSessionEvent } from "../core/session.js";
@@ -22,6 +27,8 @@ import { buildVerificationSummary } from "../core/verification.js";
 import type {
   AgentFlightSession,
   ProofGap,
+  ProjectReviewContractEvaluation,
+  ProjectReviewRequirementStatus,
   ReviewContract,
   ReviewFocusItem,
   ReviewReadinessState,
@@ -67,7 +74,13 @@ export async function runStatusCommand(
     capturedAt: now.toISOString(),
     gitCommit: session.git.commit ?? null
   });
-  const review = buildReviewIntelligence({ changedFiles, risk, session, currentProofSnapshot });
+  const review = buildReviewIntelligence({
+    changedFiles,
+    risk,
+    session,
+    currentProofSnapshot,
+    projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
+  });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
   const readinessReason = compactCommandInText(
     review.readiness.reason,
@@ -135,6 +148,17 @@ ${verificationFailureContext ? `${verificationFailureContext}\n` : ""}${formatVe
 Review first:
 ${formatReviewFocus(review.focus.slice(0, 5))}
 
+Decision:
+${formatProjectReviewDecisionForDisplay(review.projectReviewContract, review.readiness)}
+
+Why:
+${formatProjectReviewDecisionReasonsForDisplay(review.projectReviewContract)
+  .map((reason) => `- ${reason}`)
+  .join("\n")}
+
+Required proof:
+${formatProjectReviewContract(review.projectReviewContract)}
+
 Review Contract:
 ${formatReviewContract(review.contract, 5)}
 
@@ -192,6 +216,7 @@ function buildStatusJson(input: {
     },
     review: {
       focus: input.review.focus,
+      projectReviewContract: input.review.projectReviewContract,
       proofGaps: input.review.proofGaps,
       readiness: input.review.readiness,
       contract: input.review.contract
@@ -348,6 +373,24 @@ function formatReviewFocus(items: ReviewFocusItem[]): string {
         `${item.rank}. ${item.file}\n   Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
+}
+
+function formatProjectReviewContract(
+  contract: ProjectReviewContractEvaluation | undefined
+): string {
+  if (!contract) return "- No project review contract configured.";
+  if (!contract.enabled) return "- Project review contract disabled.";
+  if (contract.requirements.length === 0) {
+    return "- No project review contract requirements matched these changes.";
+  }
+  return contract.requirements.map(formatProjectRequirement).join("\n");
+}
+
+function formatProjectRequirement(requirement: ProjectReviewRequirementStatus): string {
+  const details = formatProjectRequirementDetailsForDisplay(requirement)
+    .map((line) => `\n   ${line}`)
+    .join("");
+  return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
 }
 
 function formatReviewContract(contract: ReviewContract | undefined, limit: number): string {

@@ -2,6 +2,89 @@
 
 This log records setup, dogfooding, and verification evidence for the AgentFlight MVP.
 
+## 2026-06-24
+
+### Prepare v0.11.0 Release
+
+Release focus:
+
+- Ship Project Review Contract explainability as a minor release.
+- Keep the release limited to the completed contract, handoff, report, replay,
+  resume, status, docs, and verification work.
+- Review README and packaged docs with stop-slop before the version bump.
+
+Release safeguards:
+
+- Use npm Trusted Publishing from the `v0.11.0` tag.
+- Do not add new product features during release prep.
+- Treat ProjScan's changed-file risk warning as a manual scale signoff unless
+  it reports concrete blockers.
+
+## 2026-06-23
+
+### Explain Project Review Contract Decisions
+
+Product direction:
+
+- The Project Review Contract should not read like generic "tests passed"
+  tooling. It should explain why a repo-specific proof rule matched, what proof
+  satisfied it, and what remains unsafe to trust.
+- The primary product moment is the local handoff decision: decision, why,
+  required proof, review first, and artifacts.
+
+Implemented locally:
+
+- Added matched-category, match-reason, satisfied-proof, proof-reason, and
+  remaining-review metadata to evaluated Project Review Contract requirements.
+- Updated Review Contract requirement claims so the claim ledger includes
+  match and proof reasoning.
+- Added shared display helpers for Project Review Contract decision text and
+  requirement detail lines.
+- Updated status, handoff, Markdown report, HTML replay, and resume output to
+  show the same decision path.
+- Updated README and Project Review Contract development docs with the
+  decision-first local trust protocol.
+
+Bug pass notes:
+
+- Added regression coverage for legacy sessions without `verificationCommands`
+  so missing proof remains explainable instead of crashing.
+- Targeted TDD suite covered core evaluation, Review Contract claims, Markdown,
+  HTML escaping, and handoff decision output.
+
+### Build Project Review Contract Proof Standard
+
+Product direction:
+
+- AgentFlight already shows what happened, what proof exists, and how to review
+  the session, but reviewers still need a repo-specific answer to "what proof
+  does this kind of change require?"
+- The next useful trust layer is a local Project Review Contract: a proof
+  standard for agentic engineering work that maps changed-file categories to
+  required proof and manual checks.
+
+Implemented locally:
+
+- Added `projectReviewContract` config with a default local baseline for
+  auth/security/payment, database, backend/API, dependency, config/CI,
+  frontend, source, tests, docs, and AgentFlight config changes.
+- Added deterministic requirement evaluation for current, covered, stale,
+  failed, missing, manual-review, not-required, and unknown proof states.
+- Added Project Review Contract requirement claims to the Review Contract before
+  file-level claims.
+- Threaded required proof through status, Markdown reports, HTML replays,
+  resume prompts, handoffs, status JSON, and snapshots.
+- Added documentation for the config shape, default baseline, status semantics,
+  and local-first boundaries.
+
+Bug pass notes:
+
+- Fixed proof-command suggestion priority in the new evaluator so source and
+  test changes prefer the configured test command before typecheck/build when
+  the rule lists `test` first.
+- Updated command tests for the new explicit requirement claim counts in stale
+  proof and docs/manual-review cases.
+
 ## 2026-06-22
 
 ### Build Actionable Review Contract Review Path

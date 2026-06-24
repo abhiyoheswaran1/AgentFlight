@@ -21,6 +21,7 @@ export interface AgentFlightConfig {
   changedFileFilters?: {
     ignore: string[];
   };
+  projectReviewContract?: ProjectReviewContractConfig;
   privacy: {
     localOnly: true;
     telemetry: false;
@@ -172,6 +173,32 @@ export interface VerificationRun {
 
 export type VerificationProofKind = "test" | "build" | "typecheck" | "lint" | "install" | "unknown";
 
+export interface ProjectReviewContractConfig {
+  enabled: boolean;
+  rules: ProjectReviewContractRule[];
+}
+
+export interface ProjectReviewContractRule {
+  id: string;
+  label: string;
+  categories: RiskCategory[];
+  requiredProof?: VerificationProofKind[];
+  manualReview?: string[];
+  severity?: ProofGap["severity"];
+  message?: string;
+}
+
+export interface ProjectReviewMatchedCategory {
+  category: RiskCategory;
+  files: string[];
+}
+
+export interface ProjectReviewSatisfiedProof {
+  kind: VerificationProofKind;
+  command: string;
+  finishedAt?: string;
+}
+
 export type ReviewReadinessState =
   | "ready_for_review"
   | "not_ready_for_review"
@@ -220,6 +247,52 @@ export interface ProofGap {
   relatedFiles: string[];
 }
 
+export type ProjectReviewRequirementState =
+  | "supported"
+  | "needs_review"
+  | "missing"
+  | "failed"
+  | "stale"
+  | "not_required"
+  | "unknown";
+
+export interface ProjectReviewRequirementStatus {
+  id: string;
+  label: string;
+  status: ProjectReviewRequirementState;
+  proofStatus: ReviewProofStatus;
+  severity: ProofGap["severity"];
+  requiredProof: VerificationProofKind[];
+  manualReview: string[];
+  relatedFiles: string[];
+  matchedCategories?: ProjectReviewMatchedCategory[];
+  matchReason?: string;
+  proofReason?: string;
+  satisfiedProof?: ProjectReviewSatisfiedProof;
+  remainingReview?: string[];
+  relatedProofGapIds: string[];
+  suggestedCommand?: string;
+  message?: string;
+}
+
+export interface ProjectReviewContractSummary {
+  total: number;
+  supported: number;
+  needsReview: number;
+  missing: number;
+  failed: number;
+  stale: number;
+  manualReview: number;
+  notRequired: number;
+  unknown: number;
+}
+
+export interface ProjectReviewContractEvaluation {
+  enabled: boolean;
+  requirements: ProjectReviewRequirementStatus[];
+  summary: ProjectReviewContractSummary;
+}
+
 export interface ReviewReadinessDecision {
   state: ReviewReadinessState;
   label: string;
@@ -239,7 +312,12 @@ export type ReviewContractClaimStatus =
   | "not_testable"
   | "unknown";
 
-export type ReviewContractClaimSource = "task" | "file" | "proof_gap" | "readiness";
+export type ReviewContractClaimSource =
+  | "task"
+  | "project_requirement"
+  | "file"
+  | "proof_gap"
+  | "readiness";
 
 export type ReviewContractProofReferenceKind =
   | "changed_file"
@@ -293,6 +371,7 @@ export interface ReviewContract {
 
 export interface ReviewIntelligence {
   focus: ReviewFocusItem[];
+  projectReviewContract?: ProjectReviewContractEvaluation;
   proofGaps: ProofGap[];
   readiness: ReviewReadinessDecision;
   contract?: ReviewContract;

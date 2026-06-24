@@ -1,5 +1,7 @@
 import {
   compactCommandInText,
+  formatProjectRequirementDetailsForDisplay,
+  formatProjectRequirementStatusForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractProofReferencesForDisplay,
   formatReviewContractReviewPathForDisplay,
@@ -8,6 +10,8 @@ import {
 } from "../core/output.js";
 import type {
   ProofGap,
+  ProjectReviewContractEvaluation,
+  ProjectReviewRequirementStatus,
   ReviewContract,
   ReviewFocusItem,
   ReviewReadinessDecision,
@@ -23,6 +27,7 @@ export interface ResumePromptInput {
   riskReasons: string[];
   verificationGaps: string[];
   reviewFocus?: ReviewFocusItem[] | undefined;
+  projectReviewContract?: ProjectReviewContractEvaluation | undefined;
   reviewContract?: ReviewContract | undefined;
   proofGaps?: ProofGap[] | undefined;
   readiness?: ReviewReadinessDecision | undefined;
@@ -61,6 +66,9 @@ ${renderVerificationState(input)}
 ## Review Focus
 ${renderReviewFocus(input.reviewFocus ?? [])}
 
+## Required Proof
+${renderRequiredProof(input.projectReviewContract)}
+
 ## Review Contract
 ${renderReviewContract(input.reviewContract, Boolean(input.openFirstArtifact))}
 
@@ -90,6 +98,22 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
         `${item.rank}. ${item.file}\n   - Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
+}
+
+function renderRequiredProof(contract: ProjectReviewContractEvaluation | undefined): string {
+  if (!contract) return "No project review contract configured.";
+  if (!contract.enabled) return "Project review contract disabled.";
+  if (contract.requirements.length === 0) {
+    return "No project review contract requirements matched these changes.";
+  }
+  return contract.requirements.map(renderProjectRequirement).join("\n");
+}
+
+function renderProjectRequirement(requirement: ProjectReviewRequirementStatus): string {
+  const details = formatProjectRequirementDetailsForDisplay(requirement)
+    .map((line) => `\n   - ${line}`)
+    .join("");
+  return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
 }
 
 function renderReviewContract(

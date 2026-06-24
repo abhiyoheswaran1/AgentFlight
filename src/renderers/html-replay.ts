@@ -2,6 +2,8 @@ import {
   compactCommandInText,
   formatCommandForDisplay,
   getReviewContractPathClaims,
+  formatProjectRequirementDetailsForDisplay,
+  formatProjectRequirementStatusForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractProofReferenceLabelForDisplay,
   formatReviewContractStatusForDisplay,
@@ -10,6 +12,8 @@ import {
 import type { VerificationFailureCounts } from "../core/output.js";
 import type {
   ProofGap,
+  ProjectReviewContractEvaluation,
+  ProjectReviewRequirementStatus,
   ReviewContractClaim,
   ReviewContractProofReference,
   ReviewFocusItem,
@@ -529,6 +533,7 @@ function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): str
   if (input.review) {
     links.push({ href: "#review-path", label: "Review Path" });
     links.push({ href: "#review-focus", label: "Review Focus" });
+    links.push({ href: "#required-proof", label: "Required Proof" });
     links.push({ href: "#review-contract", label: "Review Contract" });
     links.push({ href: "#proof-gaps", label: "Proof Gaps" });
   }
@@ -749,6 +754,10 @@ function renderReview(review: ReviewIntelligence | undefined, firstFailedRunInde
       <div class="section-head"><h2 class="label">Review Focus</h2><span class="count">${escapeHtml(String(review.focus.length))} files</span></div>
       ${renderReviewFocus(review.focus)}
     </section>
+    <section class="section" id="required-proof">
+      <div class="section-head"><h2 class="label">Required Proof</h2><span class="count">${escapeHtml(String(review.projectReviewContract?.requirements.length ?? 0))} requirements</span></div>
+      ${renderRequiredProof(review.projectReviewContract)}
+    </section>
     <section class="section" id="review-contract">
       <div class="section-head"><h2 class="label">Review Contract</h2><span class="count">${escapeHtml(String(review.contract?.claims.length ?? 0))} claims</span></div>
       ${renderReviewContract(review)}
@@ -773,6 +782,35 @@ function renderReviewFocus(items: ReviewFocusItem[]): string {
         `<div class="record" id="${escapeHtml(reviewFocusAnchorId(item.file))}"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Proof:</span> ${escapeHtml(formatProofStatusForDisplay(item.proofStatus))}</div><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
     )
     .join("")}</div>`;
+}
+
+function renderRequiredProof(contract: ProjectReviewContractEvaluation | undefined): string {
+  if (!contract) return `<p class="empty">No project review contract configured.</p>`;
+  if (!contract.enabled) return `<p class="empty">Project review contract disabled.</p>`;
+  if (contract.requirements.length === 0) {
+    return `<p class="empty">No project review contract requirements matched these changes.</p>`;
+  }
+  return `<div class="records">${contract.requirements.map(renderProjectRequirement).join("")}</div>`;
+}
+
+function renderProjectRequirement(requirement: ProjectReviewRequirementStatus): string {
+  const details = formatProjectRequirementDetailsForDisplay(requirement)
+    .filter((line) => !line.startsWith("Suggested proof: "))
+    .map((line) => `<div class="reason">${renderProjectRequirementDetailLine(line)}</div>`)
+    .join("");
+  const proofGaps = requirement.relatedProofGapIds.length
+    ? `<div class="reason"><span class="reason-strong">Proof gaps:</span> ${requirement.relatedProofGapIds.map((id) => `<a href="#${escapeHtml(proofGapAnchorId(id))}">${escapeHtml(id)}</a>`).join("; ")}</div>`
+    : "";
+  const suggestedProof = requirement.suggestedCommand
+    ? `<div class="reason">Suggested proof: ${renderSuggestedProof(requirement.suggestedCommand)}</div>`
+    : "";
+  return `<div class="record" id="${escapeHtml(projectRequirementAnchorId(requirement.id))}"><div class="record-key"><span class="record-cat">${escapeHtml(formatProjectRequirementStatusForDisplay(requirement.status))}</span></div><div class="record-body"><div>${escapeHtml(requirement.label)}</div>${details}${proofGaps}${suggestedProof}</div></div>`;
+}
+
+function renderProjectRequirementDetailLine(line: string): string {
+  const [label, ...rest] = line.split(": ");
+  if (!label || rest.length === 0) return escapeHtml(line);
+  return `<span class="reason-strong">${escapeHtml(label)}:</span> ${escapeHtml(rest.join(": "))}`;
 }
 
 function renderReviewContract(review: ReviewIntelligence): string {
@@ -846,6 +884,10 @@ function renderSuggestedProof(command: string): string {
 
 function claimAnchorId(claim: ReviewContractClaim): string {
   return `claim-${anchorId(claim.id)}`;
+}
+
+function projectRequirementAnchorId(id: string): string {
+  return `project-requirement-${anchorId(id)}`;
 }
 
 function reviewFocusAnchorId(file: string): string {

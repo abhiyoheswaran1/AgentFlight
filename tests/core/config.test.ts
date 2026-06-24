@@ -11,7 +11,7 @@ describe("AgentFlight config", () => {
       now: new Date("2026-06-13T12:00:00.000Z")
     });
 
-    expect(config).toEqual({
+    expect(config).toMatchObject({
       version: 1,
       projectName: "My Repo",
       createdAt: "2026-06-13T12:00:00.000Z",
@@ -22,6 +22,26 @@ describe("AgentFlight config", () => {
       verification: { commands: [], profiles: {} },
       changedFileFilters: { ignore: [] },
       privacy: { localOnly: true, telemetry: false }
+    });
+    expect(config.projectReviewContract).toMatchObject({
+      enabled: true,
+      rules: expect.arrayContaining([
+        expect.objectContaining({
+          id: "missing-auth-test-proof",
+          label: "Sensitive auth, payment, or security review",
+          categories: ["auth", "billing/payments", "security/secrets"],
+          requiredProof: ["test"],
+          manualReview: expect.arrayContaining([
+            "Review session, permission, identity, payment, or credential boundaries manually."
+          ])
+        }),
+        expect.objectContaining({
+          id: "missing-source-proof",
+          label: "Source behavior review",
+          categories: ["source"],
+          requiredProof: ["test", "typecheck", "build"]
+        })
+      ])
     });
   });
 

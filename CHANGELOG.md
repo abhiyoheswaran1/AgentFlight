@@ -2,9 +2,35 @@
 
 All notable AgentFlight changes are documented here.
 
-## Unreleased
+## [0.11.0] - 2026-06-24
 
-No unreleased changes.
+### Added
+
+- Added a local Project Review Contract proof standard that maps changed-file
+  categories to required proof kinds and manual review checks.
+- Status, Markdown reports, HTML replays, resume prompts, handoffs, and status
+  JSON now show required proof alongside actual proof state.
+- Project Review Contract requirements now explain why each rule matched, which
+  proof command satisfied it, and which reviewer actions remain.
+- New `.agentflight/config.json` files include a default local Project Review
+  Contract baseline for auth/security/payment, database, backend/API,
+  dependency, config/CI, frontend, source, tests, docs, and AgentFlight config
+  changes.
+
+### Changed
+
+- Review Contract claims now include Project Review Contract requirement claims
+  before file-level claims when a requirement matches the changed files.
+- Handoff now leads with a decision and why summary before the detailed review
+  packet.
+- Handoff, status, report, resume, and replay surfaces now show the same
+  explainable required-proof decision path.
+- Public docs now describe AgentFlight as a local-first review layer for coding
+  agent sessions and document the Project Review Contract handoff path.
+
+### Verification
+
+- Release audit: `docs/development/v0.11.0-release-audit.md`.
 
 ## [0.10.0] - 2026-06-22
 

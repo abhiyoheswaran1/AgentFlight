@@ -328,6 +328,110 @@ describe("review contract", () => {
       "Ready for review with 2 supported claims and 1 manual-review claim."
     );
   });
+
+  it("adds project review contract requirement claims before file claims", () => {
+    const contract = buildReviewContract({
+      taskTitle: "Update auth flow",
+      projectReviewContract: {
+        enabled: true,
+        requirements: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            status: "missing",
+            proofStatus: "missing",
+            severity: "blocking",
+            requiredProof: ["test"],
+            manualReview: ["Review auth flow manually."],
+            relatedFiles: ["src/auth/session.ts"],
+            matchedCategories: [{ category: "auth", files: ["src/auth/session.ts"] }],
+            matchReason: "Matched auth changes: src/auth/session.ts",
+            proofReason: "No passing test proof recorded.",
+            remainingReview: ["Run agentflight verify -- npm test.", "Review auth flow manually."],
+            suggestedCommand: "npm test",
+            relatedProofGapIds: ["auth-contract"]
+          }
+        ],
+        summary: {
+          total: 1,
+          supported: 0,
+          needsReview: 0,
+          missing: 1,
+          failed: 0,
+          stale: 0,
+          manualReview: 1,
+          notRequired: 0,
+          unknown: 0
+        }
+      },
+      focus: [
+        focusItem({
+          file: "src/auth/session.ts",
+          category: "auth",
+          proofStatus: "missing",
+          relatedProofGapIds: ["auth-contract"],
+          suggestedCommand: "npm test"
+        })
+      ],
+      proofGaps: [
+        proofGap({
+          id: "auth-contract",
+          severity: "blocking",
+          message: "Auth/session contract requires passing test proof.",
+          suggestedCommand: "npm test",
+          relatedFiles: ["src/auth/session.ts"]
+        })
+      ],
+      readiness: readiness({
+        state: "needs_verification",
+        label: "Needs verification",
+        reason: "Auth/session contract requires passing test proof.",
+        suggestedCommand: "npm test"
+      })
+    });
+
+    expect(contract.claims[1]).toMatchObject({
+      id: "project-requirement-auth-contract",
+      source: "project_requirement",
+      status: "unsupported",
+      text: "Required proof: Auth/session contract",
+      files: ["src/auth/session.ts"],
+      evidence: [
+        "Matched: Matched auth changes: src/auth/session.ts",
+        "Proof: missing",
+        "Proof detail: No passing test proof recorded.",
+        "Accepted proof: test",
+        "Manual review: Review auth flow manually.",
+        "Remaining: Run agentflight verify -- npm test.",
+        "Remaining: Review auth flow manually.",
+        "Gap: auth-contract"
+      ],
+      suggestedCommand: "npm test",
+      relatedProofGapIds: ["auth-contract"]
+    });
+    expect(contract.claims[1]?.proofReferences).toEqual(
+      expect.arrayContaining([
+        {
+          kind: "changed_file",
+          label: "Changed file: src/auth/session.ts",
+          target: "review-focus-file-src-auth-session-ts"
+        },
+        {
+          kind: "proof_gap",
+          label: "Proof gap: auth-contract",
+          target: "proof-gap-auth-contract"
+        },
+        {
+          kind: "suggested_command",
+          label: "Suggested proof: npm test"
+        }
+      ])
+    );
+    expect(contract.claims[2]).toMatchObject({
+      source: "file",
+      text: "Changed file reviewed: src/auth/session.ts"
+    });
+  });
 });
 
 function focusItem(overrides: Partial<ReviewFocusItem>): ReviewFocusItem {

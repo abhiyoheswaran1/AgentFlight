@@ -160,10 +160,20 @@ describe("evidence-aware session outputs", () => {
         proofGaps: [],
         contract: {
           summary: {
-            total: 3,
+            total: 4,
             supported: 2,
-            needsReview: 1
+            needsReview: 2
           }
+        },
+        projectReviewContract: {
+          enabled: true,
+          requirements: [
+            expect.objectContaining({
+              id: "docs-manual-review",
+              status: "needs_review",
+              proofStatus: "not_required"
+            })
+          ]
         }
       }
     });
@@ -213,9 +223,11 @@ describe("evidence-aware session outputs", () => {
     });
 
     expect(status.output).toContain("Proof: stale");
+    expect(status.output).toContain("Required proof:");
+    expect(status.output).toContain("stale - Sensitive auth, payment, or security review");
     expect(status.output).toContain("Review Contract:");
     expect(status.output).toContain(
-      "Review path: Review 2 stale claims and 2 unsupported claims before sharing."
+      "Review path: Review 3 stale claims and 2 unsupported claims before sharing."
     );
     expect(status.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
     expect(status.output).toContain("Verification proof is stale");
@@ -261,7 +273,7 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("Proof: stale");
     expect(handoff.output).toContain("Review contract:");
     expect(handoff.output).toContain(
-      "Review path: Review 2 stale claims and 2 unsupported claims before sharing."
+      "Review path: Review 3 stale claims and 2 unsupported claims before sharing."
     );
     expect(handoff.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
     expect(handoff.output).toContain("Verification proof is stale");
@@ -915,6 +927,13 @@ Open first: handoff ${handoffPath}`);
       "AgentFlight handoff"
     );
     expect(handoff.output).toContain("AgentFlight handoff");
+    expect(handoff.output).toContain("Decision:");
+    expect(handoff.output).toContain(
+      "Ready for review; manual checks remain before trusting the change."
+    );
+    expect(handoff.output).toContain("Why:");
+    expect(handoff.output).toContain("- 1 manual-review requirement remains.");
+    expect(handoff.output).toContain("- No failed, stale, or missing required proof.");
     expect(handoff.output).toContain("Readiness: Ready for review");
     expect(handoff.output).toContain("Open first: handoff");
     expect(handoff.output).toContain("Open first: handoff .agentflight/reports/");

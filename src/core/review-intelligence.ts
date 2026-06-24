@@ -1,11 +1,17 @@
 import { categorizeFile } from "./risk.js";
 import { compareProofSnapshotToCurrent } from "./proof-snapshot.js";
+import {
+  evaluateProjectReviewContract,
+  projectRequirementProofGaps
+} from "./project-review-contract.js";
 import { buildReviewContract } from "./review-contract.js";
 import { getVerificationRuns } from "./session.js";
 import { getUnresolvedFailedRuns } from "./verification.js";
 import type {
   AgentFlightSession,
   ProofSnapshot,
+  ProjectReviewContractConfig,
+  ProjectReviewContractEvaluation,
   ProofGap,
   ReviewFocusItem,
   ReviewIntelligence,
@@ -26,6 +32,7 @@ export interface BuildReviewIntelligenceOptions {
   session: AgentFlightSession;
   currentProofSnapshot?: ProofSnapshot | undefined;
   projscanHints?: ProjScanReviewHint[] | undefined;
+  projectReviewContract?: ProjectReviewContractConfig | undefined;
 }
 
 const baseScores: Record<RiskCategory, number> = {
@@ -179,17 +186,35 @@ export function buildReviewIntelligence(
   options: BuildReviewIntelligenceOptions
 ): ReviewIntelligence {
   const runs = getVerificationRuns(options.session);
+  const verificationCommands = Array.isArray(options.session.verificationCommands)
+    ? options.session.verificationCommands
+    : [];
   const unresolvedFailedRuns = getUnresolvedFailedRuns(runs);
   const proofKinds = summarizeProofKinds(runs);
   const proofFreshness = summarizeProofFreshness(runs, options.currentProofSnapshot);
   const incompleteVerifications = detectIncompleteVerificationAttempts(options.session);
+  const filesByCategory = groupFilesByCategory(options.changedFiles);
+  const projectReviewContract = options.projectReviewContract
+    ? evaluateProjectReviewContract({
+        contract: options.projectReviewContract,
+        changedFiles: options.changedFiles,
+        verificationCommands,
+        proofKinds,
+        verificationRuns: runs,
+        proofFreshness,
+        unresolvedFailedRuns,
+        filesByCategory
+      })
+    : undefined;
   const proofGaps = buildProofGaps({
     changedFiles: options.changedFiles,
-    verificationCommands: options.session.verificationCommands,
+    verificationCommands,
     proofKinds,
     proofFreshness,
     unresolvedFailedRuns,
-    incompleteVerifications
+    incompleteVerifications,
+    filesByCategory,
+    projectReviewContract
   });
   const focus = buildReviewFocus({
     changedFiles: options.changedFiles,
@@ -207,6 +232,7 @@ export function buildReviewIntelligence(
   });
   const contract = buildReviewContract({
     taskTitle: options.session.task.title,
+    projectReviewContract,
     focus,
     proofGaps,
     readiness
@@ -214,6 +240,7 @@ export function buildReviewIntelligence(
 
   return {
     focus,
+    ...(projectReviewContract ? { projectReviewContract } : {}),
     proofGaps,
     readiness,
     contract
@@ -313,6 +340,8 @@ function buildProofGaps(input: {
   proofFreshness: ProofFreshnessSummary;
   unresolvedFailedRuns: VerificationRun[];
   incompleteVerifications: IncompleteVerificationAttempt[];
+  filesByCategory: Map<RiskCategory, string[]>;
+  projectReviewContract?: ProjectReviewContractEvaluation | undefined;
 }): ProofGap[] {
   const gaps: ProofGap[] = [];
   const failedRuns = input.unresolvedFailedRuns;
@@ -337,9 +366,12 @@ function buildProofGaps(input: {
     });
   }
 
-  const filesByCategory = groupFilesByCategory(input.changedFiles);
-  for (const rule of categoryProofGapRules) {
-    addCategoryGap(gaps, input, filesByCategory, rule);
+  if (input.projectReviewContract?.enabled) {
+    gaps.push(...projectRequirementProofGaps(input.projectReviewContract));
+  } else {
+    for (const rule of categoryProofGapRules) {
+      addCategoryGap(gaps, input, input.filesByCategory, rule);
+    }
   }
 
   addStaleProofGap(gaps, input);

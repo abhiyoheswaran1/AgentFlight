@@ -1,5 +1,8 @@
 import type {
   ProofGap,
+  ProjectReviewContractEvaluation,
+  ProjectReviewRequirementState,
+  ProjectReviewRequirementStatus,
   ReviewContract,
   ReviewContractClaim,
   ReviewContractClaimStatus,
@@ -13,6 +16,7 @@ import type {
 
 export interface BuildReviewContractOptions {
   taskTitle: string;
+  projectReviewContract?: ProjectReviewContractEvaluation | undefined;
   focus: ReviewFocusItem[];
   proofGaps: ProofGap[];
   readiness: ReviewReadinessDecision;
@@ -21,6 +25,7 @@ export interface BuildReviewContractOptions {
 export function buildReviewContract(options: BuildReviewContractOptions): ReviewContract {
   const claims = [
     buildTaskClaim(options.taskTitle, options.readiness),
+    ...projectRequirementClaims(options.projectReviewContract),
     ...options.focus.map(buildFileClaim),
     ...options.proofGaps.map(buildProofGapClaim),
     buildReadinessClaim(options.readiness)
@@ -113,6 +118,41 @@ function buildFileClaim(item: ReviewFocusItem): ReviewContractClaim {
   };
 }
 
+function projectRequirementClaims(
+  contract: ProjectReviewContractEvaluation | undefined
+): ReviewContractClaim[] {
+  if (!contract?.enabled) return [];
+  return contract.requirements.map(buildProjectRequirementClaim);
+}
+
+function buildProjectRequirementClaim(
+  requirement: ProjectReviewRequirementStatus
+): ReviewContractClaim {
+  return {
+    id: `project-requirement-${stableId(requirement.id)}`,
+    text: `Required proof: ${requirement.label}`,
+    status: statusFromProjectRequirement(requirement.status),
+    source: "project_requirement",
+    reason: projectRequirementReason(requirement),
+    files: requirement.relatedFiles,
+    evidence: projectRequirementEvidence(requirement),
+    proofReferences: [
+      ...requirement.relatedFiles.map((file) => ({
+        kind: "changed_file" as const,
+        label: `Changed file: ${file}`,
+        target: `review-focus-file-${stableId(file)}`
+      })),
+      ...proofGapReferences(requirement.relatedProofGapIds),
+      ...suggestedCommandReference(requirement.suggestedCommand)
+    ],
+    relatedProofGapIds: requirement.relatedProofGapIds,
+    ...(requirement.suggestedCommand ? { suggestedCommand: requirement.suggestedCommand } : {}),
+    ...(requirement.status === "needs_review"
+      ? { nextAction: "Complete the listed manual review checks before trusting the change." }
+      : {})
+  };
+}
+
 function buildProofGapClaim(gap: ProofGap): ReviewContractClaim {
   return {
     id: `proof-gap-${stableId(gap.id)}`,
@@ -170,6 +210,35 @@ function fileClaimEvidence(item: ReviewFocusItem): string[] {
   return evidence;
 }
 
+function projectRequirementEvidence(requirement: ProjectReviewRequirementStatus): string[] {
+  const evidence = [`Proof: ${requirement.proofStatus}`];
+  if (requirement.matchReason) evidence.unshift(`Matched: ${requirement.matchReason}`);
+  if (requirement.proofReason) evidence.push(`Proof detail: ${requirement.proofReason}`);
+  if (requirement.satisfiedProof) {
+    evidence.push(
+      `Satisfied by: ${requirement.satisfiedProof.kind} proof (${requirement.satisfiedProof.command})`
+    );
+  }
+  if (requirement.requiredProof.length > 0) {
+    evidence.push(`Accepted proof: ${requirement.requiredProof.join(", ")}`);
+  }
+  evidence.push(...requirement.manualReview.map((check) => `Manual review: ${check}`));
+  evidence.push(...(requirement.remainingReview ?? []).map((check) => `Remaining: ${check}`));
+  evidence.push(...requirement.relatedProofGapIds.map((id) => `Gap: ${id}`));
+  return evidence;
+}
+
+function projectRequirementReason(requirement: ProjectReviewRequirementStatus): string {
+  const details: string[] = [];
+  if (requirement.requiredProof.length > 0) {
+    details.push(`accepts proof: ${requirement.requiredProof.join(", ")}`);
+  }
+  if (requirement.manualReview.length > 0) {
+    details.push(`manual review: ${requirement.manualReview.join("; ")}`);
+  }
+  return details.length > 0 ? details.join("; ") : (requirement.message ?? requirement.label);
+}
+
 function statusFromProofStatus(status: ReviewProofStatus): ReviewContractClaimStatus {
   const statuses: Record<ReviewProofStatus, ReviewContractClaimStatus> = {
     current: "supported",
@@ -178,6 +247,21 @@ function statusFromProofStatus(status: ReviewProofStatus): ReviewContractClaimSt
     missing: "unsupported",
     not_required: "needs_review",
     stale: "stale",
+    unknown: "unknown"
+  };
+  return statuses[status];
+}
+
+function statusFromProjectRequirement(
+  status: ProjectReviewRequirementState
+): ReviewContractClaimStatus {
+  const statuses: Record<ProjectReviewRequirementState, ReviewContractClaimStatus> = {
+    supported: "supported",
+    needs_review: "needs_review",
+    missing: "unsupported",
+    failed: "failed",
+    stale: "stale",
+    not_required: "not_testable",
     unknown: "unknown"
   };
   return statuses[status];
@@ -282,10 +366,11 @@ function claimPriority(claim: ReviewContractClaim): number {
 
 function sourcePriority(source: ReviewContractClaim["source"]): number {
   const priorities: Record<ReviewContractClaim["source"], number> = {
-    file: 0,
-    proof_gap: 1,
-    readiness: 2,
-    task: 3
+    project_requirement: 0,
+    file: 1,
+    proof_gap: 2,
+    readiness: 3,
+    task: 4
   };
   return priorities[source];
 }

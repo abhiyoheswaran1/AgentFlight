@@ -2,6 +2,7 @@ import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
 import { getGitInfo } from "../core/git.js";
 import { buildProofSnapshot } from "../core/proof-snapshot.js";
+import { resolveProjectReviewContractConfig } from "../core/project-review-contract.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { appendSessionEvent } from "../core/session.js";
@@ -51,7 +52,8 @@ export async function runSnapshotCommand(
     changedFiles: git.changedFiles,
     risk,
     session,
-    currentProofSnapshot
+    currentProofSnapshot,
+    projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
   });
 
   const updatedSession = await appendSessionEvent(options.repoRoot, session, {

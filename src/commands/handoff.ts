@@ -1,6 +1,10 @@
 import { pathExists, writeTextFileSafe } from "../core/fs-safe.js";
 import {
   compactCommandInText,
+  formatProjectRequirementDetailsForDisplay,
+  formatProjectRequirementStatusForDisplay,
+  formatProjectReviewDecisionForDisplay,
+  formatProjectReviewDecisionReasonsForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractStatusForDisplay,
   formatVerificationCountLine
@@ -42,6 +46,7 @@ interface HandoffStatus {
   };
   review: {
     focus: HandoffFocusItem[];
+    projectReviewContract: HandoffProjectReviewContract;
     contract: HandoffContract;
     proofGaps: HandoffProofGap[];
     readiness: HandoffReadiness;
@@ -67,6 +72,38 @@ interface HandoffProofGap {
   id: string;
   severity: string;
   message: string;
+  suggestedCommand?: string;
+}
+
+interface HandoffProjectReviewContract {
+  enabled: boolean;
+  summary: {
+    total: number;
+    supported: number;
+    needsReview: number;
+    missing: number;
+    failed: number;
+    stale: number;
+    manualReview: number;
+    notRequired: number;
+    unknown: number;
+  };
+  requirements: HandoffProjectRequirement[];
+}
+
+interface HandoffProjectRequirement {
+  id: string;
+  label: string;
+  status: Parameters<typeof formatProjectRequirementStatusForDisplay>[0];
+  proofStatus: Parameters<typeof formatProofStatusForDisplay>[0];
+  requiredProof: string[];
+  manualReview: string[];
+  relatedFiles: string[];
+  matchedCategories?: { category: string; files: string[] }[];
+  matchReason?: string;
+  proofReason?: string;
+  satisfiedProof?: { kind: string; command: string };
+  remainingReview?: string[];
   suggestedCommand?: string;
 }
 
@@ -232,6 +269,14 @@ ${input.status.sessionId}
 Changed files: ${input.status.changedFileCount}
 Risk: ${input.status.riskLevel}
 
+Decision:
+${formatProjectReviewDecisionForDisplay(input.status.review.projectReviewContract, readiness)}
+
+Why:
+${formatProjectReviewDecisionReasonsForDisplay(input.status.review.projectReviewContract)
+  .map((reason) => `- ${reason}`)
+  .join("\n")}
+
 Readiness: ${readiness.label}
 Reason: ${formatReadinessReason(readiness, input.status.reason)}
 
@@ -244,6 +289,9 @@ ${formatVerificationDetails(
 
 Review first:
 ${formatReviewFocus(input.status.review.focus.slice(0, 3))}
+
+Required proof:
+${formatProjectReviewContract(input.status.review.projectReviewContract)}
 
 Review contract:
 ${formatReviewContract(input.status.review.contract, 5)}
@@ -352,6 +400,21 @@ function formatProofGaps(gaps: HandoffProofGap[]): string {
   return gaps.map(formatProofGap).join("\n");
 }
 
+function formatProjectReviewContract(contract: HandoffProjectReviewContract): string {
+  if (!contract.enabled) return "- Project review contract disabled.";
+  if (contract.requirements.length === 0) {
+    return "- No project review contract requirements matched these changes.";
+  }
+  return contract.requirements.map(formatProjectRequirement).join("\n");
+}
+
+function formatProjectRequirement(requirement: HandoffProjectRequirement): string {
+  const details = formatProjectRequirementDetailsForDisplay(requirement)
+    .map((line) => `\n   ${line}`)
+    .join("");
+  return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
+}
+
 function formatReviewContract(contract: HandoffContract, limit: number): string {
   if (contract.claims.length === 0) return "- No review contract claims recorded.";
   const visibleClaims = contract.claims.slice(0, limit);
@@ -403,6 +466,7 @@ function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
     },
     review: {
       focus: readArray(review.focus).map(parseFocusItem),
+      projectReviewContract: parseProjectReviewContract(readObject(review.projectReviewContract)),
       contract: parseContract(readObject(review.contract)),
       proofGaps: readArray(review.proofGaps).map(parseProofGap),
       readiness
@@ -410,6 +474,61 @@ function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
     reason: readString(payload.reason, readiness.reason),
     nextAction: readString(payload.nextAction, readiness.nextAction)
   };
+}
+
+function parseProjectReviewContract(value: Record<string, unknown>): HandoffProjectReviewContract {
+  const summary = readObject(value.summary);
+  return {
+    enabled: value.enabled !== false,
+    summary: {
+      total: readNumber(summary.total, 0),
+      supported: readNumber(summary.supported, 0),
+      needsReview: readNumber(summary.needsReview, 0),
+      missing: readNumber(summary.missing, 0),
+      failed: readNumber(summary.failed, 0),
+      stale: readNumber(summary.stale, 0),
+      manualReview: readNumber(summary.manualReview, 0),
+      notRequired: readNumber(summary.notRequired, 0),
+      unknown: readNumber(summary.unknown, 0)
+    },
+    requirements: readArray(value.requirements).map(parseProjectRequirement)
+  };
+}
+
+function parseProjectRequirement(value: unknown): HandoffProjectRequirement {
+  const requirement = readObject(value);
+  const suggestedCommand = readString(requirement.suggestedCommand, "");
+  return {
+    id: readString(requirement.id, "project-requirement"),
+    label: readString(requirement.label, "Project review requirement"),
+    status: parseProjectRequirementStatus(requirement.status),
+    proofStatus: parseProofStatus(requirement.proofStatus),
+    requiredProof: readArray(requirement.requiredProof).map((kind) => readString(kind, "unknown")),
+    manualReview: readArray(requirement.manualReview).map((check) => readString(check, "")),
+    relatedFiles: readArray(requirement.relatedFiles).map((file) => readString(file, "unknown")),
+    matchedCategories: readArray(requirement.matchedCategories).map(parseMatchedCategory),
+    matchReason: readString(requirement.matchReason, ""),
+    proofReason: readString(requirement.proofReason, ""),
+    remainingReview: readArray(requirement.remainingReview).map((check) => readString(check, "")),
+    ...parseSatisfiedProof(requirement.satisfiedProof),
+    ...(suggestedCommand ? { suggestedCommand } : {})
+  };
+}
+
+function parseMatchedCategory(value: unknown): { category: string; files: string[] } {
+  const match = readObject(value);
+  return {
+    category: readString(match.category, "unknown"),
+    files: readArray(match.files).map((file) => readString(file, "unknown"))
+  };
+}
+
+function parseSatisfiedProof(value: unknown): Pick<HandoffProjectRequirement, "satisfiedProof"> {
+  const proof = readObject(value);
+  const kind = readString(proof.kind, "");
+  const command = readString(proof.command, "");
+  if (!kind || !command) return {};
+  return { satisfiedProof: { kind, command } };
 }
 
 function parseContract(value: Record<string, unknown>): HandoffContract {
@@ -509,6 +628,23 @@ function parseProofStatus(value: unknown): Parameters<typeof formatProofStatusFo
     value === "covered" ||
     value === "missing" ||
     value === "failed" ||
+    value === "not_required" ||
+    value === "unknown"
+  ) {
+    return value;
+  }
+  return "unknown";
+}
+
+function parseProjectRequirementStatus(
+  value: unknown
+): Parameters<typeof formatProjectRequirementStatusForDisplay>[0] {
+  if (
+    value === "supported" ||
+    value === "needs_review" ||
+    value === "missing" ||
+    value === "failed" ||
+    value === "stale" ||
     value === "not_required" ||
     value === "unknown"
   ) {

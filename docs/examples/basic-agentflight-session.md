@@ -100,6 +100,31 @@ Latest snapshot:
 
 Review readiness: Ready for review
 
+Decision:
+Ready for review; manual checks remain before trusting the change.
+
+Why:
+- Source and test proof are supported.
+- Documentation review remains.
+- No failed, stale, or missing required proof.
+
+Required proof:
+- supported - Source behavior review
+   Matched: Matched source changes: src/password-reset.ts
+   Proof: current
+   Proof detail: Satisfied by current test proof: npm test
+   Accepted proof: test, typecheck, build
+- supported - Test suite review
+   Matched: Matched tests changes: tests/password-reset.test.ts
+   Proof: current
+   Proof detail: Satisfied by current test proof: npm test
+   Accepted proof: test
+- needs review - Documentation review
+   Matched: Matched docs changes: docs/password-reset.md
+   Proof: not required
+   Proof detail: No automated proof required.
+   Remaining: Review documentation accuracy and scope manually.
+
 Next action:
 Run agentflight handoff to generate the local review packet.
 ```
@@ -110,7 +135,9 @@ Run agentflight handoff to generate the local review packet.
 npx agentflight@latest handoff
 ```
 
-The handoff tells you whether the work is ready, what to review first, what proof exists, and what proof is still missing. It also generates the supporting local artifacts:
+The handoff tells you whether the work is ready, which contract rules matched,
+what proof satisfied them, and which manual review checks remain. It also
+generates the supporting local artifacts:
 
 - Markdown proof report
 - HTML replay ledger

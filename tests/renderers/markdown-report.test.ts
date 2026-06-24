@@ -146,6 +146,123 @@ describe("markdown proof report", () => {
     expect(timelineIndex).toBeLessThan(headingLineIndex(markdown, "## Tooling"));
   });
 
+  it("renders project review contract required proof before claim details", () => {
+    const markdown = renderMarkdownReport({
+      task: "Update auth flow",
+      sessionId: "af-contract",
+      startedAt: "2026-06-23T12:00:00.000Z",
+      changedFiles: ["src/auth/session.ts"],
+      risk: {
+        level: "high",
+        changedFiles: 1,
+        categories: [{ category: "auth", files: ["src/auth/session.ts"] }],
+        reasons: ["Authentication-sensitive files changed."]
+      },
+      verificationCommands: ["npm test"],
+      verificationEvidence: [],
+      timelineEvents: [],
+      review: {
+        focus: [
+          {
+            rank: 1,
+            file: "src/auth/session.ts",
+            category: "auth",
+            riskLevel: "high",
+            score: 130,
+            reasons: ["identity/session path", "matching proof missing"],
+            suggestedReviewerFocus: "Check session, permission, and identity boundaries first.",
+            proofStatus: "missing",
+            suggestedCommand: "npm test",
+            relatedProofGapIds: ["auth-contract"]
+          }
+        ],
+        projectReviewContract: {
+          enabled: true,
+          requirements: [
+            {
+              id: "auth-contract",
+              label: "Auth/session contract",
+              status: "missing",
+              proofStatus: "missing",
+              severity: "blocking",
+              requiredProof: ["test"],
+              manualReview: ["Review auth flow manually."],
+              relatedFiles: ["src/auth/session.ts"],
+              matchedCategories: [{ category: "auth", files: ["src/auth/session.ts"] }],
+              matchReason: "Matched auth changes: src/auth/session.ts",
+              proofReason: "No passing test proof recorded.",
+              remainingReview: [
+                "Run agentflight verify -- npm test.",
+                "Review auth flow manually."
+              ],
+              suggestedCommand: "npm test",
+              relatedProofGapIds: ["auth-contract"]
+            }
+          ],
+          summary: {
+            total: 1,
+            supported: 0,
+            needsReview: 0,
+            missing: 1,
+            failed: 0,
+            stale: 0,
+            manualReview: 1,
+            notRequired: 0,
+            unknown: 0
+          }
+        },
+        proofGaps: [
+          {
+            id: "auth-contract",
+            severity: "blocking",
+            message: "Auth/session contract requires passing test proof.",
+            suggestedCommand: "npm test",
+            relatedFiles: ["src/auth/session.ts"]
+          }
+        ],
+        readiness: {
+          state: "needs_verification",
+          label: "Needs verification",
+          reason: "Auth/session contract requires passing test proof.",
+          nextAction: "Run agentflight verify -- npm test",
+          suggestedCommand: "npm test",
+          proofGaps: []
+        },
+        contract: {
+          summary: {
+            total: 2,
+            supported: 0,
+            needsReview: 0,
+            unsupported: 2,
+            failed: 0,
+            stale: 0,
+            notTestable: 0,
+            unknown: 0
+          },
+          claims: []
+        }
+      },
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("## Required Proof");
+    expect(markdown).toContain("- missing - Auth/session contract");
+    expect(markdown).toContain("Accepted proof: test");
+    expect(markdown).toContain("Matched: Matched auth changes: src/auth/session.ts");
+    expect(markdown).toContain("Proof detail: No passing test proof recorded.");
+    expect(markdown).toContain("Remaining: Run agentflight verify -- npm test.");
+    expect(markdown).toContain("Remaining: Review auth flow manually.");
+    expect(markdown).toContain("Manual review: Review auth flow manually.");
+    expect(markdown).toContain("Files: src/auth/session.ts");
+    expect(markdown).toContain("Suggested proof: agentflight verify -- npm test");
+    expect(headingLineIndex(markdown, "## Required Proof")).toBeLessThan(
+      headingLineIndex(markdown, "## Review Contract")
+    );
+  });
+
   it("compacts long suggested proof commands in dense report sections", () => {
     const longCommand = `node -e "${"console.error('very noisy proof command'); ".repeat(12)}process.exit(1)"`;
     const markdown = renderMarkdownReport({

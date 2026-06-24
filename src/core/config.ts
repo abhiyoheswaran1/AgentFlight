@@ -7,6 +7,7 @@ import {
   writeTextFileSafe
 } from "./fs-safe.js";
 import { resolveAgentFlightPaths } from "./paths.js";
+import { defaultProjectReviewContractConfig } from "./project-review-contract.js";
 import { readPackageJson } from "./project.js";
 import { detectVerificationCommands } from "./verification.js";
 import type { AgentFlightConfig, AgentFlightPaths } from "../types/index.js";
@@ -60,6 +61,7 @@ export function createDefaultConfig(options: CreateDefaultConfigOptions): AgentF
     changedFileFilters: {
       ignore: []
     },
+    projectReviewContract: defaultProjectReviewContractConfig(),
     privacy: {
       localOnly: true,
       telemetry: false

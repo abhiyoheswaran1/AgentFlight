@@ -1,6 +1,8 @@
 import {
   compactCommandInText,
   formatCommandForDisplay,
+  formatProjectRequirementDetailsForDisplay,
+  formatProjectRequirementStatusForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractProofReferencesForDisplay,
   formatReviewContractReviewPathForDisplay,
@@ -12,6 +14,8 @@ import {
 } from "../core/output.js";
 import type { VerificationFailureCounts } from "../core/output.js";
 import type {
+  ProjectReviewContractEvaluation,
+  ProjectReviewRequirementStatus,
   ReviewIntelligence,
   RiskAnalysis,
   SessionEvent,
@@ -75,6 +79,9 @@ ${renderVerification(input)}
 ## Review First
 ${renderReviewFirst(input)}
 
+## Required Proof
+${renderRequiredProof(input)}
+
 ## Review Contract
 ${renderReviewContract(input)}
 
@@ -114,6 +121,9 @@ Generated locally by AgentFlight. Not posted automatically.
 ### Review first
 ${renderReviewFirst(input)}
 
+### Required proof
+${renderRequiredProof(input)}
+
 ### Proof gaps:
 ${renderPrCommentProofGaps(input)}
 
@@ -140,6 +150,9 @@ ${renderReviewReadiness(input)}
 
 ## Review First
 ${renderReviewFirst(input)}
+
+## Required Proof
+${renderRequiredProof(input)}
 
 ## Review Contract
 ${renderReviewContract(input)}
@@ -240,6 +253,28 @@ function renderReviewFirst(input: MarkdownReportInput): string {
         .map((summary) => `- ${summary.category}: ${summary.files.join(", ")}`)
         .join("\n")
     : "- Confirm the session has meaningful changes before review.";
+}
+
+function renderRequiredProof(input: MarkdownReportInput): string {
+  return renderProjectReviewContract(input.review?.projectReviewContract);
+}
+
+function renderProjectReviewContract(
+  contract: ProjectReviewContractEvaluation | undefined
+): string {
+  if (!contract) return "- No project review contract configured.";
+  if (!contract.enabled) return "- Project review contract disabled.";
+  if (contract.requirements.length === 0) {
+    return "- No project review contract requirements matched these changes.";
+  }
+  return contract.requirements.map(renderProjectRequirement).join("\n");
+}
+
+function renderProjectRequirement(requirement: ProjectReviewRequirementStatus): string {
+  const details = formatProjectRequirementDetailsForDisplay(requirement)
+    .map((line) => `\n  - ${line}`)
+    .join("");
+  return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
 }
 
 function renderProofGaps(input: MarkdownReportInput): string {

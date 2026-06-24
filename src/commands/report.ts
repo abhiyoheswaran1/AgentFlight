@@ -4,6 +4,7 @@ import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { buildProofSnapshot } from "../core/proof-snapshot.js";
+import { resolveProjectReviewContractConfig } from "../core/project-review-contract.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import {
@@ -50,7 +51,13 @@ export async function runReportCommand(
     capturedAt: now.toISOString(),
     gitCommit: session.git.commit ?? null
   });
-  const review = buildReviewIntelligence({ changedFiles, risk, session, currentProofSnapshot });
+  const review = buildReviewIntelligence({
+    changedFiles,
+    risk,
+    session,
+    currentProofSnapshot,
+    projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
+  });
   const suffix = reportPathSuffix(mode);
   const relativeReportPath = `.agentflight/reports/${session.id}${suffix}`;
   const reportPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}${suffix}`;

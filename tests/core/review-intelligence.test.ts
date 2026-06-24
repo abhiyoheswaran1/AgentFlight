@@ -579,6 +579,254 @@ describe("review intelligence", () => {
     });
   });
 
+  it("evaluates project review contract requirements for matching change types", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            manualReview: ["Review auth flow, session lifetime, and permission boundaries."],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.projectReviewContract).toMatchObject({
+      enabled: true,
+      requirements: [
+        {
+          id: "auth-contract",
+          label: "Auth/session contract",
+          status: "missing",
+          proofStatus: "missing",
+          requiredProof: ["test"],
+          manualReview: ["Review auth flow, session lifetime, and permission boundaries."],
+          relatedFiles: ["src/auth/session.ts"],
+          matchedCategories: [{ category: "auth", files: ["src/auth/session.ts"] }],
+          matchReason: "Matched auth changes: src/auth/session.ts",
+          proofReason: "No passing test proof recorded.",
+          remainingReview: [
+            "Run agentflight verify -- npm test.",
+            "Review auth flow, session lifetime, and permission boundaries."
+          ],
+          suggestedCommand: "npm test",
+          relatedProofGapIds: ["auth-contract"]
+        }
+      ],
+      summary: {
+        total: 1,
+        missing: 1,
+        manualReview: 1
+      }
+    });
+    expect(review.proofGaps).toContainEqual(
+      expect.objectContaining({
+        id: "auth-contract",
+        severity: "blocking",
+        suggestedCommand: "npm test",
+        relatedFiles: ["src/auth/session.ts"]
+      })
+    );
+  });
+
+  it("handles project review contract evaluation when legacy sessions omit verification commands", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const session = testSession({
+      verificationCommands: ["npm test"],
+      verificationRuns: []
+    });
+    delete (session as Partial<AgentFlightSession>).verificationCommands;
+
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            severity: "blocking"
+          }
+        ]
+      },
+      session
+    });
+
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      id: "auth-contract",
+      status: "missing",
+      proofStatus: "missing",
+      matchReason: "Matched auth changes: src/auth/session.ts",
+      proofReason: "No passing test proof recorded."
+    });
+    expect(review.projectReviewContract?.requirements[0]?.suggestedCommand).toBeUndefined();
+    expect(review.proofGaps[0]).toMatchObject({
+      id: "auth-contract",
+      severity: "blocking"
+    });
+    expect(review.proofGaps[0]?.suggestedCommand).toBeUndefined();
+  });
+
+  it("summarizes broad matched-category reasons while keeping related files", () => {
+    const changedFiles = ["src/core/a.ts", "src/core/b.ts", "src/core/c.ts", "src/core/d.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "source-contract",
+            label: "Source contract",
+            categories: ["source"],
+            requiredProof: ["test"],
+            severity: "warning"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      matchReason: "Matched source changes: 4 files",
+      relatedFiles: changedFiles
+    });
+  });
+
+  it("marks project review contract proof current while keeping manual review visible", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const currentProofSnapshot = proofSnapshot({ "src/auth/session.ts": "fresh" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot,
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            manualReview: ["Review auth flow, session lifetime, and permission boundaries."],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: currentProofSnapshot
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps).toEqual([]);
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      status: "needs_review",
+      proofStatus: "current",
+      manualReview: ["Review auth flow, session lifetime, and permission boundaries."],
+      satisfiedProof: {
+        kind: "test",
+        command: "npm test"
+      },
+      proofReason: "Satisfied by current test proof: npm test",
+      remainingReview: ["Review auth flow, session lifetime, and permission boundaries."]
+    });
+    expect(review.readiness.state).toBe("ready_for_review");
+  });
+
+  it("marks project review contract proof stale when matching proof snapshots are stale", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: proofSnapshot({ "src/auth/session.ts": "new" }),
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({ "src/auth/session.ts": "old" })
+          })
+        ]
+      })
+    });
+
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      status: "stale",
+      proofStatus: "stale",
+      satisfiedProof: {
+        kind: "test",
+        command: "npm test"
+      },
+      proofReason: "Test proof is stale; files changed after proof was captured.",
+      relatedProofGapIds: ["stale-verification-proof"]
+    });
+  });
+
+  it("leaves project review contract disabled when config disables it", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      projectReviewContract: {
+        enabled: false,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"]
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.projectReviewContract).toMatchObject({
+      enabled: false,
+      requirements: [],
+      summary: {
+        total: 0
+      }
+    });
+  });
+
   it("marks matching proof snapshots as current", () => {
     const changedFiles = ["src/auth/session.ts"];
     const currentProofSnapshot = proofSnapshot({ "src/auth/session.ts": "fresh" });

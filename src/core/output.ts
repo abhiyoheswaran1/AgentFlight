@@ -3,6 +3,7 @@ import type {
   ReviewContractClaim,
   ReviewContractClaimStatus,
   ReviewContractProofReference,
+  ProjectReviewRequirementState,
   ReviewProofStatus,
   ToolAdapterResult
 } from "../types/index.js";
@@ -82,6 +83,165 @@ export function formatReviewContractStatusForDisplay(status: ReviewContractClaim
     unknown: "unknown"
   };
   return labels[status];
+}
+
+export function formatProjectRequirementStatusForDisplay(
+  status: ProjectReviewRequirementState
+): string {
+  const labels: Record<ProjectReviewRequirementState, string> = {
+    supported: "supported",
+    needs_review: "needs review",
+    missing: "missing",
+    failed: "failed",
+    stale: "stale",
+    not_required: "not required",
+    unknown: "unknown"
+  };
+  return labels[status];
+}
+
+interface ProjectContractDecisionInput {
+  enabled: boolean;
+  summary: {
+    total: number;
+    supported: number;
+    needsReview: number;
+    missing: number;
+    failed: number;
+    stale: number;
+    manualReview: number;
+  };
+  requirements: unknown[];
+}
+
+export function formatProjectReviewDecisionForDisplay(
+  contract: ProjectContractDecisionInput | undefined,
+  readiness: { state?: string; label?: string } | undefined
+): string {
+  if (!contract?.enabled || contract.requirements.length === 0) {
+    return readiness?.label ?? "No project review contract decision recorded.";
+  }
+
+  const rule = projectReviewDecisionRules.find((candidate) => candidate.matches(contract.summary));
+  if (rule) return rule.text;
+  if (readiness?.state === "ready_for_review")
+    return "Ready for review with required proof satisfied.";
+  return readiness?.label ?? "Project review contract evaluated.";
+}
+
+export function formatProjectReviewDecisionReasonsForDisplay(
+  contract: ProjectContractDecisionInput | undefined
+): string[] {
+  if (!contract?.enabled) return ["Project review contract is disabled."];
+  if (contract.requirements.length === 0) {
+    return ["No project review contract requirements matched these changes."];
+  }
+
+  const summary = contract.summary;
+  return [
+    countReason(summary.supported, "required proof item", "is supported", "are supported"),
+    countReason(summary.needsReview, "manual-review requirement", "remains", "remain"),
+    countReason(summary.missing, "required proof item", "is missing", "are missing"),
+    countReason(summary.failed, "required proof item", "has failed", "have failed"),
+    countReason(summary.stale, "required proof item", "is stale", "are stale"),
+    noOpenAutomatedProofReason(summary)
+  ].filter((reason): reason is string => Boolean(reason));
+}
+
+interface ProjectRequirementDisplayInput {
+  proofStatus: ReviewProofStatus;
+  requiredProof: string[];
+  manualReview: string[];
+  relatedFiles: string[];
+  matchReason?: string;
+  proofReason?: string;
+  satisfiedProof?: { kind: string; command: string };
+  remainingReview?: string[];
+  suggestedCommand?: string;
+}
+
+export function formatProjectRequirementDetailsForDisplay(
+  requirement: ProjectRequirementDisplayInput
+): string[] {
+  return [
+    optionalDisplayLine("Matched", requirement.matchReason),
+    `Proof: ${formatProofStatusForDisplay(requirement.proofStatus)}`,
+    optionalDisplayLine("Proof detail", requirement.proofReason),
+    satisfiedProofLine(requirement.satisfiedProof),
+    listDisplayLine("Accepted proof", requirement.requiredProof),
+    listDisplayLine("Manual review", requirement.manualReview, "; "),
+    listDisplayLine("Files", requirement.relatedFiles),
+    ...remainingReviewLines(requirement),
+    optionalDisplayLine(
+      "Suggested proof",
+      requirement.suggestedCommand
+        ? formatVerifyCommandForDisplay(requirement.suggestedCommand)
+        : undefined
+    )
+  ].filter((line): line is string => Boolean(line));
+}
+
+const projectReviewDecisionRules: Array<{
+  matches: (summary: ProjectContractDecisionInput["summary"]) => boolean;
+  text: string;
+}> = [
+  {
+    matches: (summary) => summary.failed > 0,
+    text: "Not ready to trust yet. Failed required proof remains."
+  },
+  {
+    matches: (summary) => summary.stale > 0,
+    text: "Not ready to trust yet. Required proof is stale."
+  },
+  {
+    matches: (summary) => summary.missing > 0,
+    text: "Not ready to trust yet. Required proof is missing."
+  },
+  {
+    matches: (summary) => summary.needsReview > 0 || summary.manualReview > 0,
+    text: "Ready for review; manual checks remain before trusting the change."
+  }
+];
+
+function countReason(
+  count: number,
+  singularNoun: string,
+  singularVerb: string,
+  pluralVerb: string
+): string | undefined {
+  if (count <= 0) return undefined;
+  const noun = count === 1 ? singularNoun : `${singularNoun}s`;
+  const verb = count === 1 ? singularVerb : pluralVerb;
+  return `${count} ${noun} ${verb}.`;
+}
+
+function noOpenAutomatedProofReason(
+  summary: ProjectContractDecisionInput["summary"]
+): string | undefined {
+  return summary.failed === 0 && summary.stale === 0 && summary.missing === 0
+    ? "No failed, stale, or missing required proof."
+    : undefined;
+}
+
+function optionalDisplayLine(label: string, value: string | undefined): string | undefined {
+  return value ? `${label}: ${value}` : undefined;
+}
+
+function listDisplayLine(label: string, values: string[], separator = ", "): string | undefined {
+  return values.length > 0 ? `${label}: ${values.join(separator)}` : undefined;
+}
+
+function satisfiedProofLine(
+  proof: ProjectRequirementDisplayInput["satisfiedProof"]
+): string | undefined {
+  if (!proof) return undefined;
+  return `Satisfied by: ${proof.kind} proof (${formatCommandForDisplay(proof.command)})`;
+}
+
+function remainingReviewLines(requirement: ProjectRequirementDisplayInput): string[] {
+  return (requirement.remainingReview ?? []).map(
+    (remaining) => `Remaining: ${compactCommandInText(remaining, requirement.suggestedCommand)}`
+  );
 }
 
 export function formatReviewContractReviewPathForDisplay(

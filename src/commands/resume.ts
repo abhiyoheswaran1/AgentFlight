@@ -5,6 +5,7 @@ import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { buildProofSnapshot } from "../core/proof-snapshot.js";
+import { resolveProjectReviewContractConfig } from "../core/project-review-contract.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import {
@@ -50,7 +51,13 @@ export async function runResumeCommand(
     capturedAt: now.toISOString(),
     gitCommit: session.git.commit ?? null
   });
-  const review = buildReviewIntelligence({ changedFiles, risk, session, currentProofSnapshot });
+  const review = buildReviewIntelligence({
+    changedFiles,
+    risk,
+    session,
+    currentProofSnapshot,
+    projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
+  });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
   const openFirstReadiness =
     review.readiness.state === "clean_worktree"
@@ -79,6 +86,7 @@ export async function runResumeCommand(
     riskReasons: risk.reasons,
     verificationGaps: verification.gaps,
     reviewFocus: review.focus.slice(0, 5),
+    projectReviewContract: review.projectReviewContract,
     reviewContract: review.contract,
     proofGaps: review.proofGaps,
     readiness: review.readiness,
