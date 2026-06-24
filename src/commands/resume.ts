@@ -12,7 +12,8 @@ import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import {
   appendSessionEvent,
   getLatestRecordedReviewSummary,
-  getLatestSessionEvent
+  getLatestSessionEvent,
+  reviewSummaryMatchesCurrentWork
 } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { formatVerificationCountLine, formatVerificationFailureContext } from "../core/output.js";
@@ -64,10 +65,15 @@ export async function runResumeCommand(
     projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
   });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
+  const latestReviewSummary = getLatestRecordedReviewSummary(session);
   const openFirstReadiness =
     review.readiness.state === "clean_worktree"
-      ? getLatestRecordedReviewSummary(session)?.state
-      : review.readiness.state === "ready_for_review"
+      ? latestReviewSummary?.state
+      : review.readiness.state === "ready_for_review" &&
+          reviewSummaryMatchesCurrentWork(latestReviewSummary, {
+            state: review.readiness.state,
+            changedFiles: changedFiles.length
+          })
         ? review.readiness.state
         : undefined;
   const openFirstArtifact =
@@ -91,8 +97,13 @@ export async function runResumeCommand(
     riskReasons: risk.reasons,
     verificationGaps: verification.gaps,
     reviewFocus: review.focus.slice(0, 5),
+    reviewFocusTotal: review.focus.length,
     projectReviewContract: review.projectReviewContract,
     calibration: review.calibration,
+    reviewReceipt: review.reviewReceipt,
+    trustDelta: review.trustDelta,
+    reviewQueue: review.reviewQueue,
+    reviewRoutes: review.reviewRoutes,
     proofFreshness: review.proofFreshness,
     reviewContract: review.contract,
     proofGaps: review.proofGaps,

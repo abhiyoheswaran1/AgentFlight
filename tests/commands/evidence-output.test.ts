@@ -1,8 +1,10 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { initAgentFlight } from "../../src/core/config.js";
+import { pathExists } from "../../src/core/fs-safe.js";
 import { saveSession, startSession } from "../../src/core/session.js";
 import { runHandoffCommand } from "../../src/commands/handoff.js";
 import { runHistoryCommand } from "../../src/commands/history.js";
@@ -42,6 +44,25 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).toContain("Readiness: Ready for review");
     expect(status.output).toContain("Proof gaps:");
     expect(status.output).toContain("- none");
+  });
+
+  it("shows capped review-focus counts in status and handoff", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    const changedFiles = Array.from({ length: 6 }, (_, index) => `src/file-${index}.ts`);
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles,
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles,
+      now: new Date("2026-06-13T12:06:00.000Z")
+    });
+
+    expect(status.output).toContain("- 1 more review focus file in report/replay.");
+    expect(handoff.output).toContain("- 3 more review focus files in report/replay.");
   });
 
   it("compacts long verification evidence commands in status without changing stored evidence", async () => {
@@ -278,7 +299,7 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).toContain("stale - Sensitive auth, payment, or security review");
     expect(status.output).toContain("Review Contract:");
     expect(status.output).toContain(
-      "Review path: Review 3 stale claims and 2 unsupported claims before sharing."
+      "Review path: Review 4 stale claims and 2 unsupported claims before sharing."
     );
     expect(status.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
     expect(status.output).toContain("Proof freshness:");
@@ -326,7 +347,7 @@ describe("evidence-aware session outputs", () => {
     });
     expect(snapshot.event.metadata?.review).toMatchObject({
       readiness: "needs_verification",
-      proofGapCount: 1
+      proofGapCount: 2
     });
 
     const handoff = await runHandoffCommand({
@@ -338,7 +359,7 @@ describe("evidence-aware session outputs", () => {
     expect(handoff.output).toContain("Proof: stale");
     expect(handoff.output).toContain("Review contract:");
     expect(handoff.output).toContain(
-      "Review path: Review 3 stale claims and 2 unsupported claims before sharing."
+      "Review path: Review 4 stale claims and 2 unsupported claims before sharing."
     );
     expect(handoff.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
     expect(handoff.output).toContain("Proof freshness:");
@@ -532,9 +553,8 @@ Start a new AgentFlight session when you begin the next task.`);
     });
     expect(payload.verification.runs).toHaveLength(1);
     expect(payload.verification.runs[0].command).toContain("proof ok");
-    expect(payload.nextAction).toBe(
-      "Start a new AgentFlight session when you begin the next task."
-    );
+    expect(payload.nextAction).toBe(`Open first: handoff ${handoffPath}
+Start a new AgentFlight session when you begin the next task.`);
   });
 
   it("preserves artifact events when report replay and resume run concurrently", async () => {
@@ -1023,6 +1043,34 @@ Open first: handoff ${handoffPath}`);
     expect(status.output).not.toContain(handoff.sessionHandoffPath);
   });
 
+  it("does not point ready status or resume output at stale review artifacts", async () => {
+    const repoRoot = await startedRepo([]);
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["README.md"],
+      now: new Date("2026-06-13T12:00:00.000Z")
+    });
+    const handoffPath = `.agentflight/reports/${basename(handoff.sessionHandoffPath)}`;
+
+    const changedFiles = ["README.md", "docs/new-guide.md"];
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles,
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+    const resume = await runResumeCommand({
+      repoRoot,
+      changedFiles,
+      now: new Date("2026-06-13T12:06:00.000Z")
+    });
+
+    expect(handoff.output).toContain(`Open first: handoff ${handoffPath}`);
+    expect(status.output).toContain("Next action:\nRun agentflight handoff");
+    expect(status.output).not.toContain(`Open first: handoff ${handoffPath}`);
+    expect(resume.output).toContain("Run agentflight handoff");
+    expect(resume.output).not.toContain(`Open first: handoff ${handoffPath}`);
+  });
+
   it("points ready report and replay recommendations to the handoff packet", async () => {
     const command = `${process.execPath} -e "console.log('proof ok')"`;
     const repoRoot = await startedRepo([command]);
@@ -1116,6 +1164,28 @@ Open first: handoff ${handoffPath}`);
     );
   });
 
+  it("rejects unsafe persisted session ids before writing handoff artifacts", async () => {
+    const repoRoot = await startedRepo([]);
+    const sessionPath = join(repoRoot, ".agentflight", "current", "session.json");
+    const session = JSON.parse(await readFile(sessionPath, "utf8")) as AgentFlightSession;
+    const outsidePath = join(tmpdir(), "agentflight-unsafe-session-id-handoff.md");
+    await rm(outsidePath, { force: true });
+    await writeFile(
+      sessionPath,
+      `${JSON.stringify({ ...session, id: "../../../tmp/agentflight-unsafe-session-id" }, null, 2)}\n`,
+      "utf8"
+    );
+
+    await expect(
+      runHandoffCommand({
+        repoRoot,
+        changedFiles: ["README.md"],
+        now: new Date("2026-06-13T12:05:00.000Z")
+      })
+    ).rejects.toThrow("Unsafe AgentFlight session id");
+    await expect(pathExists(outsidePath)).resolves.toBe(false);
+  });
+
   it("exits successfully for clean-worktree local handoffs", async () => {
     const repoRoot = await startedRepo([]);
 
@@ -1151,6 +1221,7 @@ Open first: handoff ${handoffPath}`);
     const originalReplay = await readFile(readyHandoff.replayPath, "utf8");
     const originalResume = await readFile(readyHandoff.sessionResumePath, "utf8");
     const originalSessionHandoff = await readFile(readyHandoff.sessionHandoffPath, "utf8");
+    await rm(readyHandoff.resumePath);
 
     const cleanHandoff = await runHandoffCommand({
       repoRoot,
@@ -1165,9 +1236,12 @@ Open first: handoff ${handoffPath}`);
     await expect(readFile(readyHandoff.sessionHandoffPath, "utf8")).resolves.toBe(
       originalSessionHandoff
     );
+    await expect(readFile(readyHandoff.resumePath, "utf8")).resolves.toBe(originalResume);
     await expect(readFile(cleanHandoff.handoffPath, "utf8")).resolves.toContain(
       "Readiness: Clean worktree"
     );
+    expect(cleanHandoff.output).toContain("Open first: handoff");
+    expect(cleanHandoff.output).toContain("Open first: handoff .agentflight/reports/");
   });
 
   it("blocks local handoffs when required proof is missing", async () => {
@@ -1212,7 +1286,11 @@ Open first: handoff ${handoffPath}`);
     const scriptPath = join(repoRoot, "failing-handoff.js");
     await writeFile(
       scriptPath,
-      "console.log('stdout noise for handoff'); console.error('stderr handoff failure excerpt'); process.exit(1);"
+      [
+        "console.log('stdout noise for handoff');",
+        "console.error('stderr handoff failure excerpt\\n## fake handoff heading\\n```nested fence');",
+        "process.exit(1);"
+      ].join("\n")
     );
     await runVerifyCommand({
       repoRoot,
@@ -1234,8 +1312,12 @@ Open first: handoff ${handoffPath}`);
 
     expect(handoff.exitCode).toBe(1);
     expect(handoff.output).toContain("Readiness: Blocked by failed verification");
-    expect(handoff.output).toContain("Failed verification excerpt:");
+    expect(handoff.output).toContain(
+      "Failed verification excerpt:\n````text\nstderr handoff failure excerpt"
+    );
     expect(handoff.output).toContain("stderr handoff failure excerpt");
+    expect(handoff.output).toContain("## fake handoff heading");
+    expect(handoff.output).toContain("```nested fence\n````");
     expect(handoff.output).not.toContain("stdout noise for handoff");
     expect(handoff.output).toContain("Fix before sharing:");
     expect(handoff.output).toContain("Open first: report");
@@ -1312,6 +1394,50 @@ Open first: handoff ${handoffPath}`);
       "Historical failed verification excerpts remain in report/replay; no unresolved failed verification remains."
     );
     expect(handoff.output).not.toContain("historical failure excerpt");
+  });
+
+  it("shows only unresolved failed verification excerpts in blocked local handoffs", async () => {
+    const repoRoot = await startedRepo([]);
+    const testScriptPath = join(repoRoot, "eventual-pass-mixed.js");
+    const lintScriptPath = join(repoRoot, "still-failing-mixed.js");
+    await writeFile(
+      testScriptPath,
+      "console.error('resolved mixed test failure'); process.exit(1);",
+      "utf8"
+    );
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, testScriptPath],
+      now: () => new Date("2026-06-13T12:00:00.000Z")
+    });
+    await writeFile(testScriptPath, "console.log('fixed mixed proof');", "utf8");
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, testScriptPath],
+      now: () => new Date("2026-06-13T12:03:00.000Z")
+    });
+    await writeFile(
+      lintScriptPath,
+      "console.error('unresolved mixed lint failure'); process.exit(1);",
+      "utf8"
+    );
+    await runVerifyCommand({
+      repoRoot,
+      commandArgs: [process.execPath, lintScriptPath],
+      now: () => new Date("2026-06-13T12:04:00.000Z")
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["src/core/output.ts"],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(handoff.exitCode).toBe(1);
+    expect(handoff.output).toContain("1 passed, 2 failed (1 unresolved, 1 resolved)");
+    expect(handoff.output).toContain("Failed verification excerpt:");
+    expect(handoff.output).toContain("unresolved mixed lint failure");
+    expect(handoff.output).not.toContain("resolved mixed test failure");
   });
 
   it("includes verification gaps and the exact next command in resume prompts", async () => {

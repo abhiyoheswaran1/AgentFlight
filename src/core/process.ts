@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
+const COMMAND_OUTPUT_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+
 const execFileAsync = promisify(execFile);
 
 export interface CommandResult {
@@ -20,7 +22,7 @@ export const runCommand: CommandRunner = async (command, args, options = {}) => 
     const result = await execFileAsync(command, args, {
       cwd: options.cwd,
       timeout: options.timeoutMs ?? 15_000,
-      maxBuffer: 1024 * 1024,
+      maxBuffer: COMMAND_OUTPUT_MAX_BUFFER_BYTES,
       shell: false
     });
 

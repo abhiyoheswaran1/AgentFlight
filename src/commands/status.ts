@@ -5,7 +5,10 @@ import { loadConfig } from "../core/config.js";
 import { pathExists, readJsonFile } from "../core/fs-safe.js";
 import {
   compactCommandInText,
+  collectSuggestedCommandsForDisplay,
   formatCommandForDisplay,
+  formatFileListForDisplay,
+  formatFullSuggestedCommandsForDisplay,
   formatProjectRequirementDetailsForDisplay,
   formatProjectReviewDecisionForDisplay,
   formatProjectReviewDecisionReasonsForDisplay,
@@ -15,8 +18,12 @@ import {
   formatProofFreshnessAttributionForDisplay,
   formatProjectRequirementStatusForDisplay,
   formatProofStatusForDisplay,
+  formatReviewReceiptForDisplay,
+  formatReviewQueueForDisplay,
+  formatReviewRoutesForDisplay,
   formatReviewContractReviewPathForDisplay,
   formatReviewContractStatusForDisplay,
+  formatTrustDeltaForDisplay,
   formatVerificationCountLine,
   formatVerificationFailureContext,
   formatVerifyCommandForDisplay
@@ -27,7 +34,12 @@ import { loadProofCalibrationHistory } from "../core/proof-calibration.js";
 import { resolveProjectReviewContractConfig } from "../core/project-review-contract.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
-import { getLatestRecordedReviewSummary, getLatestSessionEvent } from "../core/session.js";
+import { assertSafeSessionId } from "../core/session-id.js";
+import {
+  getLatestRecordedReviewSummary,
+  getLatestSessionEvent,
+  reviewSummaryMatchesCurrentWork
+} from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import type {
   AgentFlightSession,
@@ -105,7 +117,8 @@ export async function runStatusCommand(
     repoRoot: options.repoRoot,
     session,
     readinessState: review.readiness.state,
-    nextAction
+    nextAction,
+    changedFileCount: changedFiles.length
   });
   const verificationFailureContext = formatVerificationFailureContext(verification);
 
@@ -121,7 +134,7 @@ export async function runStatusCommand(
           review,
           latestSnapshot,
           readinessReason,
-          nextAction
+          nextAction: statusTextNextAction
         }),
         null,
         2
@@ -157,7 +170,7 @@ ${verificationFailureContext ? `${verificationFailureContext}\n` : ""}${formatVe
     )}
 
 Review first:
-${formatReviewFocus(review.focus.slice(0, 5))}
+${formatReviewFocus(review.focus, 5)}
 
 Decision:
 ${formatProjectReviewDecisionForDisplay(review.projectReviewContract, review.readiness)}
@@ -166,6 +179,19 @@ Why:
 ${formatProjectReviewDecisionReasonsForDisplay(review.projectReviewContract)
   .map((reason) => `- ${reason}`)
   .join("\n")}
+
+Trust delta:
+${formatTrustDeltaForDisplay(review.trustDelta)}
+
+Review queue:
+${formatReviewQueueForDisplay(review.reviewQueue)}
+
+Review routing:
+${formatReviewRoutesForDisplay(review.reviewRoutes)}
+${formatFullSuggestedCommandsSection(review)}
+
+Review receipt:
+${formatReviewReceiptForDisplay(review.reviewReceipt)}
 
 Required proof:
 ${formatProjectReviewContract(review.projectReviewContract)}
@@ -233,6 +259,10 @@ function buildStatusJson(input: {
       projectReviewContract: input.review.projectReviewContract,
       proofGaps: input.review.proofGaps,
       readiness: input.review.readiness,
+      reviewReceipt: input.review.reviewReceipt,
+      trustDelta: input.review.trustDelta,
+      reviewQueue: input.review.reviewQueue,
+      reviewRoutes: input.review.reviewRoutes,
       contract: input.review.contract,
       calibration: input.review.calibration,
       proofFreshness: input.review.proofFreshness
@@ -280,8 +310,13 @@ async function buildStatusTextNextAction(input: {
   session: AgentFlightSession;
   readinessState: ReviewReadinessState;
   nextAction: string;
+  changedFileCount: number;
 }): Promise<string> {
-  const openFirstReadiness = statusOpenFirstReadiness(input.readinessState, input.session);
+  const openFirstReadiness = statusOpenFirstReadiness(
+    input.readinessState,
+    input.session,
+    input.changedFileCount
+  );
   if (openFirstReadiness === undefined) return input.nextAction;
 
   const openFirst = await readOpenFirstArtifact(
@@ -295,10 +330,19 @@ async function buildStatusTextNextAction(input: {
 
 function statusOpenFirstReadiness(
   readinessState: ReviewReadinessState,
-  session: AgentFlightSession
+  session: AgentFlightSession,
+  changedFileCount: number
 ): ReviewReadinessState | undefined {
   if (readinessState === "clean_worktree") return getLatestRecordedReviewSummary(session)?.state;
-  if (readinessState === "ready_for_review") return readinessState;
+  if (
+    readinessState === "ready_for_review" &&
+    reviewSummaryMatchesCurrentWork(getLatestRecordedReviewSummary(session), {
+      state: readinessState,
+      changedFiles: changedFileCount
+    })
+  ) {
+    return readinessState;
+  }
   return undefined;
 }
 
@@ -323,7 +367,9 @@ export async function readCurrentSession(repoRoot: string): Promise<AgentFlightS
     );
   }
 
-  return readJsonFile<AgentFlightSession>(currentSessionPath);
+  const session = await readJsonFile<AgentFlightSession>(currentSessionPath);
+  assertSafeSessionId(session.id);
+  return session;
 }
 
 function formatDuration(startedAt: string, now: Date): string {
@@ -337,7 +383,7 @@ function formatDuration(startedAt: string, now: Date): string {
 function formatChangedAreas(categories: RiskCategorySummary[]): string {
   if (categories.length === 0) return "- none";
   return categories
-    .map((summary) => `- ${summary.category}: ${summary.files.join(", ")}`)
+    .map((summary) => `- ${summary.category}: ${formatFileListForDisplay(summary.files)}`)
     .join("\n");
 }
 
@@ -381,14 +427,28 @@ function formatOmittedVerificationRunCount(omitted: number): string {
   return `${omitted} earlier verification ${runNoun}`;
 }
 
-function formatReviewFocus(items: ReviewFocusItem[]): string {
+function formatReviewFocus(items: ReviewFocusItem[], limit = items.length): string {
   if (items.length === 0) return "- No changed files to review.";
-  return items
+  const visibleItems = items.slice(0, limit);
+  const remaining = items.length - visibleItems.length;
+  const rows = visibleItems
     .map(
       (item) =>
         `${item.rank}. ${item.file}\n   Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
     )
     .join("\n");
+  return remaining > 0
+    ? `${rows}\n- ${remaining} more review focus ${remaining === 1 ? "file" : "files"} in report/replay.`
+    : rows;
+}
+
+function formatFullSuggestedCommandsSection(
+  review: ReturnType<typeof buildReviewIntelligence>
+): string {
+  const commands = formatFullSuggestedCommandsForDisplay(
+    collectSuggestedCommandsForDisplay(review)
+  );
+  return commands ? `\n${commands}\n` : "";
 }
 
 function formatProjectReviewContract(

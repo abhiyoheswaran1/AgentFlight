@@ -102,7 +102,42 @@ npm run typecheck`);
       now: new Date("2026-06-13T12:20:00.000Z")
     });
     expect(status.output).toContain("Risk: high");
+    expect(status.output).toContain("Trust delta:");
+    expect(status.output).toContain("Trust changed because proof is stale or missing.");
+    expect(status.output).toContain("Review queue:");
+    expect(status.output).toContain("Run missing proof");
+    expect(status.output).toContain("Review routing:");
+    expect(status.output).toContain("Verification - blocked");
     expect(status.output).toContain("Next action");
+
+    const statusJson = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["src/auth/reset.ts"],
+      now: new Date("2026-06-13T12:20:00.000Z"),
+      format: "json"
+    });
+    const parsedStatus = JSON.parse(statusJson.output);
+    expect(parsedStatus.review.trustDelta.summary).toBe(
+      "Trust changed because proof is stale or missing."
+    );
+    expect(parsedStatus.review.reviewQueue[0]).toMatchObject({
+      action: "run_missing_proof",
+      suggestedCommand: "npm test"
+    });
+    expect(parsedStatus.review.reviewRoutes.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "verification",
+          status: "blocked",
+          suggestedCommand: "npm test"
+        }),
+        expect.objectContaining({
+          role: "security",
+          status: "blocked",
+          relatedFiles: ["src/auth/reset.ts"]
+        })
+      ])
+    );
 
     const report = await runReportCommand({
       repoRoot,
@@ -111,9 +146,9 @@ npm run typecheck`);
     expect(report.output).toContain(".agentflight/reports/");
     expect(report.output).not.toContain(repoRoot);
     expect(report.reportPath).toContain(repoRoot);
-    await expect(readFile(report.reportPath, "utf8")).resolves.toContain(
-      "# AgentFlight Proof Report"
-    );
+    const reportMarkdown = await readFile(report.reportPath, "utf8");
+    expect(reportMarkdown).toContain("# AgentFlight Proof Report");
+    expect(reportMarkdown).toContain("## Review Routing");
 
     const replay = await runReplayCommand({
       repoRoot,
@@ -122,13 +157,16 @@ npm run typecheck`);
     expect(replay.output).toContain("Replay generated");
     expect(replay.output).not.toContain(repoRoot);
     expect(replay.replayPath).toContain(repoRoot);
-    await expect(readFile(replay.replayPath, "utf8")).resolves.toContain("<!doctype html>");
+    const replayHtml = await readFile(replay.replayPath, "utf8");
+    expect(replayHtml).toContain("<!doctype html>");
+    expect(replayHtml).toContain('id="review-routes"');
 
     const resume = await runResumeCommand({
       repoRoot,
       changedFiles: ["src/auth/reset.ts"]
     });
     expect(resume.output).toContain("Continue this AgentFlight-recorded coding session safely.");
+    expect(resume.output).toContain("## Review Routing");
     await expect(
       readFile(join(repoRoot, ".agentflight", "current", "resume-prompt.md"), "utf8")
     ).resolves.toContain("Do not start unrelated work.");
@@ -138,6 +176,11 @@ npm run typecheck`);
       changedFiles: ["src/auth/reset.ts"]
     });
     expect(handoff.output).toContain("AgentFlight handoff");
+    expect(handoff.output).toContain("Trust delta:");
+    expect(handoff.output).toContain("Review queue:");
+    expect(handoff.output).toContain("Review routing:");
+    expect(handoff.output).toContain("Verification - blocked");
+    expect(handoff.output).toContain("Run missing proof");
     expect(handoff.output).toContain("Artifacts:");
     expect(handoff.output).not.toContain(repoRoot);
     expect(handoff.output).toContain(
@@ -182,6 +225,274 @@ npm run typecheck`);
     expect(second.output).toContain("Created files:\n- none");
     expect(second.output).toContain("Skipped existing files:\n- .agentflight/config.json");
     expect(second.output).toContain("- .agentflight/.gitignore");
+  });
+
+  it("records a local review receipt from handoff and marks it stale after later changes", async () => {
+    const repoRoot = await createTempRepo();
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await runStartCommand({
+      repoRoot,
+      task: "Update docs",
+      now: new Date("2026-06-13T12:10:00.000Z"),
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: true,
+        changedFiles: ["README.md"]
+      },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const accepted = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["README.md"],
+      now: new Date("2026-06-13T12:20:00.000Z"),
+      accept: true
+    });
+
+    expect(accepted.exitCode).toBe(0);
+    expect(accepted.output).toContain("Review receipt:");
+    expect(accepted.output).toContain("Review receipt current");
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    expect(session.reviewReceipts).toHaveLength(1);
+    expect(session.reviewReceipts[0]).toMatchObject({
+      decision: "accepted",
+      snapshot: {
+        changedFiles: ["README.md"],
+        readinessState: "ready_for_review"
+      }
+    });
+
+    const currentStatus = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["README.md"],
+      now: new Date("2026-06-13T12:21:00.000Z")
+    });
+    expect(currentStatus.output).toContain("Review receipt current");
+
+    const staleStatus = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["README.md", "docs/new-guide.md"],
+      now: new Date("2026-06-13T12:22:00.000Z"),
+      format: "json"
+    });
+    const parsed = JSON.parse(staleStatus.output);
+    expect(parsed.review.reviewReceipt).toMatchObject({
+      state: "stale",
+      staleFiles: ["docs/new-guide.md"]
+    });
+    expect(parsed.review.trustDelta.items[0]).toMatchObject({
+      kind: "stale_receipt",
+      relatedFiles: ["docs/new-guide.md"]
+    });
+    expect(parsed.review.reviewQueue[0]).toMatchObject({
+      action: "refresh_review_receipt",
+      label: "Refresh stale review receipt"
+    });
+  });
+
+  it("explains when handoff accept cannot record a receipt", async () => {
+    const repoRoot = await createTempRepo();
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await runStartCommand({
+      repoRoot,
+      task: "Update auth flow",
+      now: new Date("2026-06-13T12:10:00.000Z"),
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: true,
+        changedFiles: ["src/auth/session.ts"]
+      },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["src/auth/session.ts"],
+      now: new Date("2026-06-13T12:20:00.000Z"),
+      accept: true
+    });
+
+    expect(handoff.exitCode).toBe(1);
+    expect(handoff.output).toContain("Review receipt not recorded:");
+    expect(handoff.output).toContain("current readiness is Needs verification");
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    );
+    expect(session.reviewReceipts ?? []).toEqual([]);
+  });
+
+  it("keeps full long suggested proof commands recoverable in status and handoff", async () => {
+    const repoRoot = await createTempRepo();
+    await mkdir(join(repoRoot, "src", "auth"), { recursive: true });
+    await writeFile(join(repoRoot, "src", "auth", "session.ts"), "export const touched = true;\n");
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    const longCommand =
+      'npm test -- --runInBand --grep auth-session-boundary --reporter verbose --maxWorkers=1 --testNamePattern "updates sessions safely"';
+    const configPath = join(repoRoot, ".agentflight", "config.json");
+    const config = JSON.parse(await readFile(configPath, "utf8")) as {
+      verification: { commands: string[] };
+    };
+    config.verification.commands = [longCommand];
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    await runStartCommand({
+      repoRoot,
+      task: "Update auth session boundary",
+      now: new Date("2026-06-13T12:10:00.000Z"),
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: true,
+        changedFiles: ["src/auth/session.ts"]
+      },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["src/auth/session.ts"],
+      now: new Date("2026-06-13T12:20:00.000Z")
+    });
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["src/auth/session.ts"],
+      now: new Date("2026-06-13T12:21:00.000Z")
+    });
+
+    for (const output of [status.output, handoff.output]) {
+      expect(output).toContain("Full suggested commands:");
+      expect(output).toContain(`agentflight verify -- ${longCommand}`);
+    }
+  });
+
+  it("escapes raw HTML in handoff Markdown text fields", async () => {
+    const repoRoot = await createTempRepo();
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await runStartCommand({
+      repoRoot,
+      task: "Review <img src=x onerror=alert(1)> safely\n## fake task heading",
+      now: new Date("2026-06-13T12:10:00.000Z"),
+      git: {
+        branch: "feature/<unsafe>",
+        commit: "abc123",
+        dirty: true,
+        changedFiles: ["docs/<guide>.md"]
+      },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["docs/<guide>.md"],
+      now: new Date("2026-06-13T12:20:00.000Z")
+    });
+
+    expect(handoff.output).toContain(
+      "Review &lt;img src=x onerror=alert(1)&gt; safely ## fake task heading"
+    );
+    expect(handoff.output).toContain("docs/&lt;guide&gt;.md");
+    expect(handoff.output).not.toContain("<img src=x onerror=alert(1)>");
+    expect(handoff.output).not.toContain("\n## fake task heading");
+    expect(handoff.output).not.toContain("docs/<guide>.md");
+    await expect(readFile(handoff.handoffPath, "utf8")).resolves.toContain(
+      "Review &lt;img src=x onerror=alert(1)&gt; safely"
+    );
+  });
+
+  it("keeps text and JSON status next action aligned after handoff exists", async () => {
+    const repoRoot = await createTempRepo();
+    await runInitCommand({
+      repoRoot,
+      now: new Date("2026-06-13T12:00:00.000Z"),
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await runStartCommand({
+      repoRoot,
+      task: "Update docs handoff",
+      now: new Date("2026-06-13T12:10:00.000Z"),
+      git: {
+        branch: "main",
+        commit: "abc123",
+        dirty: true,
+        changedFiles: ["README.md"]
+      },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await runHandoffCommand({
+      repoRoot,
+      changedFiles: ["README.md"],
+      now: new Date("2026-06-13T12:20:00.000Z")
+    });
+
+    const textStatus = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["README.md"],
+      now: new Date("2026-06-13T12:21:00.000Z")
+    });
+    const jsonStatus = await runStatusCommand({
+      repoRoot,
+      changedFiles: ["README.md"],
+      now: new Date("2026-06-13T12:21:00.000Z"),
+      format: "json"
+    });
+    const parsed = JSON.parse(jsonStatus.output);
+
+    expect(parsed.nextAction).toContain("Open first: handoff .agentflight/reports/");
+    expect(textStatus.output).toContain(`Next action:\n${parsed.nextAction}`);
   });
 
   it("explains generated files when start --yes initializes AgentFlight", async () => {

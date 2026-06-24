@@ -101,6 +101,112 @@ describe("proof calibration", () => {
     });
   });
 
+  it("prefers accepted receipt sessions over ready-only handoffs when calibrating proof", () => {
+    const calibration = buildProofCalibration({
+      currentSessionId: "af-current",
+      changedFiles: ["src/auth/session.ts"],
+      verificationRuns: [verificationRun("npm test", "passed")],
+      verificationCommands: ["npm test", "npm run e2e:auth"],
+      historicalSessions: [
+        acceptedSession({
+          id: "af-accepted-1",
+          changedFiles: ["src/auth/session.ts"],
+          commands: ["npm test"]
+        }),
+        acceptedSession({
+          id: "af-accepted-2",
+          changedFiles: ["src/auth/password.ts"],
+          commands: ["npm test"]
+        }),
+        readySession({
+          id: "af-ready-1",
+          changedFiles: ["src/auth/session.ts"],
+          commands: ["npm test", "npm run e2e:auth"]
+        }),
+        readySession({
+          id: "af-ready-2",
+          changedFiles: ["src/auth/password.ts"],
+          commands: ["npm test", "npm run e2e:auth"]
+        })
+      ]
+    });
+
+    expect(calibration).toMatchObject({
+      state: "aligned",
+      similarReadySessions: 2,
+      suggestions: []
+    });
+  });
+
+  it("ignores verification runs recorded after an accepted handoff when calibrating proof", () => {
+    const calibration = buildProofCalibration({
+      currentSessionId: "af-current",
+      changedFiles: ["src/auth/session.ts"],
+      verificationRuns: [verificationRun("npm test", "passed")],
+      verificationCommands: ["npm test", "npm run e2e:auth"],
+      historicalSessions: [
+        withPostReceiptRun(
+          acceptedSession({
+            id: "af-accepted-1",
+            changedFiles: ["src/auth/session.ts"],
+            commands: ["npm test"]
+          }),
+          "npm run e2e:auth"
+        ),
+        withPostReceiptRun(
+          acceptedSession({
+            id: "af-accepted-2",
+            changedFiles: ["src/auth/password.ts"],
+            commands: ["npm test"]
+          }),
+          "npm run e2e:auth"
+        )
+      ]
+    });
+
+    expect(calibration).toMatchObject({
+      state: "aligned",
+      similarReadySessions: 2,
+      suggestions: []
+    });
+  });
+
+  it("falls back to ready-only handoffs when accepted receipt history is sparse", () => {
+    const calibration = buildProofCalibration({
+      currentSessionId: "af-current",
+      changedFiles: ["src/auth/session.ts"],
+      verificationRuns: [verificationRun("npm test", "passed")],
+      verificationCommands: ["npm test", "npm run e2e:auth"],
+      historicalSessions: [
+        acceptedSession({
+          id: "af-accepted-1",
+          changedFiles: ["src/auth/session.ts"],
+          commands: ["npm test"]
+        }),
+        readySession({
+          id: "af-ready-1",
+          changedFiles: ["src/auth/session.ts"],
+          commands: ["npm test", "npm run e2e:auth"]
+        }),
+        readySession({
+          id: "af-ready-2",
+          changedFiles: ["src/auth/password.ts"],
+          commands: ["npm test", "npm run e2e:auth"]
+        })
+      ]
+    });
+
+    expect(calibration).toMatchObject({
+      state: "under_proven",
+      similarReadySessions: 3,
+      suggestions: [
+        {
+          suggestedCommand: "npm run e2e:auth"
+        }
+      ]
+    });
+  });
+
   it("does not treat docs-only history as missing automated proof", () => {
     const calibration = buildProofCalibration({
       currentSessionId: "af-current",
@@ -153,6 +259,30 @@ describe("proof calibration", () => {
     expect(JSON.stringify(history.sessions)).not.toContain("SECRET_STDOUT");
     expect(JSON.stringify(history.sessions)).not.toContain("SECRET_STDERR");
   });
+
+  it("stops parsing session history after enough newest ready sessions are loaded", async () => {
+    const repoRoot = await createTempRepo();
+    const sessionsPath = join(repoRoot, ".agentflight", "sessions");
+    await mkdir(sessionsPath, { recursive: true });
+
+    await writeSession(
+      repoRoot,
+      readySession({ id: "af-20260614-120300-newest", commands: ["npm test"] })
+    );
+    await writeSession(
+      repoRoot,
+      readySession({ id: "af-20260614-120200-next", commands: ["npm test"] })
+    );
+    await writeFile(join(sessionsPath, "af-20260614-120100-broken.json"), "{", "utf8");
+
+    const history = await loadProofCalibrationHistory(repoRoot, { limit: 2 });
+
+    expect(history.sessions.map((session) => session.id)).toEqual([
+      "af-20260614-120300-newest",
+      "af-20260614-120200-next"
+    ]);
+    expect(history.skipped).toEqual([]);
+  });
 });
 
 function readySession(options: {
@@ -164,6 +294,51 @@ function readySession(options: {
     ...options,
     readinessState: "ready_for_review"
   });
+}
+
+function acceptedSession(options: {
+  id: string;
+  changedFiles?: string[];
+  commands: string[];
+}): AgentFlightSession {
+  const base = readySession(options);
+  const changedFiles = options.changedFiles ?? ["src/auth/session.ts"];
+  return {
+    ...base,
+    reviewReceipts: [
+      {
+        id: `receipt-${options.id}`,
+        decision: "accepted",
+        recordedAt: "2026-06-14T12:20:00.000Z",
+        summary: "Accepted local handoff.",
+        snapshot: {
+          branch: "main",
+          gitCommit: "abc123",
+          changedFiles,
+          readinessState: "ready_for_review",
+          verificationPassed: options.commands.length,
+          verificationFailed: 0,
+          artifactPath: `.agentflight/reports/${options.id}-handoff.md`,
+          proofSnapshot: proofSnapshot(changedFiles)
+        }
+      }
+    ]
+  };
+}
+
+function withPostReceiptRun(session: AgentFlightSession, command: string): AgentFlightSession {
+  const changedFiles = session.git.changedFiles;
+  return {
+    ...session,
+    verificationRuns: [
+      ...(session.verificationRuns ?? []),
+      verificationRun(command, "passed", {
+        startedAt: "2026-06-14T12:25:00.000Z",
+        finishedAt: "2026-06-14T12:25:05.000Z",
+        proofSnapshot: proofSnapshot(changedFiles)
+      })
+    ]
+  };
 }
 
 function blockedSession(options: {

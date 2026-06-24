@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-24-21-25-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-24-21-25",
+  "createdAtEpochMs": 1782329149063,
+  "task": {
+    "path": ".agentloop/tasks/2026-06-24-release-agentflight-v0-13-0.md",
+    "title": "Release AgentFlight v0.13.0",
+    "status": "in-progress"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-24-21-25-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-24-21-25-pr-summary.md",
+  "changedFileCount": 71
+}

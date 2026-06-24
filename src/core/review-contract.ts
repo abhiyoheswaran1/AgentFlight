@@ -13,6 +13,7 @@ import type {
   ReviewReadinessDecision,
   ReviewReadinessState
 } from "../types/index.js";
+import { stableAnchorId } from "./ids.js";
 
 export interface BuildReviewContractOptions {
   taskTitle: string;
@@ -398,9 +399,5 @@ function formatProofStatusForContract(status: ReviewProofStatus): string {
 }
 
 function stableId(value: string): string {
-  return value
-    .toLowerCase()
-    .replaceAll("\\", "/")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return stableAnchorId(value);
 }

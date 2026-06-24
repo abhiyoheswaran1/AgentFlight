@@ -4,7 +4,12 @@ import {
   buildReviewIntelligence,
   classifyVerificationProofKind
 } from "../../src/core/review-intelligence.js";
-import type { AgentFlightSession, ProofSnapshot, VerificationRun } from "../../src/types/index.js";
+import type {
+  AgentFlightSession,
+  ProofSnapshot,
+  ReviewReadinessState,
+  VerificationRun
+} from "../../src/types/index.js";
 
 describe("review intelligence", () => {
   it("ranks auth files above docs and tests and explains missing proof", () => {
@@ -39,6 +44,17 @@ describe("review intelligence", () => {
       label: "Needs verification",
       suggestedCommand: "npm test"
     });
+    expect(review.trustDelta!.items[0]).toMatchObject({
+      kind: "missing_proof",
+      severity: "blocking",
+      suggestedCommand: "npm test",
+      relatedFiles: ["src/auth/session.ts"]
+    });
+    expect(review.reviewQueue![0]).toMatchObject({
+      action: "run_missing_proof",
+      label: "Run missing proof",
+      suggestedCommand: "npm test"
+    });
   });
 
   it("marks failed verification as blocking review readiness", () => {
@@ -69,6 +85,17 @@ describe("review intelligence", () => {
         failed: 4,
         supported: 0
       }
+    });
+    expect(review.trustDelta!.summary).toBe("Trust changed because failed proof blocks review.");
+    expect(review.trustDelta!.items[0]).toMatchObject({
+      kind: "failed_proof",
+      severity: "blocking",
+      suggestedCommand: "npm test"
+    });
+    expect(review.reviewQueue![0]).toMatchObject({
+      action: "fix_failed_proof",
+      label: "Fix failed proof",
+      suggestedCommand: "npm test"
     });
   });
 
@@ -618,6 +645,49 @@ describe("review intelligence", () => {
     });
   });
 
+  it("builds a trust delta and review queue for under-proven local-history guidance", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test", "npm run e2e:auth"],
+        verificationRuns: [verificationRun("npm test", "passed")]
+      }),
+      historicalSessions: [
+        historicalReadySession({
+          id: "af-auth-1",
+          changedFiles: ["src/auth/session.ts"],
+          commands: ["npm test", "npm run e2e:auth"]
+        }),
+        historicalReadySession({
+          id: "af-auth-2",
+          changedFiles: ["src/auth/password.ts"],
+          commands: ["npm test", "npm run e2e:auth"]
+        })
+      ]
+    });
+
+    expect(review.trustDelta).toMatchObject({
+      summary: "Proof exists, but similar local ready handoffs used stronger proof.",
+      items: [
+        {
+          kind: "repo_calibration",
+          severity: "warning",
+          suggestedCommand: "npm run e2e:auth",
+          relatedFiles: ["src/auth/session.ts"]
+        }
+      ]
+    });
+    expect(review.reviewQueue![0]).toMatchObject({
+      action: "consider_repo_calibration",
+      label: "Consider stronger local-history proof",
+      suggestedCommand: "npm run e2e:auth",
+      relatedFiles: ["src/auth/session.ts"]
+    });
+    expect(review.readiness.state).toBe("ready_for_review");
+  });
+
   it("evaluates project review contract requirements for matching change types", () => {
     const changedFiles = ["src/auth/session.ts"];
     const review = buildReviewIntelligence({
@@ -835,6 +905,238 @@ describe("review intelligence", () => {
     });
   });
 
+  it("keeps required test proof stale when a newer unrelated build proof is current", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const currentProofSnapshot = proofSnapshot({ "src/auth/session.ts": "new" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot,
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test", "npm run build"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({ "src/auth/session.ts": "old" }),
+            finishedAt: "2026-06-14T12:01:05.000Z"
+          }),
+          verificationRun("npm run build", "passed", {
+            proofSnapshot: currentProofSnapshot,
+            finishedAt: "2026-06-14T12:02:05.000Z"
+          })
+        ]
+      })
+    });
+
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      status: "stale",
+      proofStatus: "stale",
+      satisfiedProof: {
+        kind: "test",
+        command: "npm test"
+      },
+      suggestedCommand: "npm test",
+      relatedProofGapIds: ["stale-verification-proof"]
+    });
+    expect(review.trustDelta?.items[0]).toMatchObject({
+      kind: "stale_proof",
+      message: "Test proof is stale; files changed after proof was captured."
+    });
+    expect(review.readiness.state).toBe("needs_verification");
+  });
+
+  it("uses a current accepted proof kind when another accepted proof kind is stale", () => {
+    const changedFiles = ["migrations/20260624000000_create_sessions.sql"];
+    const currentProofSnapshot = proofSnapshot({
+      "migrations/20260624000000_create_sessions.sql": "new"
+    });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot,
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "database-contract",
+            label: "Database migration contract",
+            categories: ["database/migrations"],
+            requiredProof: ["test", "build"],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test", "npm run build"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({
+              "migrations/20260624000000_create_sessions.sql": "old"
+            }),
+            finishedAt: "2026-06-14T12:01:05.000Z"
+          }),
+          verificationRun("npm run build", "passed", {
+            proofSnapshot: currentProofSnapshot,
+            finishedAt: "2026-06-14T12:02:05.000Z"
+          })
+        ]
+      })
+    });
+
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      status: "supported",
+      proofStatus: "current",
+      satisfiedProof: {
+        kind: "build",
+        command: "npm run build"
+      },
+      proofReason: "Satisfied by current build proof: npm run build",
+      relatedProofGapIds: []
+    });
+    expect(review.proofGaps.map((gap) => gap.id)).not.toContain("stale-verification-proof");
+  });
+
+  it("keeps OR proof requirements supported when a different accepted proof kind failed", () => {
+    const changedFiles = ["migrations/20260624000000_create_sessions.sql"];
+    const currentProofSnapshot = proofSnapshot({
+      "migrations/20260624000000_create_sessions.sql": "fresh"
+    });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot,
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "database-contract",
+            label: "Database migration contract",
+            categories: ["database/migrations"],
+            requiredProof: ["test", "build"],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test", "npm run build"],
+        verificationRuns: [
+          verificationRun("npm test", "failed"),
+          verificationRun("npm run build", "passed", {
+            proofSnapshot: currentProofSnapshot
+          })
+        ]
+      })
+    });
+
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      status: "supported",
+      proofStatus: "current",
+      satisfiedProof: {
+        kind: "build",
+        command: "npm run build"
+      },
+      proofReason: "Satisfied by current build proof: npm run build",
+      relatedProofGapIds: []
+    });
+    expect(review.proofGaps.map((gap) => gap.id)).toContain("failed-verification");
+  });
+
+  it("treats e2e commands as test proof for project review contract requirements", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const currentProofSnapshot = proofSnapshot({ "src/auth/session.ts": "fresh" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot,
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm run e2e:auth"],
+        verificationRuns: [
+          verificationRun("npm run e2e:auth", "passed", {
+            proofSnapshot: currentProofSnapshot
+          })
+        ]
+      })
+    });
+
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      status: "supported",
+      proofStatus: "current",
+      satisfiedProof: {
+        kind: "test",
+        command: "npm run e2e:auth"
+      },
+      relatedProofGapIds: []
+    });
+    expect(review.proofGaps).toEqual([]);
+    expect(review.readiness.state).toBe("ready_for_review");
+  });
+
+  it("does not mark proof-required files stale when only manual-review files changed after proof", () => {
+    const changedFiles = ["README.md", "src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: proofSnapshot({
+        "README.md": "new-docs",
+        "src/auth/session.ts": "same-auth"
+      }),
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({
+              "README.md": "old-docs",
+              "src/auth/session.ts": "same-auth"
+            })
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps.map((gap) => gap.id)).not.toContain("stale-verification-proof");
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      status: "supported",
+      proofStatus: "current",
+      relatedProofGapIds: []
+    });
+    expect(review.readiness.state).toBe("ready_for_review");
+  });
+
   it("does not mark project review contract proof failed after a later matching pass", () => {
     const changedFiles = ["src/auth/session.ts"];
     const currentProofSnapshot = proofSnapshot({ "src/auth/session.ts": "fresh" });
@@ -985,6 +1287,23 @@ describe("review intelligence", () => {
       label: "Needs verification",
       suggestedCommand: "npm test"
     });
+    expect(review.trustDelta).toMatchObject({
+      summary: "Trust changed because proof is stale or missing.",
+      items: [
+        {
+          kind: "stale_proof",
+          severity: "warning",
+          suggestedCommand: "npm test",
+          relatedFiles: ["src/auth/session.ts"]
+        }
+      ]
+    });
+    expect(review.reviewQueue![0]).toMatchObject({
+      action: "rerun_stale_proof",
+      label: "Rerun stale proof",
+      suggestedCommand: "npm test",
+      relatedFiles: ["src/auth/session.ts"]
+    });
   });
 
   it("attributes stale proof to proof-required files and keeps rerun guidance", () => {
@@ -1038,6 +1357,58 @@ describe("review intelligence", () => {
     );
   });
 
+  it("keeps all stale project-contract files in trust delta and review queue", () => {
+    const changedFiles = ["src/auth/session.ts", "src/core/output.ts"];
+    const currentProofSnapshot = proofSnapshot({
+      "src/auth/session.ts": "new-auth",
+      "src/core/output.ts": "new-source"
+    });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot,
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            severity: "blocking"
+          },
+          {
+            id: "source-contract",
+            label: "Source contract",
+            categories: ["source"],
+            requiredProof: ["test"],
+            severity: "warning"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({
+              "src/auth/session.ts": "old-auth",
+              "src/core/output.ts": "old-source"
+            })
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps.filter((gap) => gap.id === "stale-verification-proof")).toHaveLength(3);
+    expect(
+      review.trustDelta?.items.find((item) => item.kind === "stale_proof")?.relatedFiles
+    ).toEqual(["src/auth/session.ts", "src/core/output.ts"]);
+    expect(review.reviewQueue?.[0]).toMatchObject({
+      action: "rerun_stale_proof",
+      relatedFiles: ["src/auth/session.ts", "src/core/output.ts"]
+    });
+  });
+
   it("attributes docs-only stale proof as manual review without rerun proof gap", () => {
     const changedFiles = ["README.md"];
     const review = buildReviewIntelligence({
@@ -1072,6 +1443,61 @@ describe("review intelligence", () => {
       relatedProofGapIds: []
     });
     expect(review.readiness.state).toBe("ready_for_review");
+    expect(review.trustDelta).toMatchObject({
+      summary: "Ready for review; manual review remains.",
+      items: [
+        {
+          kind: "manual_review",
+          severity: "info",
+          relatedFiles: ["README.md"]
+        }
+      ]
+    });
+    expect(review.reviewQueue![0]).toMatchObject({
+      action: "inspect_manual_review",
+      label: "Review manual-only changes",
+      relatedFiles: ["README.md"]
+    });
+  });
+
+  it("keeps verification route clear when only review-only files are stale", () => {
+    const changedFiles = ["src/core/output.ts", "README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: proofSnapshot({
+        "src/core/output.ts": "same-source",
+        "README.md": "new-docs"
+      }),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({
+              "src/core/output.ts": "same-source",
+              "README.md": "old-docs"
+            })
+          })
+        ]
+      })
+    });
+
+    const verificationRoute = review.reviewRoutes?.items.find(
+      (item) => item.role === "verification"
+    );
+
+    expect(review.proofGaps.map((gap) => gap.id)).not.toContain("stale-verification-proof");
+    expect(review.proofFreshness).toMatchObject({
+      state: "stale",
+      staleFiles: ["README.md"]
+    });
+    expect(verificationRoute).toMatchObject({
+      role: "verification",
+      status: "clear",
+      summary: "Recorded proof is current for the proof-relevant change.",
+      reason: "Verification evidence matches the current proof state.",
+      relatedFiles: ["src/core/output.ts"]
+    });
   });
 
   it("reports a clean worktree when no files are changed", () => {
@@ -1164,9 +1590,469 @@ describe("review intelligence", () => {
     expect(review.proofGaps[0]?.suggestedCommand).toBe("npm test");
   });
 
+  it("marks an accepted local review receipt as current when changed-file fingerprints still match", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const snapshot = proofSnapshot({ "src/auth/session.ts": "same" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: snapshot,
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "passed", { proofSnapshot: snapshot })],
+        reviewReceipts: [
+          reviewReceipt({
+            proofSnapshot: snapshot,
+            changedFiles,
+            readinessState: "ready_for_review"
+          })
+        ]
+      })
+    });
+
+    expect(review.reviewReceipt).toMatchObject({
+      state: "current",
+      label: "Review receipt current",
+      staleFiles: [],
+      receipt: {
+        decision: "accepted",
+        summary: "Accepted local handoff."
+      }
+    });
+    expect(review.trustDelta!.items.map((item) => item.kind)).not.toContain("stale_receipt");
+  });
+
+  it("marks an accepted local review receipt stale when proof fails after acceptance", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const snapshot = proofSnapshot({ "src/auth/session.ts": "same" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: snapshot,
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: snapshot,
+            finishedAt: "2026-06-14T12:05:00.000Z"
+          }),
+          verificationRun("npm test", "failed", {
+            proofSnapshot: snapshot,
+            finishedAt: "2026-06-14T12:20:00.000Z"
+          })
+        ],
+        reviewReceipts: [
+          reviewReceipt({
+            proofSnapshot: snapshot,
+            changedFiles,
+            readinessState: "ready_for_review",
+            recordedAt: "2026-06-14T12:10:00.000Z"
+          })
+        ]
+      })
+    });
+
+    expect(review.reviewReceipt).toMatchObject({
+      state: "stale",
+      label: "Review receipt stale",
+      summary: "Accepted handoff is stale because verification failed after review.",
+      staleFiles: changedFiles
+    });
+    expect(review.trustDelta?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "failed_proof",
+          severity: "blocking"
+        }),
+        expect.objectContaining({
+          kind: "stale_receipt",
+          severity: "warning",
+          message: "Accepted handoff is stale because verification failed after review.",
+          relatedFiles: changedFiles
+        })
+      ])
+    );
+  });
+
+  it("marks an accepted local review receipt stale when changed files differ after acceptance", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const receiptSnapshot = proofSnapshot({ "src/auth/session.ts": "before-review" });
+    const currentSnapshot = proofSnapshot({ "src/auth/session.ts": "after-review" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: currentSnapshot,
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", { proofSnapshot: currentSnapshot })
+        ],
+        reviewReceipts: [
+          reviewReceipt({
+            proofSnapshot: receiptSnapshot,
+            changedFiles,
+            readinessState: "ready_for_review"
+          })
+        ]
+      })
+    });
+
+    expect(review.reviewReceipt).toMatchObject({
+      state: "stale",
+      label: "Review receipt stale",
+      staleFiles: ["src/auth/session.ts"],
+      nextAction: "Regenerate the handoff after re-review."
+    });
+    expect(review.trustDelta!.items[0]).toMatchObject({
+      kind: "stale_receipt",
+      severity: "warning",
+      relatedFiles: ["src/auth/session.ts"]
+    });
+    expect(review.reviewQueue![0]).toMatchObject({
+      action: "refresh_review_receipt",
+      label: "Refresh stale review receipt",
+      relatedFiles: ["src/auth/session.ts"]
+    });
+  });
+
+  it("keeps blocked review receipts in trust delta, queue, and maintainer routing", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const snapshot = proofSnapshot({ "src/auth/session.ts": "same" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: snapshot,
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "passed", { proofSnapshot: snapshot })],
+        reviewReceipts: [
+          reviewReceipt({
+            decision: "blocked",
+            proofSnapshot: snapshot,
+            changedFiles,
+            readinessState: "ready_for_review"
+          })
+        ]
+      })
+    });
+
+    expect(review.reviewReceipt).toMatchObject({
+      state: "blocked",
+      label: "Review receipt blocked"
+    });
+    expect(review.trustDelta?.items[0]).toMatchObject({
+      kind: "review_receipt",
+      severity: "blocking",
+      message: "Local review recorded a blocker.",
+      relatedFiles: changedFiles
+    });
+    expect(review.reviewQueue).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "refresh_review_receipt",
+          label: "Resolve review receipt",
+          relatedFiles: changedFiles
+        })
+      ])
+    );
+    expect(review.reviewRoutes?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "maintainer",
+          status: "blocked"
+        })
+      ])
+    );
+  });
+
+  it("keeps needs-changes review receipts in trust delta and queue", () => {
+    const changedFiles = ["README.md"];
+    const snapshot = proofSnapshot({ "README.md": "same" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: snapshot,
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "passed", { proofSnapshot: snapshot })],
+        reviewReceipts: [
+          reviewReceipt({
+            decision: "needs_changes",
+            proofSnapshot: snapshot,
+            changedFiles,
+            readinessState: "ready_for_review"
+          })
+        ]
+      })
+    });
+
+    expect(review.reviewReceipt).toMatchObject({
+      state: "needs_changes",
+      label: "Review receipt needs changes"
+    });
+    expect(review.trustDelta?.items[0]).toMatchObject({
+      kind: "review_receipt",
+      severity: "warning",
+      message: "Local review recorded requested changes.",
+      relatedFiles: changedFiles
+    });
+    expect(review.reviewQueue).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "refresh_review_receipt",
+          label: "Resolve review receipt",
+          relatedFiles: changedFiles
+        })
+      ])
+    );
+    expect(review.trustDelta?.items.map((item) => item.kind)).not.toContain("ready");
+  });
+
+  it("routes failed auth work to maintainer, verification, and security reviewers", () => {
+    const changedFiles = ["src/auth/session.ts", "README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "failed")]
+      })
+    });
+
+    expect(review.reviewRoutes?.summary).toBe("4 reviewer routes need attention before trust.");
+    expect(review.reviewRoutes?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "maintainer",
+          status: "blocked",
+          relatedFiles: expect.arrayContaining(["src/auth/session.ts"])
+        }),
+        expect.objectContaining({
+          role: "verification",
+          status: "blocked",
+          relatedProofGapIds: expect.arrayContaining(["failed-verification"]),
+          suggestedCommand: "npm test"
+        }),
+        expect.objectContaining({
+          role: "security",
+          status: "blocked",
+          relatedFiles: expect.arrayContaining(["src/auth/session.ts"])
+        }),
+        expect.objectContaining({
+          role: "docs_dx",
+          status: "needs_review",
+          relatedFiles: ["README.md"]
+        })
+      ])
+    );
+  });
+
+  it("routes docs-only changes to docs/DX without inventing proof work", () => {
+    const changedFiles = ["docs/usage.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.reviewRoutes?.items.map((route) => route.role)).toEqual([
+      "maintainer",
+      "docs_dx"
+    ]);
+    expect(review.reviewRoutes?.items.find((route) => route.role === "docs_dx")).toMatchObject({
+      status: "needs_review",
+      relatedFiles: ["docs/usage.md"],
+      relatedProofGapIds: []
+    });
+    expect(review.reviewRoutes?.items.some((route) => route.role === "verification")).toBe(false);
+  });
+
+  it("routes dependency and config changes through release review", () => {
+    const changedFiles = ["package.json", ".github/workflows/ci.yml"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm run build"],
+        verificationRuns: [verificationRun("npm run build", "passed")]
+      })
+    });
+
+    expect(review.reviewRoutes?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "release",
+          status: "needs_review",
+          relatedFiles: expect.arrayContaining(["package.json", ".github/workflows/ci.yml"])
+        })
+      ])
+    );
+  });
+
+  it("does not route reviewers for a clean worktree", () => {
+    const review = buildReviewIntelligence({
+      changedFiles: [],
+      risk: analyzeRisk([]),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "passed")]
+      })
+    });
+
+    expect(review.reviewRoutes).toEqual({
+      summary: "No reviewer routing needed for the current worktree.",
+      items: []
+    });
+  });
+
+  it("still routes failed proof when no files are changed", () => {
+    const review = buildReviewIntelligence({
+      changedFiles: [],
+      risk: analyzeRisk([]),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "failed")]
+      })
+    });
+
+    expect(review.reviewRoutes?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "verification",
+          status: "blocked",
+          suggestedCommand: "npm test",
+          relatedProofGapIds: ["failed-verification"]
+        })
+      ])
+    );
+  });
+
+  it("does not create a clear verification route for docs-only stale proof", () => {
+    const changedFiles = ["README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: proofSnapshot({ "README.md": "new-docs" }),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({ "README.md": "old-docs" })
+          })
+        ]
+      })
+    });
+
+    expect(review.reviewRoutes?.items.some((route) => route.role === "verification")).toBe(false);
+    expect(review.reviewRoutes?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "docs_dx",
+          status: "needs_review",
+          relatedFiles: ["README.md"]
+        })
+      ])
+    );
+  });
+
+  it("routes uppercase changelog and devlog files through release review", () => {
+    const changedFiles = ["CHANGELOG.md", "AGENTFLIGHT_DEVLOG.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: [],
+        verificationRuns: []
+      })
+    });
+
+    expect(review.reviewRoutes?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "release",
+          status: "needs_review",
+          relatedFiles: ["AGENTFLIGHT_DEVLOG.md", "CHANGELOG.md"]
+        })
+      ])
+    );
+  });
+
+  it("marks accepted legacy review receipts stale when comparable snapshots are unavailable", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "passed")],
+        reviewReceipts: [
+          {
+            id: "receipt-legacy",
+            decision: "accepted",
+            recordedAt: "2026-06-14T12:10:00.000Z",
+            summary: "Accepted local handoff.",
+            snapshot: {
+              branch: "main",
+              gitCommit: "abc123",
+              changedFiles,
+              readinessState: "ready_for_review",
+              verificationPassed: 1,
+              verificationFailed: 0,
+              artifactPath: ".agentflight/reports/af-test-handoff.md"
+            }
+          }
+        ]
+      })
+    });
+
+    expect(review.reviewReceipt).toMatchObject({
+      state: "stale",
+      staleFiles: ["src/auth/session.ts"]
+    });
+    expect(review.reviewRoutes?.items.some((route) => route.role === "release")).toBe(false);
+    expect(review.reviewQueue).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "refresh_review_receipt",
+          relatedFiles: ["src/auth/session.ts"]
+        })
+      ])
+    );
+  });
+
+  it("does not describe legacy proof freshness as current in verification routing", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [verificationRun("npm test", "passed")]
+      })
+    });
+
+    expect(review.proofFreshness).toMatchObject({
+      state: "legacy",
+      reason: "Passing verification proof was recorded before proof freshness snapshots existed."
+    });
+    expect(review.reviewRoutes?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "verification",
+          status: "needs_review",
+          summary: "Proof exists, but freshness cannot be compared for the proof-relevant change."
+        })
+      ])
+    );
+  });
+
   it("classifies verification commands into proof kinds", () => {
     expect(classifyVerificationProofKind("npm test")).toBe("test");
     expect(classifyVerificationProofKind("npm run verify")).toBe("test");
+    expect(classifyVerificationProofKind("npm run e2e:auth")).toBe("test");
     expect(classifyVerificationProofKind("npm run build")).toBe("build");
     expect(classifyVerificationProofKind("npm run typecheck")).toBe("typecheck");
     expect(classifyVerificationProofKind("eslint .")).toBe("lint");
@@ -1179,6 +2065,7 @@ function testSession(options: {
   verificationCommands: string[];
   verificationRuns?: VerificationRun[] | undefined;
   events?: AgentFlightSession["events"] | undefined;
+  reviewReceipts?: AgentFlightSession["reviewReceipts"] | undefined;
 }): AgentFlightSession {
   return {
     id: "af-test",
@@ -1189,10 +2076,36 @@ function testSession(options: {
     packageManager: "npm",
     verificationCommands: options.verificationCommands,
     verificationRuns: options.verificationRuns ?? [],
+    reviewReceipts: options.reviewReceipts ?? [],
     events: options.events ?? [],
     tools: {
       projscan: { available: false, warnings: [] },
       agentloopkit: { available: false, warnings: [] }
+    }
+  };
+}
+
+function reviewReceipt(options: {
+  decision?: NonNullable<AgentFlightSession["reviewReceipts"]>[number]["decision"] | undefined;
+  proofSnapshot: ProofSnapshot;
+  changedFiles: string[];
+  readinessState: ReviewReadinessState;
+  recordedAt?: string | undefined;
+}): NonNullable<AgentFlightSession["reviewReceipts"]>[number] {
+  return {
+    id: "receipt-20260614-121000-accepted-001",
+    decision: options.decision ?? "accepted",
+    recordedAt: options.recordedAt ?? "2026-06-14T12:10:00.000Z",
+    summary: "Accepted local handoff.",
+    snapshot: {
+      branch: "main",
+      gitCommit: "abc123",
+      changedFiles: options.changedFiles,
+      readinessState: options.readinessState,
+      verificationPassed: 1,
+      verificationFailed: 0,
+      artifactPath: ".agentflight/reports/af-test-handoff.md",
+      proofSnapshot: options.proofSnapshot
     }
   };
 }

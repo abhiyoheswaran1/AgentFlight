@@ -55,6 +55,46 @@ describe("HTML replay", () => {
             relatedFiles: ["src/auth/reset.ts"]
           }
         ],
+        reviewRoutes: {
+          summary: "3 reviewer routes need attention before trust.",
+          items: [
+            {
+              role: "maintainer",
+              label: "Maintainer",
+              status: "blocked",
+              priority: 1,
+              summary: "Review is blocked until the highest-priority proof issue is cleared.",
+              reason: "Trust changed because proof is stale or missing.",
+              relatedFiles: ["src/auth/reset.ts"],
+              suggestedCommand: "npm test",
+              relatedProofGapIds: ["missing-auth-test-proof"]
+            },
+            {
+              role: "verification",
+              label: "Verification",
+              status: "blocked",
+              priority: 2,
+              summary: "Proof is blocked by a failed or incomplete verification run.",
+              reason:
+                "Sensitive auth, payment, or security files changed without passing test evidence.",
+              relatedFiles: ["src/auth/reset.ts"],
+              suggestedCommand: "npm test",
+              relatedProofGapIds: ["missing-auth-test-proof"]
+            },
+            {
+              role: "security",
+              label: "Security",
+              status: "blocked",
+              priority: 3,
+              summary: "Security-sensitive paths are blocked by required proof.",
+              reason:
+                "Auth, payment, secret, database, dependency, or runtime configuration paths changed.",
+              relatedFiles: ["src/auth/reset.ts"],
+              suggestedCommand: "npm test",
+              relatedProofGapIds: ["missing-auth-test-proof"]
+            }
+          ]
+        },
         readiness: {
           state: "needs_verification",
           label: "Needs verification",
@@ -76,6 +116,11 @@ describe("HTML replay", () => {
     expect(html).toContain("1 passed / 0 failed");
     expect(html).toContain("Not ready for review");
     expect(html).toContain("Review Focus");
+    expect(html).toContain('href="#review-routes"');
+    expect(html).toContain('id="review-routes"');
+    expect(html).toContain("Review Routing");
+    expect(html).toContain("Verification");
+    expect(html).toContain("Security-sensitive paths are blocked by required proof.");
     expect(html).toContain("identity/session path");
     expect(html).toContain("Proof Gaps");
     expect(html).toContain("Sensitive auth, payment, or security files changed");
@@ -207,8 +252,238 @@ describe("HTML replay", () => {
     expect(html).toContain("agentflight verify -- node -e");
     expect(html).toContain("…");
     expect(html).toContain('title="agentflight verify -- node -e');
+    expect(html).toContain("<summary>Full command</summary>");
     expect(html).toContain("process.exit(1)");
     expect(html).toMatch(/>agentflight verify -- node -e [^<]*…<\/code>/);
+    expect(html).not.toContain("details { display: none; }");
+    expect(html).toContain("details:not([open]) > :not(summary) { display: block; }");
+  });
+
+  it("renders proof-reference links with matching replay anchors", () => {
+    const html = renderHtmlReplay({
+      task: "Anchor proof refs",
+      sessionId: "af-anchor-proof-refs",
+      startedAt: "2026-06-24T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/auth/session.ts"],
+      riskBadges: ["high", "auth"],
+      verificationEvidence: [],
+      reviewReadiness: "Needs verification",
+      review: {
+        focus: [],
+        proofGaps: [],
+        readiness: {
+          state: "needs_verification",
+          label: "Needs verification",
+          reason: "Run test proof before trusting the change.",
+          nextAction: "Run agentflight verify -- npm test",
+          suggestedCommand: "npm test",
+          proofGaps: []
+        },
+        contract: {
+          summary: {
+            total: 1,
+            supported: 0,
+            needsReview: 0,
+            unsupported: 1,
+            failed: 0,
+            stale: 0,
+            notTestable: 0,
+            unknown: 0
+          },
+          reviewPath: {
+            summary: "Review 1 unsupported claim before sharing.",
+            nextAction: "Run agentflight verify -- npm test",
+            inspectClaimIds: ["readiness-review-readiness"]
+          },
+          claims: [
+            {
+              id: "readiness-review-readiness",
+              text: "Review readiness: Needs verification",
+              status: "unsupported",
+              source: "readiness",
+              reason: "Run test proof before trusting the change.",
+              files: [],
+              evidence: ["Readiness: Needs verification"],
+              proofReferences: [
+                {
+                  kind: "readiness_reason",
+                  label: "Readiness: Needs verification",
+                  target: "review-readiness"
+                }
+              ],
+              relatedProofGapIds: []
+            }
+          ]
+        }
+      },
+      recommendation: "Run npm test."
+    });
+
+    const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((match) => match[1]));
+    const hrefs = [...html.matchAll(/href="#([^"]+)"/g)].map((match) => match[1]);
+
+    expect(html).toContain('id="review-readiness"');
+    expect(html).toContain('href="#review-readiness"');
+    expect(hrefs.filter((href) => !ids.has(href))).toEqual([]);
+  });
+
+  it("caps visible proof-reference links in replay claims", () => {
+    const html = renderHtmlReplay({
+      task: "Cap proof refs",
+      sessionId: "af-cap-proof-refs",
+      startedAt: "2026-06-24T12:00:00.000Z",
+      timeline: [],
+      changedFiles: [
+        "src/file-0.ts",
+        "src/file-1.ts",
+        "src/file-2.ts",
+        "src/file-3.ts",
+        "src/file-4.ts",
+        "src/file-5.ts"
+      ],
+      riskBadges: ["source"],
+      verificationEvidence: [],
+      reviewReadiness: "Needs review",
+      review: {
+        focus: [],
+        proofGaps: [],
+        readiness: {
+          state: "needs_verification",
+          label: "Needs verification",
+          reason: "Run proof before trusting the change.",
+          nextAction: "Run agentflight verify -- npm test",
+          suggestedCommand: "npm test",
+          proofGaps: []
+        },
+        contract: {
+          summary: {
+            total: 1,
+            supported: 0,
+            needsReview: 0,
+            unsupported: 1,
+            failed: 0,
+            stale: 0,
+            notTestable: 0,
+            unknown: 0
+          },
+          reviewPath: {
+            summary: "Review 1 unsupported claim before sharing.",
+            nextAction: "Run agentflight verify -- npm test",
+            inspectClaimIds: ["files-many"]
+          },
+          claims: [
+            {
+              id: "files-many",
+              text: "Changed files reviewed",
+              status: "unsupported",
+              source: "file",
+              reason: "Several source files changed without current proof.",
+              files: [],
+              evidence: ["Proof: missing"],
+              proofReferences: Array.from({ length: 6 }, (_, index) => ({
+                kind: "changed_file" as const,
+                label: `Changed file: src/file-${index}.ts`,
+                target: `review-focus-file-src-file-${index}-ts`
+              })),
+              relatedProofGapIds: []
+            }
+          ]
+        }
+      },
+      recommendation: "Run npm test."
+    });
+
+    expect(html).toContain("Changed file: src/file-0.ts");
+    expect(html).toContain("Changed file: src/file-3.ts");
+    expect(html).toContain("and 2 more");
+    expect(html).not.toContain(
+      'href="#review-focus-file-src-file-4-ts">Changed file: src/file-4.ts</a>'
+    );
+    expect(html).not.toContain(
+      'href="#review-focus-file-src-file-5-ts">Changed file: src/file-5.ts</a>'
+    );
+  });
+
+  it("routes proof-reference links for hidden review-focus rows to changed files", () => {
+    const focus = Array.from({ length: 31 }, (_, index) => ({
+      rank: index + 1,
+      file: `src/file-${index}.ts`,
+      category: "source" as const,
+      riskLevel: "medium" as const,
+      score: 60 - index,
+      reasons: ["source code"],
+      suggestedReviewerFocus: "Check core behavior, command flow, and edge cases first.",
+      proofStatus: "missing" as const,
+      relatedProofGapIds: []
+    }));
+    const hiddenFocusTarget = "review-focus-file-src-file-30-ts";
+    const html = renderHtmlReplay({
+      task: "Hidden focus proof ref",
+      sessionId: "af-hidden-focus-proof-ref",
+      startedAt: "2026-06-24T12:00:00.000Z",
+      timeline: [],
+      changedFiles: focus.map((item) => item.file),
+      riskBadges: ["source"],
+      verificationEvidence: [],
+      reviewReadiness: "Needs review",
+      review: {
+        focus,
+        proofGaps: [],
+        readiness: {
+          state: "needs_verification",
+          label: "Needs verification",
+          reason: "Run proof before trusting the change.",
+          nextAction: "Run agentflight verify -- npm test",
+          suggestedCommand: "npm test",
+          proofGaps: []
+        },
+        contract: {
+          summary: {
+            total: 1,
+            supported: 0,
+            needsReview: 0,
+            unsupported: 1,
+            failed: 0,
+            stale: 0,
+            notTestable: 0,
+            unknown: 0
+          },
+          reviewPath: {
+            summary: "Review 1 unsupported claim before sharing.",
+            nextAction: "Run agentflight verify -- npm test",
+            inspectClaimIds: ["hidden-focus"]
+          },
+          claims: [
+            {
+              id: "hidden-focus",
+              text: "Hidden focus row reviewed",
+              status: "unsupported",
+              source: "file",
+              reason: "The linked file is outside the visible Review Focus cap.",
+              files: [],
+              evidence: ["Proof: missing"],
+              proofReferences: [
+                {
+                  kind: "changed_file",
+                  label: "Changed file: src/file-30.ts",
+                  target: hiddenFocusTarget
+                }
+              ],
+              relatedProofGapIds: []
+            }
+          ]
+        }
+      },
+      recommendation: "Run npm test."
+    });
+
+    const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((match) => match[1]));
+    const hrefs = [...html.matchAll(/href="#([^"]+)"/g)].map((match) => match[1]);
+
+    expect(ids.has(hiddenFocusTarget)).toBe(false);
+    expect(html).toContain('href="#changed-files">Changed file: src/file-30.ts</a>');
+    expect(hrefs.filter((href) => !ids.has(href))).toEqual([]);
   });
 
   it("renders escaped repo calibration suggestions with full suggested proof in a title", () => {
@@ -362,11 +637,11 @@ describe("HTML replay", () => {
           reviewPath: {
             summary: "All 3 supported claims are ready for review.",
             nextAction: "Review changed files and replay evidence.",
-            inspectClaimIds: ["file-src-renderers-html-replay-ts"]
+            inspectClaimIds: ["file-src-1b-renderers-1b-html-19-replay-1a-ts"]
           },
           claims: [
             {
-              id: "file-src-renderers-html-replay-ts",
+              id: "file-src-1b-renderers-1b-html-19-replay-1a-ts",
               text: "Changed file reviewed: src/renderers/<html-replay>.ts",
               status: "supported",
               source: "file",
@@ -377,7 +652,7 @@ describe("HTML replay", () => {
                 {
                   kind: "changed_file",
                   label: "Changed file: src/renderers/<html-replay>.ts",
-                  target: "review-focus-file-src-renderers-html-replay-ts"
+                  target: "review-focus-file-src-1b-renderers-1b-html-19-replay-1a-ts"
                 },
                 {
                   kind: "verification_run",
@@ -404,16 +679,68 @@ describe("HTML replay", () => {
     expect(html).toContain('<section class="section" id="review-contract">');
     expect(html).toContain("Review Contract");
     expect(html).toContain("All 3 supported claims are ready for review.");
-    expect(html).toContain('href="#claim-file-src-renderers-html-replay-ts"');
-    expect(html).toContain('id="claim-file-src-renderers-html-replay-ts"');
-    expect(html).toContain('id="review-focus-file-src-renderers-html-replay-ts"');
-    expect(html).toContain('href="#review-focus-file-src-renderers-html-replay-ts"');
+    expect(html).toContain('href="#claim-file-src-1b-renderers-1b-html-19-replay-1a-ts"');
+    expect(html).toContain('id="claim-file-src-1b-renderers-1b-html-19-replay-1a-ts"');
+    expect(html).toContain('id="review-focus-file-src-1b-renderers-1b-html-19-replay-1a-ts"');
+    expect(html).toContain('href="#review-focus-file-src-1b-renderers-1b-html-19-replay-1a-ts"');
     expect(html).toContain('href="#verification-run-1"');
     expect(html).toContain("Changed file reviewed: src/renderers/&lt;html-replay&gt;.ts");
     expect(html).toContain('<section class="section" id="proof-gaps">');
     expect(html).toContain('<section class="section" id="timeline">');
     expect(html).toContain('<section class="section" id="verification-evidence">');
     expect(html).toContain(".section, .entry { scroll-margin-top:");
+  });
+
+  it("keeps replay anchors unique for paths that slug similarly", () => {
+    const html = renderHtmlReplay({
+      task: "Anchor collision check",
+      sessionId: "af-anchor-collision",
+      startedAt: "2026-06-24T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/a_b.ts", "src/a-b.ts"],
+      riskBadges: ["medium"],
+      verificationEvidence: [],
+      reviewReadiness: "Ready for review",
+      review: {
+        focus: [
+          {
+            rank: 1,
+            file: "src/a_b.ts",
+            category: "source",
+            riskLevel: "medium",
+            score: 60,
+            reasons: ["source code"],
+            suggestedReviewerFocus: "Check core behavior, command flow, and edge cases first.",
+            proofStatus: "covered",
+            relatedProofGapIds: []
+          },
+          {
+            rank: 2,
+            file: "src/a-b.ts",
+            category: "source",
+            riskLevel: "medium",
+            score: 60,
+            reasons: ["source code"],
+            suggestedReviewerFocus: "Check core behavior, command flow, and edge cases first.",
+            proofStatus: "covered",
+            relatedProofGapIds: []
+          }
+        ],
+        proofGaps: [],
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Passing verification evidence is present.",
+          nextAction: "Review changed files and replay evidence.",
+          proofGaps: []
+        }
+      },
+      recommendation: "Review anchors."
+    });
+
+    expect(html).toContain('id="review-focus-file-src-1b-a-2n-b-1a-ts"');
+    expect(html).toContain('id="review-focus-file-src-1b-a-19-b-1a-ts"');
+    expect(html.match(/id="review-focus-file-src-1b-a-/g)).toHaveLength(2);
   });
 
   it("renders a blocked replay review path that leads with proof and failed-run anchors", () => {
@@ -705,6 +1032,77 @@ describe("HTML replay", () => {
     expect(html).not.toContain("Jump to first failed run");
   });
 
+  it("points urgent replay navigation at unresolved failed runs in mixed failure history", () => {
+    const html = renderHtmlReplay({
+      task: "Mixed failure navigation",
+      sessionId: "af-mixed-failed-nav",
+      startedAt: "2026-06-21T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/core/verification.ts"],
+      riskBadges: ["medium"],
+      verificationEvidence: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-21T12:01:00.000Z",
+          finishedAt: "2026-06-21T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-mixed-failed-nav/verification-1.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-mixed-failed-nav/verification-1.stderr.txt",
+          outputExcerpt: "resolved test failure"
+        },
+        {
+          command: "npm test",
+          startedAt: "2026-06-21T12:02:00.000Z",
+          finishedAt: "2026-06-21T12:02:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath: ".agentflight/evidence/af-mixed-failed-nav/verification-2.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-mixed-failed-nav/verification-2.stderr.txt"
+        },
+        {
+          command: "npm run lint",
+          startedAt: "2026-06-21T12:03:00.000Z",
+          finishedAt: "2026-06-21T12:03:05.000Z",
+          durationMs: 5000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-mixed-failed-nav/verification-3.stdout.txt",
+          stderrPath: ".agentflight/evidence/af-mixed-failed-nav/verification-3.stderr.txt",
+          outputExcerpt: "unresolved lint failure"
+        }
+      ],
+      verificationSummary: {
+        passed: 1,
+        failed: 2,
+        unresolvedFailed: 1,
+        resolvedFailed: 1
+      },
+      reviewReadiness: "Blocked by failed verification",
+      review: {
+        focus: [],
+        proofGaps: [],
+        readiness: {
+          state: "blocked_by_failed_verification",
+          label: "Blocked by failed verification",
+          reason: "A verification command failed.",
+          nextAction: "Fix the failed command.",
+          proofGaps: []
+        }
+      },
+      recommendation: "Fix the unresolved failure."
+    });
+
+    expect(html).toContain('class="nav-urgent">First failed run</a>');
+    expect(html).toContain('href="#verification-run-3"');
+    expect(html).toContain('<div class="entry entry--historical-failed" id="verification-run-1">');
+    expect(html).toContain('<div class="entry entry--failed" id="verification-run-3">');
+    expect(html).toContain("resolved test failure");
+    expect(html).toContain("unresolved lint failure");
+  });
+
   it("renders escaped project review contract requirements with proof anchors", () => {
     const html = renderHtmlReplay({
       task: "Contract escape",
@@ -774,6 +1172,51 @@ describe("HTML replay", () => {
             relatedFiles: ["src/auth/session.ts"]
           }
         ],
+        trustDelta: {
+          summary: "Trust changed because proof is stale or missing.",
+          items: [
+            {
+              kind: "missing_proof",
+              severity: "blocking",
+              message: "Auth <session> contract requires passing test proof.",
+              suggestedCommand: "npm test && echo '<unsafe>'",
+              relatedFiles: ["src/auth/session.ts"],
+              relatedProofGapIds: ["auth-contract"]
+            }
+          ]
+        },
+        reviewQueue: [
+          {
+            rank: 1,
+            action: "run_missing_proof",
+            label: "Run missing <proof>",
+            detail: "Auth <session> contract requires passing test proof.",
+            suggestedCommand: "npm test && echo '<unsafe>'",
+            relatedFiles: ["src/auth/session.ts"],
+            relatedProofGapIds: ["auth-contract"]
+          }
+        ],
+        reviewReceipt: {
+          state: "stale",
+          label: "Review receipt <stale>",
+          summary: "Accepted handoff is stale because <files> changed after review.",
+          nextAction: "Regenerate the handoff after re-review.",
+          staleFiles: ["src/auth/session.ts"],
+          receipt: {
+            id: "receipt-20260617-121000-accepted-001",
+            decision: "accepted",
+            recordedAt: "2026-06-17T12:10:00.000Z",
+            summary: "Accepted <local> handoff.",
+            snapshot: {
+              branch: "main",
+              gitCommit: "abc123",
+              changedFiles: ["src/auth/session.ts"],
+              readinessState: "ready_for_review",
+              verificationPassed: 1,
+              verificationFailed: 0
+            }
+          }
+        },
         readiness: {
           state: "needs_verification",
           label: "Needs verification",
@@ -786,6 +1229,15 @@ describe("HTML replay", () => {
       recommendation: "Needs verification."
     });
 
+    expect(html).toContain('href="#trust-delta"');
+    expect(html).toContain('href="#review-receipt"');
+    expect(html).toContain('<section class="section" id="trust-delta">');
+    expect(html).toContain('<section class="section" id="review-receipt">');
+    expect(html).toContain("Review receipt &lt;stale&gt;");
+    expect(html).toContain("Accepted &lt;local&gt; handoff.");
+    expect(html).not.toContain("Accepted <local> handoff.");
+    expect(html).toContain("Run missing &lt;proof&gt;");
+    expect(html).not.toContain("Run missing <proof>");
     expect(html).toContain('id="required-proof"');
     expect(html).toContain("Auth &lt;session&gt; contract");
     expect(html).toContain("Accepted proof:");
@@ -795,7 +1247,7 @@ describe("HTML replay", () => {
       "Run agentflight verify -- npm test &amp;&amp; echo &#39;&lt;unsafe&gt;&#39;."
     );
     expect(html).toContain("Review &lt;script&gt;alert(1)&lt;/script&gt; manually.");
-    expect(html).toContain('href="#proof-gap-auth-contract"');
+    expect(html).toContain('href="#proof-gap-auth-19-contract"');
     expect(html).toContain(
       'title="agentflight verify -- npm test &amp;&amp; echo &#39;&lt;unsafe&gt;&#39;"'
     );

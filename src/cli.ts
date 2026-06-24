@@ -117,8 +117,14 @@ export function createCli(): Command {
   program
     .command("handoff")
     .description("Generate a local review handoff for the current session.")
-    .action(async () => {
-      await printResult(runHandoffCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
+    .option("--accept", "record a local accepted review receipt for the generated handoff")
+    .action(async (options: { accept?: boolean }) => {
+      await printResult(
+        runHandoffCommand({
+          repoRoot: await getRepositoryRoot(process.cwd()),
+          accept: options.accept
+        })
+      );
     });
 
   program

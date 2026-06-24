@@ -1,7 +1,11 @@
 import { readdir, readFile } from "node:fs/promises";
 import { categorizeFile } from "./risk.js";
 import { resolveAgentFlightPaths } from "./paths.js";
-import { getLatestRecordedReviewSummary, getVerificationRuns } from "./session.js";
+import {
+  getLatestRecordedReviewSummary,
+  getLatestReviewReceipt,
+  getVerificationRuns
+} from "./session.js";
 import type {
   AgentFlightSession,
   ProofCalibration,
@@ -55,18 +59,35 @@ export async function loadProofCalibrationHistory(
   repoRoot: string,
   options: LoadProofCalibrationHistoryOptions = {}
 ): Promise<ProofCalibrationHistoryResult> {
-  const sessionFiles = await listSessionFiles(resolveAgentFlightPaths(repoRoot).sessions);
-  const loaded = await Promise.all(sessionFiles.map(loadSessionFile));
   const limit = normalizeHistoryLimit(options.limit);
-  const sessions = loaded
-    .flatMap((result) => (result.session ? [result.session] : []))
-    .filter((session) => session.id !== options.currentSessionId)
-    .filter(isReadyHistoricalSession)
-    .sort(compareHistoricalSessions)
-    .slice(0, limit);
-  const skipped = loaded.flatMap((result) => (result.skipped ? [result.skipped] : []));
+  const sessionFiles = (await listSessionFiles(resolveAgentFlightPaths(repoRoot).sessions)).sort(
+    (left, right) => right.localeCompare(left)
+  );
+  const sessions: AgentFlightSession[] = [];
+  const skipped: ProofCalibrationSkippedSession[] = [];
 
-  return { sessions, skipped };
+  for (const path of sessionFiles) {
+    if (sessions.length >= limit) break;
+    await collectProofCalibrationHistoryFile(path, sessions, skipped, options.currentSessionId);
+  }
+
+  return { sessions: sessions.sort(compareHistoricalSessions), skipped };
+}
+
+async function collectProofCalibrationHistoryFile(
+  path: string,
+  sessions: AgentFlightSession[],
+  skipped: ProofCalibrationSkippedSession[],
+  currentSessionId: string | undefined
+): Promise<void> {
+  const loaded = await loadSessionFile(path);
+  if (loaded.skipped) {
+    skipped.push(loaded.skipped);
+    return;
+  }
+  if (loaded.session.id === currentSessionId) return;
+  if (!isReadyHistoricalSession(loaded.session)) return;
+  sessions.push(loaded.session);
 }
 
 export function buildProofCalibration(options: BuildProofCalibrationOptions): ProofCalibration {
@@ -79,12 +100,17 @@ export function buildProofCalibration(options: BuildProofCalibrationOptions): Pr
     .filter(isReadyHistoricalSession)
     .map((session) => buildHistoricalSessionPattern(session, currentCategories))
     .filter((pattern): pattern is HistoricalSessionPattern => Boolean(pattern));
+  const acceptedSimilarSessions = similarSessions.filter((session) => session.acceptedReceipt);
+  const calibrationSessions =
+    acceptedSimilarSessions.length >= MIN_SIMILAR_READY_SESSIONS
+      ? acceptedSimilarSessions
+      : similarSessions;
 
-  if (currentCategories.length === 0 || similarSessions.length < MIN_SIMILAR_READY_SESSIONS) {
+  if (currentCategories.length === 0 || calibrationSessions.length < MIN_SIMILAR_READY_SESSIONS) {
     return calibrationResult({
       state: "no_history",
       scannedSessions: historicalSessions.length,
-      similarReadySessions: similarSessions.length,
+      similarReadySessions: calibrationSessions.length,
       suggestions: []
     });
   }
@@ -93,13 +119,13 @@ export function buildProofCalibration(options: BuildProofCalibrationOptions): Pr
     currentCategories,
     currentCommands,
     configuredCommands,
-    similarSessions
+    similarSessions: calibrationSessions
   });
 
   return calibrationResult({
     state: suggestions.length > 0 ? "under_proven" : "aligned",
     scannedSessions: historicalSessions.length,
-    similarReadySessions: similarSessions.length,
+    similarReadySessions: calibrationSessions.length,
     suggestions
   });
 }
@@ -112,6 +138,13 @@ interface HistoricalSessionPattern {
   id: string;
   categories: RiskCategory[];
   commands: string[];
+  acceptedReceipt: boolean;
+}
+
+interface HistoricalCalibrationBoundary {
+  acceptedReceipt: boolean;
+  cutoffAt?: string | undefined;
+  changedFiles?: string[] | undefined;
 }
 
 interface CalibrationResultInput {
@@ -154,9 +187,11 @@ async function loadSessionFile(path: string): Promise<LoadedSessionFile> {
 }
 
 function isReadyHistoricalSession(session: AgentFlightSession): boolean {
+  const latestReview = getLatestRecordedReviewSummary(session);
+  const boundary = historicalCalibrationBoundary(session, latestReview);
   return (
-    getLatestRecordedReviewSummary(session)?.state === "ready_for_review" &&
-    passedProofCommands(getVerificationRuns(session)).length > 0
+    latestReview?.state === "ready_for_review" &&
+    passedProofCommands(getVerificationRuns(session), boundary.cutoffAt).length > 0
   );
 }
 
@@ -169,12 +204,36 @@ function buildHistoricalSessionPattern(
   session: AgentFlightSession,
   currentCategories: RiskCategory[]
 ): HistoricalSessionPattern | null {
-  const categories = categoriesForFiles(historicalChangedFiles(session)).filter((category) =>
-    currentCategories.includes(category)
+  const boundary = historicalCalibrationBoundary(session);
+  const categories = categoriesForFiles(historicalChangedFiles(session, boundary)).filter(
+    (category) => currentCategories.includes(category)
   );
-  const commands = passedProofCommands(getVerificationRuns(session));
+  const commands = passedProofCommands(getVerificationRuns(session), boundary.cutoffAt);
   if (categories.length === 0 || commands.length === 0) return null;
-  return { id: session.id, categories, commands };
+  return {
+    id: session.id,
+    categories,
+    commands,
+    acceptedReceipt: boundary.acceptedReceipt
+  };
+}
+
+function historicalCalibrationBoundary(
+  session: AgentFlightSession,
+  latestReview = getLatestRecordedReviewSummary(session)
+): HistoricalCalibrationBoundary {
+  const receipt = getLatestReviewReceipt(session);
+  if (receipt?.decision === "accepted") {
+    return {
+      acceptedReceipt: true,
+      cutoffAt: receipt.recordedAt,
+      changedFiles: receipt.snapshot.changedFiles
+    };
+  }
+  return {
+    acceptedReceipt: false,
+    cutoffAt: latestReview?.generatedAt
+  };
 }
 
 function buildCalibrationSuggestions(
@@ -248,8 +307,15 @@ function sortedCommandsByFrequency(
     .slice(0, 5);
 }
 
-function historicalChangedFiles(session: AgentFlightSession): string[] {
-  const runs = getVerificationRuns(session);
+function historicalChangedFiles(
+  session: AgentFlightSession,
+  boundary: HistoricalCalibrationBoundary
+): string[] {
+  if (boundary.changedFiles && boundary.changedFiles.length > 0) return boundary.changedFiles;
+
+  const runs = getVerificationRuns(session).filter((run) =>
+    isRunAtOrBeforeBoundary(run, boundary.cutoffAt)
+  );
   for (let index = runs.length - 1; index >= 0; index -= 1) {
     const changedFiles = runs[index]?.proofSnapshot?.changedFiles;
     if (changedFiles && changedFiles.length > 0) return changedFiles;
@@ -257,13 +323,21 @@ function historicalChangedFiles(session: AgentFlightSession): string[] {
   return session.git.changedFiles ?? [];
 }
 
-function passedProofCommands(runs: VerificationRun[]): string[] {
+function passedProofCommands(runs: VerificationRun[], cutoffAt?: string | undefined): string[] {
   return uniqueStrings(
     runs
-      .filter((run) => run.status === "passed")
+      .filter((run) => run.status === "passed" && isRunAtOrBeforeBoundary(run, cutoffAt))
       .map((run) => run.command.trim().replace(/\s+/g, " "))
       .filter((command) => command.length > 0 && !isAgentFlightReadoutCommand(command))
   );
+}
+
+function isRunAtOrBeforeBoundary(run: VerificationRun, cutoffAt: string | undefined): boolean {
+  if (!cutoffAt) return true;
+  const cutoffTime = Date.parse(cutoffAt);
+  if (!Number.isFinite(cutoffTime)) return true;
+  const runTime = Date.parse(run.finishedAt ?? run.startedAt);
+  return !Number.isFinite(runTime) || runTime <= cutoffTime;
 }
 
 function categoriesForFiles(files: string[]): RiskCategory[] {

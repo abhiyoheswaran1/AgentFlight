@@ -1,6 +1,10 @@
 import { chooseOpenFirstArtifact, readReviewArtifacts } from "../core/artifacts.js";
+import { filterChangedFiles } from "../core/changed-files.js";
+import { loadConfig } from "../core/config.js";
+import { listChangedFiles } from "../core/git.js";
 import { formatVerificationCountLine } from "../core/output.js";
 import { formatRepoRelativePath } from "../core/paths.js";
+import { buildProofSnapshot, compareProofSnapshotToCurrent } from "../core/proof-snapshot.js";
 import { listSessionSummaries } from "../core/session.js";
 import { readCurrentSession } from "./status.js";
 import type { SessionSummary, SkippedSessionFile } from "../core/session.js";
@@ -23,12 +27,14 @@ export async function runHistoryCommand(
   const filters = normalizeHistoryFilters(options);
   const history = await listSessionSummaries(options.repoRoot);
   const currentSessionId = await readCurrentSessionId(options.repoRoot);
+  const currentChangedFiles =
+    currentSessionId === null ? null : await readFilteredChangedFiles(options.repoRoot);
   const sessions = applyHistoryFilters(history.sessions, filters, currentSessionId).slice(0, limit);
 
   return {
     output: `AgentFlight history
 
-${await formatSessions(options.repoRoot, sessions, currentSessionId, filters)}
+${await formatSessions(options.repoRoot, sessions, currentSessionId, currentChangedFiles, filters)}
 ${formatSkipped(options.repoRoot, history.skipped)}
 `
   };
@@ -111,10 +117,22 @@ async function readCurrentSessionId(repoRoot: string): Promise<string | null> {
   }
 }
 
+async function readFilteredChangedFiles(repoRoot: string): Promise<string[] | null> {
+  const config = await loadConfig(repoRoot);
+  let changedFiles: string[];
+  try {
+    changedFiles = await listChangedFiles(repoRoot);
+  } catch {
+    return null;
+  }
+  return filterChangedFiles(changedFiles, { ignore: config?.changedFileFilters?.ignore });
+}
+
 async function formatSessions(
   repoRoot: string,
   sessions: SessionSummary[],
   currentSessionId: string | null,
+  currentChangedFiles: string[] | null,
   filters: NormalizedHistoryFilters
 ): Promise<string> {
   if (sessions.length === 0) {
@@ -130,11 +148,17 @@ async function formatSessions(
     repoRoot,
     latestSession,
     latestSession.id === currentSessionId,
+    latestSession.id === currentSessionId ? currentChangedFiles : null,
     await findPreviousOpenFirstArtifact(repoRoot, sessions.slice(1))
   );
   const lines = await Promise.all(
     sessions.map(async (session) =>
-      formatSession(repoRoot, session, session.id === currentSessionId)
+      formatSession(
+        repoRoot,
+        session,
+        session.id === currentSessionId,
+        session.id === currentSessionId ? currentChangedFiles : null
+      )
     )
   );
 
@@ -162,6 +186,7 @@ async function formatLatestAction(
   repoRoot: string,
   session: SessionSummary,
   isCurrent: boolean,
+  currentChangedFiles: string[] | null,
   previousOpenFirst: string | null
 ): Promise<string> {
   const artifacts = await readReviewArtifacts(repoRoot, session.id);
@@ -176,6 +201,7 @@ async function formatLatestAction(
   return `Latest action:
 Open first: ${openFirst}${nextAction}${previousArtifact}
 Recorded readiness: ${formatReadiness(session)}
+${await formatReviewReceipt(repoRoot, session, currentChangedFiles)}
 Task: ${session.taskTitle}`;
 }
 
@@ -188,7 +214,8 @@ function formatMissingArtifactNextAction(session: SessionSummary): string {
 async function formatSession(
   repoRoot: string,
   session: SessionSummary,
-  isCurrent: boolean
+  isCurrent: boolean,
+  currentChangedFiles: string[] | null
 ): Promise<string> {
   const marker = isCurrent ? " [current]" : "";
   const branch = session.branch ?? "unknown";
@@ -210,6 +237,7 @@ async function formatSession(
     resolvedFailed: session.verificationResolvedFailed
   })}
   Recorded readiness: ${formatReadiness(session)}
+${await formatReviewReceipt(repoRoot, session, currentChangedFiles)}
   Open first: ${chooseOpenFirstArtifact(session.latestReview?.state, artifacts)}
   Handoff: ${artifacts.handoff}
   Report: ${artifacts.report}
@@ -296,6 +324,39 @@ function formatReadiness(session: SessionSummary): string {
   if (!review) return "not recorded";
 
   return `${review.label} (risk ${review.riskLevel}, ${formatChangedFiles(review.changedFiles)})`;
+}
+
+async function formatReviewReceipt(
+  repoRoot: string,
+  session: SessionSummary,
+  currentChangedFiles: string[] | null
+): Promise<string> {
+  const receipt = session.latestReviewReceipt;
+  if (!receipt) return "Review receipt: not recorded";
+  const state = await evaluateHistoryReceiptState(repoRoot, receipt, currentChangedFiles);
+  return `Review receipt: ${receipt.decision.replaceAll("_", " ")} (${state}) at ${receipt.recordedAt}
+  ${receipt.summary}`;
+}
+
+async function evaluateHistoryReceiptState(
+  repoRoot: string,
+  receipt: NonNullable<SessionSummary["latestReviewReceipt"]>,
+  currentChangedFiles: string[] | null
+): Promise<string> {
+  if (receipt.decision !== "accepted") return receipt.decision.replaceAll("_", " ");
+  const changedFiles = currentChangedFiles ?? receipt.snapshot.changedFiles;
+  if (changedFiles.length === 0) return "current";
+  if (!receipt.snapshot.proofSnapshot) return "stale";
+
+  const currentSnapshot = await buildProofSnapshot({
+    repoRoot,
+    changedFiles,
+    capturedAt: new Date().toISOString(),
+    gitCommit: receipt.snapshot.gitCommit
+  });
+  return compareProofSnapshotToCurrent(receipt.snapshot.proofSnapshot, currentSnapshot).current
+    ? "current"
+    : "stale";
 }
 
 async function findPreviousOpenFirstArtifact(

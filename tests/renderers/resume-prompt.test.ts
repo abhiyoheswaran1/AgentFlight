@@ -2,6 +2,69 @@ import { describe, expect, it } from "vitest";
 import { renderResumePrompt } from "../../src/renderers/resume-prompt.js";
 
 describe("resume prompt", () => {
+  it("escapes raw HTML in Markdown text fields", () => {
+    const prompt = renderResumePrompt({
+      task: "Continue <img src=x onerror=alert(1)> safely",
+      sessionId: "af-resume-html-escape",
+      branch: "feature/<unsafe>",
+      changedFiles: ["docs/<guide>.md"],
+      riskLevel: "low",
+      riskReasons: ["Documentation <tag> changed."],
+      verificationGaps: ["Run <script>alert(1)</script> proof."],
+      latestSnapshotNote: "Snapshot <unsafe>",
+      verificationState: "0 passed, 0 failed",
+      nextAction: "Review docs/<guide>.md"
+    });
+
+    expect(prompt).toContain("Continue &lt;img src=x onerror=alert(1)&gt; safely");
+    expect(prompt).toContain("- Git branch: feature/&lt;unsafe&gt;");
+    expect(prompt).toContain("- docs/&lt;guide&gt;.md");
+    expect(prompt).toContain("- Documentation &lt;tag&gt; changed.");
+    expect(prompt).toContain("Run &lt;script&gt;alert(1)&lt;/script&gt; proof.");
+    expect(prompt).toContain("Snapshot &lt;unsafe&gt;");
+    expect(prompt).not.toContain("<img src=x onerror=alert(1)>");
+    expect(prompt).not.toContain("<script>alert(1)</script>");
+  });
+
+  it("neutralizes active Markdown in resume identity fields", () => {
+    const prompt = renderResumePrompt({
+      task: "![proof](javascript:alert(1)) `task`\n# injected",
+      sessionId: "[af-session](https://example.test)",
+      branch: "# unsafe-branch",
+      changedFiles: ["docs/[guide](javascript:alert).md"],
+      riskLevel: "low",
+      riskReasons: ["![risk](javascript:alert(1))"],
+      verificationGaps: [],
+      reviewFocus: [
+        {
+          rank: 1,
+          file: "docs/[guide](javascript:alert).md",
+          category: "docs",
+          riskLevel: "low",
+          score: 10,
+          reasons: ["![reason](javascript:alert(1))"],
+          suggestedReviewerFocus: "`focus` [link](javascript:alert(1))",
+          proofStatus: "not_required",
+          relatedProofGapIds: []
+        }
+      ],
+      latestSnapshotNote: "![snapshot](javascript:alert(1))",
+      verificationState: "0 passed, 0 failed",
+      nextAction: "Review locally."
+    });
+
+    expect(prompt).toContain("\\!\\[proof\\](javascript:alert(1)) \\`task\\` # injected");
+    expect(prompt).toContain("- Session: \\[af-session\\](https://example.test)");
+    expect(prompt).toContain("- Git branch: \\# unsafe-branch");
+    expect(prompt).toContain("- docs/\\[guide\\](javascript:alert).md");
+    expect(prompt).toContain("- \\!\\[risk\\](javascript:alert(1))");
+    expect(prompt).toContain("1. docs/\\[guide\\](javascript:alert).md");
+    expect(prompt).toContain("- Why: \\!\\[reason\\](javascript:alert(1))");
+    expect(prompt).toContain("- Focus: \\`focus\\` \\[link\\](javascript:alert(1))");
+    expect(prompt).toContain("\\!\\[snapshot\\](javascript:alert(1))");
+    expect(prompt).not.toContain("\n# injected");
+  });
+
   it("includes state, risks, verification gaps, and continuation constraints", () => {
     const prompt = renderResumePrompt({
       task: "Add password reset flow",
@@ -144,6 +207,60 @@ describe("resume prompt", () => {
         ]
       },
       proofGaps: [],
+      trustDelta: {
+        summary: "Proof exists, but similar local ready handoffs used stronger proof.",
+        items: [
+          {
+            kind: "repo_calibration",
+            severity: "warning",
+            message:
+              "Similar local ready handoffs for auth changes usually included npm run e2e:auth.",
+            relatedFiles: ["src/auth/session.ts"],
+            suggestedCommand: "npm run e2e:auth",
+            relatedProofGapIds: []
+          }
+        ]
+      },
+      reviewQueue: [
+        {
+          rank: 1,
+          action: "consider_repo_calibration",
+          label: "Consider stronger local-history proof",
+          detail:
+            "Similar local ready handoffs for auth changes usually included npm run e2e:auth.",
+          relatedFiles: ["src/auth/session.ts"],
+          suggestedCommand: "npm run e2e:auth",
+          relatedProofGapIds: []
+        }
+      ],
+      reviewRoutes: {
+        summary: "2 reviewer routes need attention before trust.",
+        items: [
+          {
+            role: "maintainer",
+            label: "Maintainer",
+            status: "needs_review",
+            priority: 1,
+            summary: "Start with the highest-signal changed files and trust-state summary.",
+            reason: "Proof exists, but similar local ready handoffs used stronger proof.",
+            relatedFiles: ["src/auth/session.ts"],
+            suggestedCommand: "npm run e2e:auth",
+            relatedProofGapIds: []
+          },
+          {
+            role: "verification",
+            label: "Verification",
+            status: "needs_review",
+            priority: 2,
+            summary: "Proof needs a rerun, missing command, or stronger local-history check.",
+            reason:
+              "Similar local ready handoffs for auth changes usually included npm run e2e:auth.",
+            relatedFiles: ["src/auth/session.ts"],
+            suggestedCommand: "npm run e2e:auth",
+            relatedProofGapIds: []
+          }
+        ]
+      },
       readiness: {
         state: "ready_for_review",
         label: "Ready for review",
@@ -155,6 +272,12 @@ describe("resume prompt", () => {
     });
 
     expect(prompt).toContain("## Repo Calibration");
+    expect(prompt).toContain("## Trust Delta");
+    expect(prompt).toContain("Proof exists, but similar local ready handoffs used stronger proof.");
+    expect(prompt).toContain("## Review Queue");
+    expect(prompt).toContain("Consider stronger local-history proof");
+    expect(prompt).toContain("## Review Routing");
+    expect(prompt).toContain("Verification - needs review");
     expect(prompt).toContain(
       "Similar local ready handoffs suggest 1 additional proof command for this change."
     );
@@ -198,5 +321,131 @@ describe("resume prompt", () => {
     expect(prompt).toContain("## Proof Freshness");
     expect(prompt).toContain("docs changed after proof was captured; manual review remains.");
     expect(prompt).toContain("Manual-review stale files: docs (README.md)");
+  });
+
+  it("includes local review receipt state in resume prompts", () => {
+    const prompt = renderResumePrompt({
+      task: "Receipt resume",
+      sessionId: "af-receipt-resume",
+      branch: "main",
+      changedFiles: ["src/auth/session.ts"],
+      riskLevel: "high",
+      riskReasons: ["Authentication-sensitive files changed."],
+      verificationGaps: [],
+      reviewReceipt: {
+        state: "stale",
+        label: "Review receipt stale",
+        summary: "Accepted handoff is stale because files changed after review.",
+        nextAction: "Regenerate the handoff after re-review.",
+        staleFiles: ["src/auth/session.ts"],
+        receipt: {
+          id: "receipt-20260617-121000-accepted-001",
+          decision: "accepted",
+          recordedAt: "2026-06-17T12:10:00.000Z",
+          summary: "Accepted local handoff.",
+          snapshot: {
+            branch: "main",
+            gitCommit: "abc123",
+            changedFiles: ["src/auth/session.ts"],
+            readinessState: "ready_for_review",
+            verificationPassed: 1,
+            verificationFailed: 0
+          }
+        }
+      },
+      proofGaps: [],
+      readiness: {
+        state: "ready_for_review",
+        label: "Ready for review",
+        reason: "Verification evidence matches the observed review risk.",
+        nextAction: "Run agentflight handoff to generate the local review packet.",
+        proofGaps: []
+      },
+      nextAction: "Run agentflight handoff to generate the local review packet."
+    });
+
+    expect(prompt).toContain("## Review Receipt");
+    expect(prompt).toContain("Review receipt stale");
+    expect(prompt).toContain("Stale files: src/auth/session.ts");
+    expect(prompt).toContain("Regenerate the handoff after re-review.");
+  });
+
+  it("escapes full-command summaries in raw Markdown details", () => {
+    const command = `node -e "</summary><script>alert(1)</script>; ${"console.log('noise'); ".repeat(12)}"`;
+    const prompt = renderResumePrompt({
+      task: "Escape resume summary",
+      sessionId: "af-resume-escape",
+      branch: "main",
+      changedFiles: ["src/auth/session.ts"],
+      riskLevel: "high",
+      riskReasons: ["Authentication-sensitive files changed."],
+      verificationGaps: [],
+      proofGaps: [
+        {
+          id: "failed-verification",
+          severity: "blocking",
+          message: "A verification command failed.",
+          suggestedCommand: command,
+          relatedFiles: ["src/auth/session.ts"]
+        }
+      ],
+      readiness: {
+        state: "blocked_by_failed_verification",
+        label: "Blocked by failed verification",
+        reason: "A verification command failed.",
+        nextAction: `Fix the failed command, then rerun agentflight verify -- ${command}`,
+        suggestedCommand: command,
+        proofGaps: []
+      },
+      nextAction: `Fix the failed command, then rerun agentflight verify -- ${command}`
+    });
+
+    const summaryLine = prompt.split("\n").find((line) => line.startsWith("<summary>"));
+    expect(summaryLine).toContain("&lt;/summary&gt;&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(summaryLine).not.toContain("</summary><script>alert(1)</script>");
+  });
+
+  it("shows when review focus rows are capped", () => {
+    const prompt = renderResumePrompt({
+      task: "Focus overflow",
+      sessionId: "af-focus-overflow",
+      branch: "main",
+      changedFiles: Array.from({ length: 6 }, (_, index) => `src/file-${index}.ts`),
+      riskLevel: "medium",
+      riskReasons: [],
+      verificationGaps: [],
+      reviewFocus: Array.from({ length: 5 }, (_, index) => ({
+        rank: index + 1,
+        file: `src/file-${index}.ts`,
+        category: "source",
+        riskLevel: "medium",
+        score: 10,
+        reasons: ["source code"],
+        suggestedReviewerFocus: "Inspect behavior.",
+        proofStatus: "missing",
+        relatedProofGapIds: []
+      })),
+      reviewFocusTotal: 6,
+      nextAction: "Run verification."
+    });
+
+    expect(prompt).toContain("- 1 more review focus file in report/replay.");
+  });
+
+  it("caps large changed-file lists", () => {
+    const prompt = renderResumePrompt({
+      task: "Large resume",
+      sessionId: "af-large-resume",
+      branch: "main",
+      changedFiles: Array.from({ length: 85 }, (_, index) => `src/file-${index}.ts`),
+      riskLevel: "medium",
+      riskReasons: [],
+      verificationGaps: [],
+      nextAction: "Run verification."
+    });
+
+    expect(prompt).toContain("- src/file-79.ts");
+    expect(prompt).toContain("- 5 more changed files in replay/status JSON.");
+    expect(prompt).not.toContain("src/file-80.ts");
   });
 });

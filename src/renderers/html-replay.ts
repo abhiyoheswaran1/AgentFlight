@@ -1,5 +1,6 @@
 import {
   compactCommandInText,
+  formatFileListForDisplay,
   formatCommandForDisplay,
   getReviewContractPathClaims,
   formatProjectRequirementDetailsForDisplay,
@@ -9,10 +10,14 @@ import {
   formatProofCalibrationSummaryForDisplay,
   formatProofFreshnessAttributionForDisplay,
   formatProofStatusForDisplay,
+  formatReviewRouteStatusForDisplay,
   formatReviewContractProofReferenceLabelForDisplay,
   formatReviewContractStatusForDisplay,
-  formatVerifyCommandForDisplay
+  formatVerifyCommandForDisplay,
+  selectReviewContractProofReferencesForDisplay
 } from "../core/output.js";
+import { safeAnchorId, stableAnchorId } from "../core/ids.js";
+import { getUnresolvedFailedRuns } from "../core/verification-runs.js";
 import type { VerificationFailureCounts } from "../core/output.js";
 import type {
   ProofGap,
@@ -28,6 +33,10 @@ import type {
   SessionEvent,
   VerificationRun
 } from "../types/index.js";
+
+const HTML_REVIEW_FOCUS_LIMIT = 30;
+const HTML_GROUP_FILE_SAMPLE_LIMIT = 8;
+const HTML_CHANGED_FILE_DETAILS_LIMIT = 80;
 
 export type ReplayTimelineItem = Pick<
   SessionEvent,
@@ -52,12 +61,8 @@ export interface HtmlReplayInput {
 export function renderHtmlReplay(input: HtmlReplayInput): string {
   const readiness = input.reviewReadiness ?? "Unknown";
   const verdict = classifyReadiness(readiness);
-  const firstFailedRunIndex = input.verificationEvidence.findIndex(
-    (item) => item.status === "failed"
-  );
-  const urgentFailedRunIndex = shouldShowUrgentFailedRunShortcut(input, firstFailedRunIndex)
-    ? firstFailedRunIndex
-    : -1;
+  const unresolvedFailedRunIndexes = getUnresolvedFailedRunIndexes(input.verificationEvidence);
+  const urgentFailedRunIndex = firstRunIndex(unresolvedFailedRunIndexes);
   const recommendation = compactCommandInText(
     input.recommendation,
     input.review?.readiness.suggestedCommand
@@ -457,7 +462,9 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
       .jump-nav, .review-shortcuts { display: none; }
       .section { padding-top: 20px; }
       .section, .record, .entry, .timeline-item, .callout, .excerpt { break-inside: avoid; }
-      details { display: none; }
+      details { display: block; }
+      details:not([open]) > :not(summary) { display: block; }
+      details > summary { display: none; }
       .excerpt { max-height: none; overflow: visible; }
       a { color: inherit; text-decoration: none; }
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -507,7 +514,7 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
     <section class="section" id="verification-evidence">
       <div class="section-head"><h2 class="label">Verification Evidence</h2><span class="count">${escapeHtml(String(input.verificationEvidence.length))} runs</span></div>
-      ${renderVerification(input.verificationEvidence, input.verificationSummary)}
+      ${renderVerification(input.verificationEvidence, input.verificationSummary, unresolvedFailedRunIndexes)}
     </section>
 
     <section class="section" id="recommendation">
@@ -525,20 +532,19 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 `;
 }
 
-function shouldShowUrgentFailedRunShortcut(
-  input: HtmlReplayInput,
-  firstFailedRunIndex: number
-): boolean {
-  if (firstFailedRunIndex < 0) return false;
-  if (!input.verificationSummary) return true;
-  return input.verificationSummary.unresolvedFailed > 0;
-}
-
 function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): string {
   const links: Array<{ href: string; label: string; urgent?: boolean }> = [];
   if (input.review) {
     links.push({ href: "#review-path", label: "Review Path" });
     links.push({ href: "#review-focus", label: "Review Focus" });
+    links.push({ href: "#trust-delta", label: "Trust Delta" });
+    links.push({ href: "#review-queue", label: "Review Queue" });
+    if (input.review.reviewRoutes && input.review.reviewRoutes.items.length > 0) {
+      links.push({ href: "#review-routes", label: "Review Routing" });
+    }
+    if (input.review.reviewReceipt && input.review.reviewReceipt.state !== "none") {
+      links.push({ href: "#review-receipt", label: "Review Receipt" });
+    }
     links.push({ href: "#required-proof", label: "Required Proof" });
     if (formatProofFreshnessAttributionForDisplay(input.review.proofFreshness).length > 0)
       links.push({ href: "#proof-freshness", label: "Proof Freshness" });
@@ -598,6 +604,10 @@ function buildReviewPathItems(
 
   const items = [
     ...buildContractPathItems(review),
+    ...buildTrustDeltaPathItems(review),
+    ...buildReviewQueuePathItems(review),
+    ...buildReviewRoutePathItems(review),
+    ...buildReviewReceiptPathItems(review),
     ...buildProofGapPathItems(review.proofGaps),
     ...buildCalibrationPathItems(review.calibration),
     ...buildFailedRunPathItems(firstFailedRunIndex),
@@ -607,6 +617,22 @@ function buildReviewPathItems(
   ];
 
   return items.length > 0 ? items : [buildFallbackPathItem(review)];
+}
+
+function buildReviewReceiptPathItems(review: ReviewIntelligence): ReviewPathItem[] {
+  const receipt = review.reviewReceipt;
+  if (!receipt || receipt.state === "none") return [];
+  return [
+    {
+      href: "#review-receipt",
+      title: "Check review receipt",
+      detail: receipt.summary,
+      urgent:
+        receipt.state === "stale" ||
+        receipt.state === "needs_changes" ||
+        receipt.state === "blocked"
+    }
+  ];
 }
 
 function buildContractPathItems(review: ReviewIntelligence): ReviewPathItem[] {
@@ -634,6 +660,48 @@ function buildProofGapPathItems(gaps: ProofGap[]): ReviewPathItem[] {
       href: "#proof-gaps",
       title: "Fix proof gaps",
       detail: formatProofGapDetail(gaps)
+    }
+  ];
+}
+
+function buildTrustDeltaPathItems(review: ReviewIntelligence): ReviewPathItem[] {
+  if (!review.trustDelta || review.trustDelta.items.length === 0) return [];
+  return [
+    {
+      href: "#trust-delta",
+      title: "Read Trust Delta",
+      detail: review.trustDelta.summary,
+      urgent: review.trustDelta.items.some((item) => item.severity === "blocking")
+    }
+  ];
+}
+
+function buildReviewQueuePathItems(review: ReviewIntelligence): ReviewPathItem[] {
+  const first = review.reviewQueue?.[0];
+  if (!first) return [];
+  return [
+    {
+      href: "#review-queue",
+      title: "Follow review queue",
+      detail: `${first.label}: ${first.detail}`,
+      urgent:
+        first.action === "fix_failed_proof" ||
+        first.action === "rerun_stale_proof" ||
+        first.action === "refresh_review_receipt" ||
+        first.action === "run_missing_proof"
+    }
+  ];
+}
+
+function buildReviewRoutePathItems(review: ReviewIntelligence): ReviewPathItem[] {
+  const first = review.reviewRoutes?.items.find((item) => item.status !== "clear");
+  if (!first) return [];
+  return [
+    {
+      href: "#review-routes",
+      title: "Route reviewer attention",
+      detail: `${first.label}: ${first.summary}`,
+      urgent: first.status === "blocked"
     }
   ];
 }
@@ -768,6 +836,9 @@ function renderTimeline(items: ReplayTimelineItem[]): string {
 function renderReview(review: ReviewIntelligence | undefined, firstFailedRunIndex: number): string {
   if (!review) return "";
   const command = review.readiness.suggestedCommand;
+  const visibleReviewFocusAnchors = new Set(
+    review.focus.slice(0, HTML_REVIEW_FOCUS_LIMIT).map((item) => reviewFocusAnchorId(item.file))
+  );
   const failedRunShortcut =
     firstFailedRunIndex >= 0
       ? `<div class="review-shortcuts"><a class="nav-urgent" href="#verification-run-${escapeHtml(String(firstFailedRunIndex + 1))}">Jump to first failed run</a></div>`
@@ -776,6 +847,10 @@ function renderReview(review: ReviewIntelligence | undefined, firstFailedRunInde
       <div class="section-head"><h2 class="label">Review Focus</h2><span class="count">${escapeHtml(String(review.focus.length))} files</span></div>
       ${renderReviewFocus(review.focus)}
     </section>
+    ${renderTrustDelta(review)}
+    ${renderReviewQueue(review)}
+    ${renderReviewRoutes(review)}
+    ${renderReviewReceipt(review)}
     <section class="section" id="required-proof">
       <div class="section-head"><h2 class="label">Required Proof</h2><span class="count">${escapeHtml(String(review.projectReviewContract?.requirements.length ?? 0))} requirements</span></div>
       ${renderRequiredProof(review.projectReviewContract)}
@@ -787,12 +862,12 @@ function renderReview(review: ReviewIntelligence | undefined, firstFailedRunInde
     </section>
     <section class="section" id="review-contract">
       <div class="section-head"><h2 class="label">Review Contract</h2><span class="count">${escapeHtml(String(review.contract?.claims.length ?? 0))} claims</span></div>
-      ${renderReviewContract(review)}
+      ${renderReviewContract(review, visibleReviewFocusAnchors)}
     </section>
     <section class="section" id="proof-gaps">
       <div class="section-head"><h2 class="label">Proof Gaps</h2><span class="count">${escapeHtml(String(review.proofGaps.length))} gaps</span></div>
       ${renderProofGaps(review.proofGaps)}
-      <div class="callout">
+      <div class="callout" id="review-readiness">
         <div class="callout-state">${escapeHtml(review.readiness.label)}</div>
         <div class="callout-reason">${escapeHtml(compactCommandInText(review.readiness.reason, command))}</div>
         <div class="callout-next"><span class="label">Next</span>${escapeHtml(compactCommandInText(review.readiness.nextAction, command))}</div>
@@ -801,14 +876,113 @@ function renderReview(review: ReviewIntelligence | undefined, firstFailedRunInde
     </section>`;
 }
 
+function renderReviewReceipt(review: ReviewIntelligence): string {
+  const receipt = review.reviewReceipt;
+  if (!receipt || receipt.state === "none") {
+    return `<section class="section" id="review-receipt">
+      <div class="section-head"><h2 class="label">Review Receipt</h2><span class="count">none</span></div>
+      <p class="empty">No local review receipt recorded yet.</p>
+    </section>`;
+  }
+
+  const staleFiles = receipt.staleFiles.length
+    ? `<div class="reason"><span class="reason-strong">Stale files:</span> ${escapeHtml(receipt.staleFiles.join(", "))}</div>`
+    : "";
+  const recorded = receipt.receipt?.recordedAt
+    ? `<div class="reason"><span class="reason-strong">Recorded:</span> ${escapeHtml(receipt.receipt.recordedAt)}</div>`
+    : "";
+  const receiptSummary = receipt.receipt?.summary
+    ? `<div class="reason">${escapeHtml(receipt.receipt.summary)}</div>`
+    : "";
+
+  return `<section class="section" id="review-receipt">
+      <div class="section-head"><h2 class="label">Review Receipt</h2><span class="count">${escapeHtml(receipt.state.replaceAll("_", " "))}</span></div>
+      <div class="records"><div class="record"><div class="record-key"><span class="record-cat">${escapeHtml(receipt.label)}</span></div><div class="record-body">${receiptSummary}${recorded}<div class="reason">${escapeHtml(receipt.summary)}</div>${staleFiles}<div class="reason"><span class="reason-strong">Next:</span> ${escapeHtml(receipt.nextAction)}</div></div></div></div>
+    </section>`;
+}
+
+function renderTrustDelta(review: ReviewIntelligence): string {
+  const delta = review.trustDelta;
+  if (!delta) {
+    return `<section class="section" id="trust-delta">
+      <div class="section-head"><h2 class="label">Trust Delta</h2><span class="count">0 items</span></div>
+      <p class="empty">No trust delta recorded.</p>
+    </section>`;
+  }
+  return `<section class="section" id="trust-delta">
+      <div class="section-head"><h2 class="label">Trust Delta</h2><span class="count">${escapeHtml(String(delta.items.length))} items</span></div>
+      <div class="callout"><div class="callout-state">Current trust state</div><div class="callout-reason">${escapeHtml(delta.summary)}</div></div>
+      <div class="records">${delta.items
+        .map(
+          (item) =>
+            `<div class="record"><div class="record-key"><span class="record-cat">${escapeHtml(item.severity)}</span></div><div class="record-body"><div>${escapeHtml(formatTrustDeltaKind(item.kind))}</div><div class="reason">${escapeHtml(compactCommandInText(item.message, item.suggestedCommand))}</div>${renderRelatedFilesLine(item.relatedFiles)}${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
+        )
+        .join("")}</div>
+    </section>`;
+}
+
+function renderReviewQueue(review: ReviewIntelligence): string {
+  const queue = review.reviewQueue ?? [];
+  if (queue.length === 0) {
+    return `<section class="section" id="review-queue">
+      <div class="section-head"><h2 class="label">Review Queue</h2><span class="count">0 steps</span></div>
+      <p class="empty">No review queue recorded.</p>
+    </section>`;
+  }
+  return `<section class="section" id="review-queue">
+      <div class="section-head"><h2 class="label">Review Queue</h2><span class="count">${escapeHtml(String(queue.length))} steps</span></div>
+      <div class="records">${queue
+        .map(
+          (item) =>
+            `<div class="record"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.action.replaceAll("_", " "))}</span></div><div class="record-body"><div>${escapeHtml(item.label)}</div><div class="reason">${escapeHtml(compactCommandInText(item.detail, item.suggestedCommand))}</div>${renderRelatedFilesLine(item.relatedFiles)}${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
+        )
+        .join("")}</div>
+    </section>`;
+}
+
+function renderReviewRoutes(review: ReviewIntelligence): string {
+  const routes = review.reviewRoutes;
+  if (!routes || routes.items.length === 0) {
+    return `<section class="section" id="review-routes">
+      <div class="section-head"><h2 class="label">Review Routing</h2><span class="count">0 routes</span></div>
+      <p class="empty">No reviewer routing needed for the current worktree.</p>
+    </section>`;
+  }
+
+  return `<section class="section" id="review-routes">
+      <div class="section-head"><h2 class="label">Review Routing</h2><span class="count">${escapeHtml(String(routes.items.length))} routes</span></div>
+      <div class="callout"><div class="callout-state">Reviewer routing</div><div class="callout-reason">${escapeHtml(routes.summary)}</div></div>
+      <div class="records">${routes.items
+        .map(
+          (item) =>
+            `<div class="record"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.priority))}</span><span class="record-cat">${escapeHtml(item.label)}</span></div><div class="record-body"><div>${escapeHtml(formatReviewRouteStatusForDisplay(item.status))}</div><div class="reason">${escapeHtml(compactCommandInText(item.summary, item.suggestedCommand))}</div><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(compactCommandInText(item.reason, item.suggestedCommand))}</div>${renderRelatedFilesLine(item.relatedFiles)}${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
+        )
+        .join("")}</div>
+    </section>`;
+}
+
+function formatTrustDeltaKind(kind: string): string {
+  return kind.replaceAll("_", " ");
+}
+
+function renderRelatedFilesLine(files: string[]): string {
+  if (files.length === 0) return "";
+  return `<div class="reason"><span class="reason-strong">Files:</span> ${escapeHtml(formatFileListForDisplay(files))}</div>`;
+}
+
 function renderReviewFocus(items: ReviewFocusItem[]): string {
   if (items.length === 0) return `<p class="empty">No changed files to review.</p>`;
-  return `<div class="records">${items
+  const visibleItems = items.slice(0, HTML_REVIEW_FOCUS_LIMIT);
+  const overflow =
+    items.length > visibleItems.length
+      ? `<p class="empty">Showing ${escapeHtml(String(visibleItems.length))} highest-signal files. See Changed Files for ${escapeHtml(String(items.length - visibleItems.length))} more.</p>`
+      : "";
+  return `<div class="records">${visibleItems
     .map(
       (item) =>
         `<div class="record" id="${escapeHtml(reviewFocusAnchorId(item.file))}"><div class="record-key"><span class="record-rank">#${escapeHtml(String(item.rank))}</span><span class="record-cat">${escapeHtml(item.category)}</span></div><div class="record-body"><code>${escapeHtml(item.file)}</code><div class="reason"><span class="reason-strong">Proof:</span> ${escapeHtml(formatProofStatusForDisplay(item.proofStatus))}</div><div class="reason"><span class="reason-strong">Why:</span> ${escapeHtml(item.reasons.join("; "))}</div><div class="reason">${escapeHtml(item.suggestedReviewerFocus)}</div>${item.suggestedCommand ? `<div class="reason">Suggested proof: ${renderSuggestedProof(item.suggestedCommand)}</div>` : ""}</div></div>`
     )
-    .join("")}</div>`;
+    .join("")}</div>${overflow}`;
 }
 
 function renderRequiredProof(contract: ProjectReviewContractEvaluation | undefined): string {
@@ -870,7 +1044,10 @@ function renderRepoCalibrationSuggestion(suggestion: ProofCalibrationSuggestion)
   return `<div class="record"><div class="record-key"><span class="record-cat">${escapeHtml(formatProofCalibrationStatusForDisplay(suggestion.status))}</span></div><div class="record-body"><div>${escapeHtml(suggestion.category)}</div><div class="reason">${escapeHtml(suggestion.message)}</div>${details}<div class="reason">Suggested proof: ${renderSuggestedProof(suggestion.suggestedCommand)}</div></div></div>`;
 }
 
-function renderReviewContract(review: ReviewIntelligence): string {
+function renderReviewContract(
+  review: ReviewIntelligence,
+  visibleReviewFocusAnchors: Set<string>
+): string {
   const contract = review.contract;
   if (!contract || contract.claims.length === 0) {
     return `<p class="empty">No review contract claims recorded.</p>`;
@@ -883,12 +1060,15 @@ function renderReviewContract(review: ReviewIntelligence): string {
   return `${reviewPath}<div class="records">${contract.claims
     .map((claim) => {
       const files = claim.files.length
-        ? `<div class="reason"><span class="reason-strong">Files:</span> ${escapeHtml(claim.files.join(", "))}</div>`
+        ? `<div class="reason"><span class="reason-strong">Files:</span> ${escapeHtml(formatFileListForDisplay(claim.files))}</div>`
         : "";
       const evidence = claim.evidence.length
         ? `<div class="reason"><span class="reason-strong">Evidence:</span> ${escapeHtml(claim.evidence.join("; "))}</div>`
         : "";
-      const proofReferences = renderProofReferences(claim.proofReferences ?? []);
+      const proofReferences = renderProofReferences(
+        claim.proofReferences ?? [],
+        visibleReviewFocusAnchors
+      );
       const command = claim.suggestedCommand
         ? `<div class="reason">Suggested proof: ${renderSuggestedProof(claim.suggestedCommand)}</div>`
         : "";
@@ -920,79 +1100,101 @@ function renderReviewPathClaimLinks(claims: ReviewContractClaim[], ids: string[]
   return `<div class="review-shortcuts">${links.join("")}</div>`;
 }
 
-function renderProofReferences(references: ReviewContractProofReference[]): string {
+function renderProofReferences(
+  references: ReviewContractProofReference[],
+  visibleReviewFocusAnchors: Set<string>
+): string {
   if (references.length === 0) return "";
-  return `<div class="reason"><span class="reason-strong">Proof refs:</span> ${references
-    .map(renderProofReference)
-    .join("; ")}</div>`;
+  const { visibleReferences, hiddenCount } =
+    selectReviewContractProofReferencesForDisplay(references);
+  const labels = visibleReferences
+    .map((reference) => renderProofReference(reference, visibleReviewFocusAnchors))
+    .concat(hiddenCount > 0 ? [`and ${escapeHtml(String(hiddenCount))} more`] : []);
+  return `<div class="reason"><span class="reason-strong">Proof refs:</span> ${labels.join("; ")}</div>`;
 }
 
-function renderProofReference(reference: ReviewContractProofReference): string {
+function renderProofReference(
+  reference: ReviewContractProofReference,
+  visibleReviewFocusAnchors: Set<string>
+): string {
   const label = formatReviewContractProofReferenceLabelForDisplay(reference);
   if (!reference.target) return escapeHtml(label);
-  return `<a href="#${escapeHtml(anchorId(reference.target))}">${escapeHtml(label)}</a>`;
+  const target = safeAnchorId(reference.target);
+  const href =
+    target.startsWith("review-focus-file-") && !visibleReviewFocusAnchors.has(target)
+      ? "changed-files"
+      : target;
+  return `<a href="#${escapeHtml(href)}">${escapeHtml(label)}</a>`;
 }
 
 function renderSuggestedProof(command: string): string {
   const full = `agentflight verify -- ${command}`;
   const display = formatVerifyCommandForDisplay(command);
-  return `<code title="${escapeHtml(full)}">${escapeHtml(display)}</code>`;
+  const details =
+    display === full
+      ? ""
+      : `<details><summary>Full command</summary><code>${escapeHtml(full)}</code></details>`;
+  return `<code title="${escapeHtml(full)}">${escapeHtml(display)}</code>${details}`;
 }
 
 function claimAnchorId(claim: ReviewContractClaim): string {
-  return `claim-${anchorId(claim.id)}`;
+  return `claim-${safeAnchorId(claim.id)}`;
 }
 
 function projectRequirementAnchorId(id: string): string {
-  return `project-requirement-${anchorId(id)}`;
+  return `project-requirement-${stableAnchorId(id)}`;
 }
 
 function reviewFocusAnchorId(file: string): string {
-  return `review-focus-file-${anchorId(file)}`;
+  return `review-focus-file-${stableAnchorId(file)}`;
 }
 
 function proofGapAnchorId(id: string): string {
-  return `proof-gap-${anchorId(id)}`;
-}
-
-function anchorId(value: string): string {
-  return value
-    .toLowerCase()
-    .replaceAll("\\", "/")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return `proof-gap-${stableAnchorId(id)}`;
 }
 
 function renderLedgerCommand(command: string): string {
   const display = formatCommandForDisplay(command);
   const title = display === command ? "" : ` title="${escapeHtml(command)}"`;
-  return `<div class="entry-cmd"${title}>${escapeHtml(display)}</div>`;
+  const details =
+    display === command
+      ? ""
+      : `<details><summary>Full command</summary><code>${escapeHtml(command)}</code></details>`;
+  return `<div class="entry-cmd"${title}>${escapeHtml(display)}</div>${details}`;
 }
 
 function renderFileGroups(groups: RiskCategorySummary[]): string {
   if (groups.length === 0) return `<p class="empty">No changed file groups detected.</p>`;
   return `<div class="records">${groups
-    .map(
-      (group) =>
-        `<div class="record"><div class="record-key"><span class="record-cat">${escapeHtml(group.category)}</span></div><div class="record-body"><div class="tags">${group.files.map((file) => `<code>${escapeHtml(file)}</code>`).join("")}</div></div></div>`
-    )
+    .map((group) => {
+      const visibleFiles = group.files.slice(0, HTML_GROUP_FILE_SAMPLE_LIMIT);
+      const overflow =
+        group.files.length > visibleFiles.length
+          ? `<div class="reason">and ${escapeHtml(String(group.files.length - visibleFiles.length))} more</div>`
+          : "";
+      return `<div class="record"><div class="record-key"><span class="record-cat">${escapeHtml(group.category)}</span></div><div class="record-body"><div class="tags">${visibleFiles.map((file) => `<code>${escapeHtml(file)}</code>`).join("")}</div>${overflow}</div></div>`;
+    })
     .join("")}</div>`;
 }
 
 function renderFileList(files: string[]): string {
   if (files.length === 0) return `<p class="empty">No changed files detected.</p>`;
+  if (files.length > HTML_CHANGED_FILE_DETAILS_LIMIT) {
+    return `<details><summary>${escapeHtml(String(files.length))} changed files</summary><ul class="files">${files.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("")}</ul></details>`;
+  }
   return `<ul class="files">${files.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("")}</ul>`;
 }
 
 function renderVerification(
   evidence: VerificationRun[],
-  summary: VerificationFailureCounts | undefined
+  summary: VerificationFailureCounts | undefined,
+  unresolvedFailedRunIndexes: Set<number>
 ): string {
   if (evidence.length === 0) return `<p class="empty">No verification evidence recorded.</p>`;
   return `<div class="ledger">${evidence
     .map((item, index) => {
       const runNumber = index + 1;
-      const display = verificationRunDisplay(item, summary);
+      const display = verificationRunDisplay(item, index, summary, unresolvedFailedRunIndexes);
       return `<div class="entry entry--${escapeHtml(display.entryClass)}" id="verification-run-${escapeHtml(String(runNumber))}">
         <div class="stamp stamp--${escapeHtml(display.stampClass)}">${escapeHtml(display.stamp)}</div>
         <div class="entry-body">
@@ -1015,9 +1217,11 @@ function renderVerification(
 
 function verificationRunDisplay(
   item: VerificationRun,
-  summary: VerificationFailureCounts | undefined
+  index: number,
+  summary: VerificationFailureCounts | undefined,
+  unresolvedFailedRunIndexes: Set<number>
 ): { entryClass: string; stampClass: string; stamp: string } {
-  if (isHistoricalFailedRun(item, summary)) {
+  if (isHistoricalFailedRun(item, index, summary, unresolvedFailedRunIndexes)) {
     return {
       entryClass: "historical-failed",
       stampClass: "historical-failed",
@@ -1034,9 +1238,30 @@ function verificationRunDisplay(
 
 function isHistoricalFailedRun(
   item: VerificationRun,
-  summary: VerificationFailureCounts | undefined
+  index: number,
+  summary: VerificationFailureCounts | undefined,
+  unresolvedFailedRunIndexes: Set<number>
 ): boolean {
-  return item.status === "failed" && Boolean(summary?.failed) && summary?.unresolvedFailed === 0;
+  if (item.status !== "failed") return false;
+  if (summary?.failed || summary === undefined) return !unresolvedFailedRunIndexes.has(index);
+  return false;
+}
+
+function getUnresolvedFailedRunIndexes(runs: VerificationRun[]): Set<number> {
+  const unresolvedRuns = new Set(getUnresolvedFailedRuns(runs));
+  const indexes = new Set<number>();
+  runs.forEach((run, index) => {
+    if (run.status === "failed" && unresolvedRuns.has(run)) indexes.add(index);
+  });
+  return indexes;
+}
+
+function firstRunIndex(indexes: Set<number>): number {
+  let first = -1;
+  indexes.forEach((index) => {
+    if (first === -1 || index < first) first = index;
+  });
+  return first;
 }
 
 function classifyReadiness(value: string): { tone: "ok" | "attention" | "blocked" | "neutral" } {

@@ -2,6 +2,71 @@ import { describe, expect, it } from "vitest";
 import { renderMarkdownReport } from "../../src/renderers/markdown-report.js";
 
 describe("markdown proof report", () => {
+  it("escapes raw HTML in Markdown text fields", () => {
+    const markdown = renderMarkdownReport({
+      task: "Render <img src=x onerror=alert(1)> safely",
+      sessionId: "af-markdown-html-escape",
+      startedAt: "2026-06-24T12:00:00.000Z",
+      changedFiles: ["docs/<guide>.md"],
+      risk: {
+        level: "low",
+        changedFiles: 1,
+        categories: [{ category: "docs", files: ["docs/<guide>.md"] }],
+        reasons: ["Documentation <tag> changed."]
+      },
+      verificationCommands: [],
+      verificationEvidence: [],
+      timelineEvents: [
+        {
+          id: "evt-1",
+          type: "snapshot_created",
+          timestamp: "2026-06-24T12:01:00.000Z",
+          title: "Snapshot <unsafe>",
+          message: "Captured <script>alert(1)</script>"
+        }
+      ],
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("Render &lt;img src=x onerror=alert(1)&gt; safely");
+    expect(markdown).toContain("- docs/&lt;guide&gt;.md");
+    expect(markdown).toContain("- Documentation &lt;tag&gt; changed.");
+    expect(markdown).toContain("Snapshot &lt;unsafe&gt;");
+    expect(markdown).not.toContain("<img src=x onerror=alert(1)>");
+    expect(markdown).not.toContain("<script>alert(1)</script>");
+  });
+
+  it("neutralizes active Markdown in report identity fields", () => {
+    const markdown = renderMarkdownReport({
+      task: "![proof](javascript:alert(1)) `task`\n# injected",
+      sessionId: "[af-session](https://example.test)",
+      startedAt: "1. started",
+      changedFiles: ["docs/[guide](javascript:alert).md"],
+      risk: {
+        level: "low",
+        changedFiles: 1,
+        categories: [{ category: "docs", files: ["docs/[guide](javascript:alert).md"] }],
+        reasons: ["![risk](javascript:alert(1))"]
+      },
+      verificationCommands: [],
+      verificationEvidence: [],
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("\\!\\[proof\\](javascript:alert(1)) \\`task\\` # injected");
+    expect(markdown).toContain("- Session ID: \\[af-session\\](https://example.test)");
+    expect(markdown).toContain("- Started: 1\\. started");
+    expect(markdown).toContain("- docs/\\[guide\\](javascript:alert).md");
+    expect(markdown).toContain("- \\!\\[risk\\](javascript:alert(1))");
+    expect(markdown).not.toContain("\n# injected");
+  });
+
   it("renders required sections without claiming missing proof passed", () => {
     const markdown = renderMarkdownReport({
       task: "Add password reset flow",
@@ -42,6 +107,72 @@ describe("markdown proof report", () => {
             relatedFiles: ["src/auth/reset.ts"]
           }
         ],
+        trustDelta: {
+          summary: "Trust changed because proof is stale or missing.",
+          items: [
+            {
+              kind: "missing_proof",
+              severity: "blocking",
+              message:
+                "Sensitive auth, payment, or security files changed without passing test evidence.",
+              suggestedCommand: "npm test",
+              relatedFiles: ["src/auth/reset.ts"],
+              relatedProofGapIds: ["missing-auth-test-proof"]
+            }
+          ]
+        },
+        reviewQueue: [
+          {
+            rank: 1,
+            action: "run_missing_proof",
+            label: "Run missing proof",
+            detail:
+              "Sensitive auth, payment, or security files changed without passing test evidence.",
+            suggestedCommand: "npm test",
+            relatedFiles: ["src/auth/reset.ts"],
+            relatedProofGapIds: ["missing-auth-test-proof"]
+          }
+        ],
+        reviewRoutes: {
+          summary: "3 reviewer routes need attention before trust.",
+          items: [
+            {
+              role: "maintainer",
+              label: "Maintainer",
+              status: "blocked",
+              priority: 1,
+              summary: "Review is blocked until the highest-priority proof issue is cleared.",
+              reason: "Trust changed because proof is stale or missing.",
+              relatedFiles: ["src/auth/reset.ts"],
+              suggestedCommand: "npm test",
+              relatedProofGapIds: ["missing-auth-test-proof"]
+            },
+            {
+              role: "verification",
+              label: "Verification",
+              status: "blocked",
+              priority: 2,
+              summary: "Proof is blocked by a failed or incomplete verification run.",
+              reason:
+                "Sensitive auth, payment, or security files changed without passing test evidence.",
+              relatedFiles: ["src/auth/reset.ts"],
+              suggestedCommand: "npm test",
+              relatedProofGapIds: ["missing-auth-test-proof"]
+            },
+            {
+              role: "security",
+              label: "Security",
+              status: "blocked",
+              priority: 3,
+              summary: "Security-sensitive paths are blocked by required proof.",
+              reason:
+                "Auth, payment, secret, database, dependency, or runtime configuration paths changed.",
+              relatedFiles: ["src/auth/reset.ts"],
+              suggestedCommand: "npm test",
+              relatedProofGapIds: ["missing-auth-test-proof"]
+            }
+          ]
+        },
         readiness: {
           state: "needs_verification",
           label: "Needs verification",
@@ -74,7 +205,7 @@ describe("markdown proof report", () => {
               status: "unsupported",
               source: "file",
               reason: "identity/session path; no passing test evidence",
-              files: ["src/auth/reset.ts"],
+              files: Array.from({ length: 10 }, (_, index) => `src/auth/file-${index}.ts`),
               evidence: ["Proof: missing", "Gap: missing-auth-test-proof"],
               proofReferences: [
                 {
@@ -110,10 +241,20 @@ describe("markdown proof report", () => {
     expect(markdown).toContain("## Verification Evidence");
     expect(markdown).toContain("No verification evidence recorded.");
     expect(markdown).toContain("## Review First");
+    expect(markdown).toContain("## Trust Delta");
+    expect(markdown).toContain("Trust changed because proof is stale or missing.");
+    expect(markdown).toContain("## Review Queue");
+    expect(markdown).toContain("Run missing proof");
+    expect(markdown).toContain("## Review Routing");
+    expect(markdown).toContain("Verification - blocked");
+    expect(markdown).toContain("Security-sensitive paths are blocked by required proof.");
     expect(markdown).toContain("## Review Contract");
     expect(markdown).toContain("Review path: Review 4 unsupported claims before sharing.");
     expect(markdown).toContain("Next action: Run agentflight verify -- npm test");
     expect(markdown).toContain("unsupported - Changed file reviewed: src/auth/reset.ts");
+    expect(markdown).toContain("Files: src/auth/file-0.ts, src/auth/file-1.ts, src/auth/file-2.ts");
+    expect(markdown).toContain("src/auth/file-7.ts and 2 more");
+    expect(markdown).not.toContain("src/auth/file-8.ts");
     expect(markdown).toContain(
       "Proof refs: Changed file: src/auth/reset.ts; Proof gap: missing-auth-test-proof; Suggested proof: npm test"
     );
@@ -132,6 +273,9 @@ describe("markdown proof report", () => {
       "## Risk Summary",
       "## Verification Evidence",
       "## Review First",
+      "## Trust Delta",
+      "## Review Queue",
+      "## Review Routing",
       "## Review Contract",
       "## Proof Gaps",
       "## Review Readiness",
@@ -470,7 +614,56 @@ describe("markdown proof report", () => {
 
     expect(markdown).toContain("Suggested proof: agentflight verify -- node -e");
     expect(markdown).toContain("…");
-    expect(markdown).not.toContain("process.exit(1)");
+    expect(markdown).toContain("## Full Suggested Commands");
+    expect(markdown).toContain("<summary>agentflight verify -- node -e");
+    expect(markdown).toContain("process.exit(1)");
+  });
+
+  it("escapes full-command summaries in raw Markdown details", () => {
+    const command = `node -e "</summary><script>alert(1)</script>; ${"console.log('noise'); ".repeat(12)}"`;
+    const markdown = renderMarkdownReport({
+      task: "Escape summary command",
+      sessionId: "af-escape-summary",
+      startedAt: "2026-06-20T12:00:00.000Z",
+      changedFiles: ["src/auth/reset.ts"],
+      risk: {
+        level: "high",
+        changedFiles: 1,
+        categories: [{ category: "auth", files: ["src/auth/reset.ts"] }],
+        reasons: ["Authentication-sensitive files changed."]
+      },
+      verificationCommands: [],
+      verificationEvidence: [],
+      timelineEvents: [],
+      review: {
+        focus: [],
+        proofGaps: [
+          {
+            id: "failed-verification",
+            severity: "blocking",
+            message: "A verification command failed.",
+            suggestedCommand: command,
+            relatedFiles: ["src/auth/reset.ts"]
+          }
+        ],
+        readiness: {
+          state: "blocked_by_failed_verification",
+          label: "Blocked by failed verification",
+          reason: "A verification command failed.",
+          nextAction: `Fix the failed command, then rerun agentflight verify -- ${command}`,
+          suggestedCommand: command,
+          proofGaps: []
+        }
+      },
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    const summaryLine = markdown.split("\n").find((line) => line.startsWith("<summary>"));
+    expect(summaryLine).toContain("&lt;/summary&gt;&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(summaryLine).not.toContain("</summary><script>alert(1)</script>");
   });
 
   it("compacts long verification evidence commands in evidence rows", () => {
@@ -513,6 +706,68 @@ describe("markdown proof report", () => {
     expect(markdown).toContain(
       ".agentflight/evidence/af-long-evidence-command/verification-1.stdout.txt"
     );
+  });
+
+  it("caps large changed-file lists in full reports", () => {
+    const markdown = renderMarkdownReport({
+      task: "Large change report",
+      sessionId: "af-large-report",
+      startedAt: "2026-06-20T12:00:00.000Z",
+      changedFiles: Array.from({ length: 85 }, (_, index) => `src/file-${index}.ts`),
+      risk: {
+        level: "medium",
+        changedFiles: 85,
+        categories: [],
+        reasons: []
+      },
+      verificationCommands: [],
+      verificationEvidence: [],
+      timelineEvents: [],
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("- src/file-79.ts");
+    expect(markdown).toContain("- 5 more changed files in replay/status JSON.");
+    expect(markdown).not.toContain("src/file-80.ts");
+  });
+
+  it("uses a Markdown fence longer than the longest backtick run in failure excerpts", () => {
+    const markdown = renderMarkdownReport({
+      task: "Backtick failure",
+      sessionId: "af-backticks",
+      startedAt: "2026-06-24T12:00:00.000Z",
+      changedFiles: ["src/core/output.ts"],
+      risk: {
+        level: "medium",
+        changedFiles: 1,
+        categories: [{ category: "source", files: ["src/core/output.ts"] }],
+        reasons: ["Application source files changed."]
+      },
+      verificationCommands: [],
+      verificationEvidence: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-24T12:01:00.000Z",
+          finishedAt: "2026-06-24T12:01:05.000Z",
+          durationMs: 5000,
+          exitCode: 1,
+          status: "failed",
+          stdoutPath: ".agentflight/evidence/af-backticks/stdout.txt",
+          stderrPath: ".agentflight/evidence/af-backticks/stderr.txt",
+          outputExcerpt: "````\n## fake heading\n````"
+        }
+      ],
+      timelineEvents: [],
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("`````text\n````\n## fake heading\n````\n`````");
   });
 
   it("keeps AgentLoopKit tooling diagnostics concise when doctor output is noisy", () => {
@@ -650,6 +905,66 @@ describe("markdown proof report", () => {
     expect(markdown).toContain(".agentflight/evidence/af-compact/verification-1.stderr.txt");
     expect(markdown).not.toContain("## Timeline");
     expect(markdown).not.toContain("## Tooling");
+  });
+
+  it("renders local review receipt state in Markdown reports", () => {
+    const markdown = renderMarkdownReport({
+      task: "Receipt report",
+      sessionId: "af-receipt-report",
+      startedAt: "2026-06-17T12:00:00.000Z",
+      changedFiles: ["README.md"],
+      risk: {
+        level: "low",
+        changedFiles: 1,
+        categories: [{ category: "docs", files: ["README.md"] }],
+        reasons: ["Only low-risk docs, tests, or isolated UI files changed."]
+      },
+      verificationCommands: [],
+      verificationEvidence: [],
+      timelineEvents: [],
+      review: {
+        focus: [],
+        proofGaps: [],
+        reviewReceipt: {
+          state: "current",
+          label: "Review receipt current",
+          summary: "Accepted handoff still matches the current changed-file state.",
+          nextAction: "Keep the receipt with the local handoff.",
+          staleFiles: [],
+          receipt: {
+            id: "receipt-20260617-121000-accepted-001",
+            decision: "accepted",
+            recordedAt: "2026-06-17T12:10:00.000Z",
+            summary: "Accepted local handoff.",
+            snapshot: {
+              branch: "main",
+              gitCommit: "abc123",
+              changedFiles: ["README.md"],
+              readinessState: "ready_for_review",
+              verificationPassed: 0,
+              verificationFailed: 0,
+              artifactPath: ".agentflight/reports/af-receipt-report-handoff.md"
+            }
+          }
+        },
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Verification evidence matches the observed review risk.",
+          nextAction: "Run agentflight handoff to generate the local review packet.",
+          proofGaps: []
+        }
+      },
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("## Review Receipt");
+    expect(markdown).toContain("Review receipt current");
+    expect(markdown).toContain("- Accepted local handoff.");
+    expect(markdown).toContain("- Next: Keep the receipt with the local handoff.");
   });
 
   it("renders a local PR comment draft without posting-oriented claims", () => {

@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-24-17-03-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-24-17-03",
+  "createdAtEpochMs": 1782313432055,
+  "task": {
+    "path": ".agentloop/tasks/2026-06-24-add-trust-delta-review-guidance.md",
+    "title": "Add Trust Delta review guidance",
+    "status": "in-progress"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-24-17-00-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-24-17-03-pr-summary.md",
+  "changedFileCount": 23
+}

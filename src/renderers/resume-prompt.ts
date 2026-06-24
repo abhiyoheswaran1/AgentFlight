@@ -1,5 +1,10 @@
 import {
   compactCommandInText,
+  collectSuggestedCommandsForDisplay,
+  escapeMarkdownBlockForDisplay,
+  escapeMarkdownTextForDisplay,
+  escapeHtmlForDisplay,
+  formatCommandForDisplay,
   formatProjectRequirementDetailsForDisplay,
   formatProjectRequirementStatusForDisplay,
   formatProofCalibrationDetailsForDisplay,
@@ -7,9 +12,13 @@ import {
   formatProofCalibrationSummaryForDisplay,
   formatProofFreshnessAttributionForDisplay,
   formatProofStatusForDisplay,
+  formatReviewReceiptForDisplay,
+  formatReviewQueueForDisplay,
+  formatReviewRoutesForDisplay,
   formatReviewContractProofReferencesForDisplay,
   formatReviewContractReviewPathForDisplay,
   formatReviewContractStatusForDisplay,
+  formatTrustDeltaForDisplay,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
 import type {
@@ -21,8 +30,12 @@ import type {
   ProjectReviewRequirementStatus,
   ReviewContract,
   ReviewFocusItem,
+  ReviewReceiptEvaluation,
+  ReviewQueueItem,
+  ReviewRoutes,
   ReviewReadinessDecision,
-  RiskLevel
+  RiskLevel,
+  TrustDelta
 } from "../types/index.js";
 
 export interface ResumePromptInput {
@@ -34,8 +47,13 @@ export interface ResumePromptInput {
   riskReasons: string[];
   verificationGaps: string[];
   reviewFocus?: ReviewFocusItem[] | undefined;
+  reviewFocusTotal?: number | undefined;
   projectReviewContract?: ProjectReviewContractEvaluation | undefined;
   calibration?: ProofCalibration | undefined;
+  reviewReceipt?: ReviewReceiptEvaluation | undefined;
+  trustDelta?: TrustDelta | undefined;
+  reviewQueue?: ReviewQueueItem[] | undefined;
+  reviewRoutes?: ReviewRoutes | undefined;
   proofFreshness?: ProofFreshnessAttribution | undefined;
   reviewContract?: ReviewContract | undefined;
   proofGaps?: ProofGap[] | undefined;
@@ -53,27 +71,41 @@ export function renderResumePrompt(input: ResumePromptInput): string {
   return `Continue this AgentFlight-recorded coding session safely.
 
 ## Task
-${input.task}
+${escapeMarkdownTextForDisplay(input.task)}
 
 ## Current State
-- Session: ${input.sessionId}
-- Git branch: ${input.branch ?? "unknown"}
+- Session: ${escapeMarkdownTextForDisplay(input.sessionId)}
+- Git branch: ${escapeMarkdownTextForDisplay(input.branch ?? "unknown")}
 - Risk level: ${input.riskLevel}
 
 ## Changed Files
-${renderList(input.changedFiles, "No changed files detected.")}
+${renderChangedFileList(input.changedFiles)}
 
 ## Risks
 ${renderList(input.riskReasons, "No specific risks detected yet.")}
 
 ## Latest Snapshot
-${input.latestSnapshotNote ?? "No snapshot recorded."}
+${escapeMarkdownTextForDisplay(input.latestSnapshotNote ?? "No snapshot recorded.")}
 
 ## Verification State
 ${renderVerificationState(input)}
 
 ## Review Focus
-${renderReviewFocus(input.reviewFocus ?? [])}
+${renderReviewFocus(input.reviewFocus ?? [], input.reviewFocusTotal)}
+
+## Trust Delta
+${renderTrustDelta(input.trustDelta)}
+
+## Review Queue
+${renderReviewQueue(input.reviewQueue)}
+
+## Review Routing
+${renderReviewRouting(input.reviewRoutes)}
+
+${renderFullSuggestedCommands(input)}
+
+## Review Receipt
+${renderReviewReceipt(input.reviewReceipt)}
 
 ## Required Proof
 ${renderRequiredProof(input.projectReviewContract)}
@@ -101,17 +133,32 @@ ${renderConstraints(input.readiness)}
 }
 
 function renderList(items: string[], empty: string): string {
-  return items.length ? items.map((item) => `- ${item}`).join("\n") : empty;
+  return items.length
+    ? items.map((item) => `- ${escapeMarkdownTextForDisplay(item)}`).join("\n")
+    : empty;
 }
 
-function renderReviewFocus(items: ReviewFocusItem[]): string {
+function renderChangedFileList(files: string[]): string {
+  if (files.length === 0) return "No changed files detected.";
+  const visibleFiles = files.slice(0, 80);
+  const rows = visibleFiles.map((file) => `- ${escapeMarkdownTextForDisplay(file)}`);
+  const remaining = files.length - visibleFiles.length;
+  if (remaining > 0) rows.push(`- ${remaining} more changed files in replay/status JSON.`);
+  return rows.join("\n");
+}
+
+function renderReviewFocus(items: ReviewFocusItem[], total = items.length): string {
   if (items.length === 0) return "No review focus recorded.";
-  return items
+  const rows = items
     .map(
       (item) =>
-        `${item.rank}. ${item.file}\n   - Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   - Why: ${item.reasons.join("; ")}\n   - Focus: ${item.suggestedReviewerFocus}${item.suggestedCommand ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}` : ""}`
+        `${item.rank}. ${escapeMarkdownTextForDisplay(item.file)}\n   - Proof: ${md(formatProofStatusForDisplay(item.proofStatus))}\n   - Why: ${escapeMarkdownTextForDisplay(item.reasons.join("; "))}\n   - Focus: ${escapeMarkdownTextForDisplay(item.suggestedReviewerFocus)}${item.suggestedCommand ? `\n   - Suggested proof: ${md(formatVerifyCommandForDisplay(item.suggestedCommand))}` : ""}`
     )
     .join("\n");
+  const remaining = Math.max(0, total - items.length);
+  return remaining > 0
+    ? `${rows}\n- ${remaining} more review focus ${remaining === 1 ? "file" : "files"} in report/replay.`
+    : rows;
 }
 
 function renderRequiredProof(contract: ProjectReviewContractEvaluation | undefined): string {
@@ -125,33 +172,94 @@ function renderRequiredProof(contract: ProjectReviewContractEvaluation | undefin
 
 function renderProjectRequirement(requirement: ProjectReviewRequirementStatus): string {
   const details = formatProjectRequirementDetailsForDisplay(requirement)
-    .map((line) => `\n   - ${line}`)
+    .map((line) => `\n   - ${md(line)}`)
     .join("");
-  return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
+  return `- ${md(formatProjectRequirementStatusForDisplay(requirement.status))} - ${md(requirement.label)}${details}`;
 }
 
 function renderRepoCalibration(calibration: ProofCalibration | undefined): string {
   if (!calibration) return "No repo calibration history loaded.";
   if (calibration.suggestions.length === 0) {
-    return formatProofCalibrationSummaryForDisplay(calibration);
+    return md(formatProofCalibrationSummaryForDisplay(calibration));
   }
   return [
-    formatProofCalibrationSummaryForDisplay(calibration),
+    md(formatProofCalibrationSummaryForDisplay(calibration)),
     ...calibration.suggestions.map(renderRepoCalibrationSuggestion)
   ].join("\n");
 }
 
 function renderRepoCalibrationSuggestion(suggestion: ProofCalibrationSuggestion): string {
   const details = formatProofCalibrationDetailsForDisplay(suggestion)
-    .map((line) => `\n   - ${line}`)
+    .map((line) => `\n   - ${md(line)}`)
     .join("");
-  return `- ${formatProofCalibrationStatusForDisplay(suggestion.status)} - ${suggestion.category}${details}`;
+  return `- ${md(formatProofCalibrationStatusForDisplay(suggestion.status))} - ${md(suggestion.category)}${details}`;
 }
 
 function renderProofFreshnessSection(freshness: ProofFreshnessAttribution | undefined): string {
   const lines = formatProofFreshnessAttributionForDisplay(freshness);
   if (lines.length === 0) return "";
-  return `## Proof Freshness\n${lines.map((line) => `- ${line}`).join("\n")}\n`;
+  return `## Proof Freshness\n${lines.map((line) => `- ${md(line)}`).join("\n")}\n`;
+}
+
+function renderTrustDelta(delta: TrustDelta | undefined): string {
+  return md(formatTrustDeltaForDisplay(delta));
+}
+
+function renderReviewQueue(queue: ReviewQueueItem[] | undefined): string {
+  return md(formatReviewQueueForDisplay(queue));
+}
+
+function renderReviewRouting(routes: ReviewRoutes | undefined): string {
+  return md(formatReviewRoutesForDisplay(routes));
+}
+
+function renderFullSuggestedCommands(input: ResumePromptInput): string {
+  const commands = collectCompactSuggestedCommands(input);
+  if (commands.length === 0) return "";
+  return `## Full Suggested Commands\n${commands.map(renderFullSuggestedCommand).join("\n")}\n`;
+}
+
+function collectCompactSuggestedCommands(input: ResumePromptInput): string[] {
+  return [
+    ...new Set(
+      collectSuggestedCommandsForDisplay({
+        proofGaps: input.proofGaps,
+        trustDelta: input.trustDelta,
+        reviewQueue: input.reviewQueue,
+        reviewRoutes: input.reviewRoutes,
+        focus: input.reviewFocus,
+        projectReviewContract: input.projectReviewContract,
+        calibration: input.calibration,
+        contract: input.reviewContract,
+        readiness: input.readiness
+      })
+    )
+  ].filter(isCompactCommand);
+}
+
+function isCompactCommand(command: string): boolean {
+  return formatCommandForDisplay(command) !== command.trim().replace(/\s+/g, " ");
+}
+
+function renderFullSuggestedCommand(command: string): string {
+  return `<details>
+<summary>${escapeHtmlForDisplay(formatVerifyCommandForDisplay(command))}</summary>
+
+${renderCommandFence(`agentflight verify -- ${command}`)}
+</details>`;
+}
+
+function renderCommandFence(command: string): string {
+  const longestBacktickRun = Math.max(
+    2,
+    ...Array.from(command.matchAll(/`+/g), (match) => match[0].length)
+  );
+  const fence = "`".repeat(longestBacktickRun + 1);
+  return `${fence}bash\n${command}\n${fence}`;
+}
+
+function renderReviewReceipt(receipt: ReviewReceiptEvaluation | undefined): string {
+  return md(formatReviewReceiptForDisplay(receipt));
 }
 
 function renderReviewContract(
@@ -159,25 +267,27 @@ function renderReviewContract(
   suppressReviewPathNextAction = false
 ): string {
   if (!contract || contract.claims.length === 0) return "No review contract claims recorded.";
-  const reviewPath = formatReviewContractReviewPathForDisplay(contract, {
-    includeNextAction: !suppressReviewPathNextAction
-  });
+  const reviewPath = md(
+    formatReviewContractReviewPathForDisplay(contract, {
+      includeNextAction: !suppressReviewPathNextAction
+    })
+  );
   const claims = contract.claims
     .map((claim) => {
-      const proofReferences = formatReviewContractProofReferencesForDisplay(claim);
+      const proofReferences = md(formatReviewContractProofReferencesForDisplay(claim));
       const proofReferenceLine = proofReferences ? `\n   - ${proofReferences}` : "";
       const command = claim.suggestedCommand
-        ? `\n   - Suggested proof: ${formatVerifyCommandForDisplay(claim.suggestedCommand)}`
+        ? `\n   - Suggested proof: ${md(formatVerifyCommandForDisplay(claim.suggestedCommand))}`
         : "";
-      return `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}${proofReferenceLine}${command}`;
+      return `- ${md(formatReviewContractStatusForDisplay(claim.status))} - ${escapeMarkdownTextForDisplay(claim.text)}${proofReferenceLine}${command}`;
     })
     .join("\n");
   return [reviewPath, claims].filter(Boolean).join("\n\n");
 }
 
 function renderVerificationState(input: ResumePromptInput): string {
-  const state = input.verificationState ?? "No verification state recorded.";
-  return input.verificationContext ? `${state}\n${input.verificationContext}` : state;
+  const state = md(input.verificationState ?? "No verification state recorded.");
+  return input.verificationContext ? `${state}\n${md(input.verificationContext)}` : state;
 }
 
 function renderProofGaps(input: ResumePromptInput): string {
@@ -186,7 +296,7 @@ function renderProofGaps(input: ResumePromptInput): string {
       ? input.proofGaps
           .map(
             (gap) =>
-              `- ${gap.severity}: ${compactCommandInText(gap.message, gap.suggestedCommand)}${gap.suggestedCommand ? `\n  Suggested proof: ${formatVerifyCommandForDisplay(gap.suggestedCommand)}` : ""}`
+              `- ${md(gap.severity)}: ${md(compactCommandInText(gap.message, gap.suggestedCommand))}${gap.suggestedCommand ? `\n  Suggested proof: ${md(formatVerifyCommandForDisplay(gap.suggestedCommand))}` : ""}`
           )
           .join("\n")
       : "No proof gaps recorded.";
@@ -201,21 +311,21 @@ function renderReadiness(
 ): string {
   if (!readiness) return "No review readiness recorded.";
   const command = readiness.suggestedCommand;
-  const openFirst = openFirstArtifact ? `- Open first: ${openFirstArtifact}\n` : "";
+  const openFirst = openFirstArtifact ? `- Open first: ${md(openFirstArtifact)}\n` : "";
   const nextAction = formatResumeNextAction(readiness.nextAction, readiness, openFirstArtifact);
-  return `${readiness.label}
-- Reason: ${compactCommandInText(readiness.reason, command)}
-${openFirst}- Next action: ${compactCommandInText(nextAction, command)}`;
+  return `${md(readiness.label)}
+- Reason: ${md(compactCommandInText(readiness.reason, command))}
+${openFirst}- Next action: ${md(compactCommandInText(nextAction, command))}`;
 }
 
 function renderNextRecommendedAction(
   nextAction: string,
   openFirstArtifact: string | undefined
 ): string {
-  if (!openFirstArtifact) return nextAction;
-  if (nextAction === readyHandoffNextAction) return `Open first: ${openFirstArtifact}`;
-  return `Open first: ${openFirstArtifact}
-${nextAction}`;
+  if (!openFirstArtifact) return md(nextAction);
+  if (nextAction === readyHandoffNextAction) return `Open first: ${md(openFirstArtifact)}`;
+  return `Open first: ${md(openFirstArtifact)}
+${md(nextAction)}`;
 }
 
 function formatResumeNextAction(
@@ -252,4 +362,8 @@ function renderConstraints(readiness: ReviewReadinessDecision | undefined): stri
     "- Run relevant verification before declaring success.",
     "- Keep changes scoped."
   ].join("\n");
+}
+
+function md(value: string): string {
+  return escapeMarkdownBlockForDisplay(value);
 }

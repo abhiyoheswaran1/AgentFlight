@@ -1,5 +1,6 @@
 import { pathExists } from "./fs-safe.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "./paths.js";
+import { assertSafeSessionId } from "./session-id.js";
 import type { ReviewReadinessState } from "../types/index.js";
 
 export interface ReviewArtifacts {
@@ -15,6 +16,7 @@ export async function readReviewArtifacts(
   repoRoot: string,
   sessionId: string
 ): Promise<ReviewArtifacts> {
+  assertSafeSessionId(sessionId);
   return {
     handoff: await formatArtifactPath(repoRoot, sessionId, "handoff.md"),
     report: await formatArtifactPath(repoRoot, sessionId, "proof.md"),

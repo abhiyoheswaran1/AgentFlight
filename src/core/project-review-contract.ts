@@ -1,4 +1,5 @@
 import type {
+  ProofSnapshot,
   ProjectReviewContractConfig,
   ProjectReviewContractEvaluation,
   ProjectReviewMatchedCategory,
@@ -13,6 +14,8 @@ import type {
   VerificationProofKind,
   VerificationRun
 } from "../types/index.js";
+import { classifyVerificationProofKind } from "./proof-kind.js";
+import { compareProofSnapshotToCurrent } from "./proof-snapshot.js";
 
 export interface EvaluateProjectReviewContractOptions {
   contract: ProjectReviewContractConfig;
@@ -25,7 +28,12 @@ export interface EvaluateProjectReviewContractOptions {
   verificationRuns: VerificationRun[];
   proofFreshness: {
     state: "current" | "stale" | "legacy" | "unavailable" | "none";
+    staleCategories?: Array<{
+      files: string[];
+      proofRequired: boolean;
+    }>;
   };
+  currentProofSnapshot?: ProofSnapshot | undefined;
   unresolvedFailedRuns: VerificationRun[];
   filesByCategory: Map<RiskCategory, string[]>;
 }
@@ -166,14 +174,16 @@ export function projectRequirementProofGaps(
 ): ProofGap[] {
   if (!evaluation.enabled) return [];
   return evaluation.requirements
-    .filter((requirement) => requirement.status === "missing")
+    .filter((requirement) => requirement.status === "missing" || requirement.status === "stale")
     .map((requirement) => {
+      const stale = requirement.status === "stale";
       const gap: ProofGap = {
-        id: requirement.id,
+        id: stale ? "stale-verification-proof" : requirement.id,
         severity: requirement.severity,
-        message:
-          requirement.message ??
-          `${requirement.label} requires passing ${formatProofKinds(requirement.requiredProof)} proof.`,
+        message: stale
+          ? (requirement.proofReason ?? `${requirement.label} has stale proof.`)
+          : (requirement.message ??
+            `${requirement.label} requires passing ${formatProofKinds(requirement.requiredProof)} proof.`),
         relatedFiles: requirement.relatedFiles
       };
       if (requirement.suggestedCommand) gap.suggestedCommand = requirement.suggestedCommand;
@@ -190,11 +200,14 @@ function evaluateRule(
 
   const requiredProof = normalizedProofKinds(rule.requiredProof ?? []);
   const manualReview = normalizedStrings(rule.manualReview ?? []);
-  const proofStatus = determineRequirementProofStatus(requiredProof, options);
+  const satisfiedProofRun = bestPassedProofForRequirement(requiredProof, relatedFiles, options);
+  const proofStatus = determineRequirementProofStatus(requiredProof, options, satisfiedProofRun);
   const status = determineRequirementStatus(proofStatus, manualReview);
   const matchedCategories = matchedCategoriesForRule(rule, options.filesByCategory);
   const suggestedCommand = suggestedCommandForRequirement(proofStatus, requiredProof, options);
-  const satisfiedProof = satisfiedProofForRequirement(requiredProof, options.verificationRuns);
+  const satisfiedProof = satisfiedProofRun
+    ? buildSatisfiedProof(satisfiedProofRun.kind, satisfiedProofRun.run)
+    : undefined;
 
   return buildRequirementStatus({
     rule,
@@ -293,13 +306,13 @@ function matchedCategoriesForRule(
 
 function determineRequirementProofStatus(
   requiredProof: VerificationProofKind[],
-  options: EvaluateProjectReviewContractOptions
+  options: EvaluateProjectReviewContractOptions,
+  satisfiedRun: PassedRequirementProof | undefined
 ): ReviewProofStatus {
   if (requiredProof.length === 0) return "not_required";
+  if (satisfiedRun && satisfiedRun.proofStatus !== "stale") return satisfiedRun.proofStatus;
   if (findFailedCommand(options.unresolvedFailedRuns, requiredProof)) return "failed";
-  if (!requiredProof.some((kind) => options.proofKinds.passed.has(kind))) return "missing";
-  if (options.proofFreshness.state === "stale") return "stale";
-  return options.proofFreshness.state === "current" ? "current" : "covered";
+  return satisfiedRun?.proofStatus ?? "missing";
 }
 
 function determineRequirementStatus(
@@ -362,7 +375,9 @@ function findSuggestedCommand(
   proofKinds: VerificationProofKind[]
 ): string | undefined {
   for (const proofKind of proofKinds) {
-    const command = commands.find((candidate) => classifyCommandProofKind(candidate) === proofKind);
+    const command = commands.find(
+      (candidate) => classifyVerificationProofKind(candidate) === proofKind
+    );
     if (command) return command;
   }
   return undefined;
@@ -372,30 +387,85 @@ function findFailedCommand(
   runs: VerificationRun[],
   proofKinds: VerificationProofKind[]
 ): string | undefined {
-  return runs.find((run) => proofKinds.includes(classifyCommandProofKind(run.command)))?.command;
+  return runs.find((run) => proofKinds.includes(classifyVerificationProofKind(run.command)))
+    ?.command;
 }
 
-function satisfiedProofForRequirement(
+interface PassedRequirementProof {
+  kind: VerificationProofKind;
+  run: VerificationRun;
+  proofStatus: Extract<ReviewProofStatus, "current" | "stale" | "covered">;
+}
+
+function bestPassedProofForRequirement(
   proofKinds: VerificationProofKind[],
-  runs: VerificationRun[]
-): ProjectReviewSatisfiedProof | undefined {
-  for (const proofKind of proofKinds) {
-    const run = [...runs]
-      .reverse()
-      .find(
-        (candidate) =>
-          candidate.status === "passed" && classifyCommandProofKind(candidate.command) === proofKind
-      );
-    if (run) {
-      const satisfiedProof: ProjectReviewSatisfiedProof = {
-        kind: proofKind,
-        command: run.command
-      };
-      if (run.finishedAt) satisfiedProof.finishedAt = run.finishedAt;
-      return satisfiedProof;
+  relatedFiles: string[],
+  options: EvaluateProjectReviewContractOptions
+): PassedRequirementProof | undefined {
+  let best: (PassedRequirementProof & { index: number }) | undefined;
+
+  options.verificationRuns.forEach((run, index) => {
+    if (run.status !== "passed") return;
+
+    const kind = classifyVerificationProofKind(run.command);
+    if (!proofKinds.includes(kind)) return;
+
+    const proofStatus = proofFreshnessForRequirementRun(run, relatedFiles, options);
+    if (
+      !best ||
+      proofStatusRank(proofStatus) > proofStatusRank(best.proofStatus) ||
+      (proofStatusRank(proofStatus) === proofStatusRank(best.proofStatus) && index > best.index)
+    ) {
+      best = { kind, run, proofStatus, index };
     }
+  });
+
+  if (!best) return undefined;
+  return {
+    kind: best.kind,
+    run: best.run,
+    proofStatus: best.proofStatus
+  };
+}
+
+function proofStatusRank(
+  proofStatus: Extract<ReviewProofStatus, "current" | "stale" | "covered">
+): number {
+  switch (proofStatus) {
+    case "current":
+      return 3;
+    case "covered":
+      return 2;
+    case "stale":
+      return 1;
   }
-  return undefined;
+}
+
+function buildSatisfiedProof(
+  kind: VerificationProofKind,
+  run: VerificationRun
+): ProjectReviewSatisfiedProof {
+  const satisfiedProof: ProjectReviewSatisfiedProof = {
+    kind,
+    command: run.command
+  };
+  if (run.finishedAt) satisfiedProof.finishedAt = run.finishedAt;
+  return satisfiedProof;
+}
+
+function proofFreshnessForRequirementRun(
+  run: VerificationRun,
+  relatedFiles: string[],
+  options: Pick<EvaluateProjectReviewContractOptions, "currentProofSnapshot">
+): "current" | "stale" | "covered" {
+  if (!run.proofSnapshot) return "covered";
+  if (run.proofSnapshot.source !== "git_status" || !options.currentProofSnapshot) return "covered";
+
+  const comparison = compareProofSnapshotToCurrent(run.proofSnapshot, options.currentProofSnapshot);
+  if (comparison.current) return "current";
+
+  const staleFiles = new Set(comparison.staleFiles);
+  return relatedFiles.some((file) => staleFiles.has(file)) ? "stale" : "current";
 }
 
 function formatMatchReason(matches: ProjectReviewMatchedCategory[]): string {
@@ -458,18 +528,6 @@ function remainingReviewForRequirement(input: {
   }
   remaining.push(...input.manualReview);
   return remaining;
-}
-
-function classifyCommandProofKind(command: string): VerificationProofKind {
-  const normalized = command.toLowerCase();
-
-  if (/\b(npm|pnpm|yarn|bun)\s+(ci|install)\b/.test(normalized)) return "install";
-  if (/\b(vitest|jest|mocha|playwright|cypress|test|verify)\b/.test(normalized)) return "test";
-  if (/\bbuild\b/.test(normalized)) return "build";
-  if (/\b(typecheck|tsc)\b/.test(normalized)) return "typecheck";
-  if (/\b(lint|eslint)\b/.test(normalized)) return "lint";
-
-  return "unknown";
 }
 
 function normalizedProofKinds(kinds: VerificationProofKind[]): VerificationProofKind[] {

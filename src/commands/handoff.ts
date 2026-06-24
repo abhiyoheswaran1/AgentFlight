@@ -1,6 +1,14 @@
-import { pathExists, writeTextFileSafe } from "../core/fs-safe.js";
+import { copyFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import { ensureDir, pathExists, writeTextFileSafe } from "../core/fs-safe.js";
 import {
   compactCommandInText,
+  collectSuggestedCommandsForDisplay,
+  escapeMarkdownBlockForDisplay,
+  escapeMarkdownTextForDisplay,
+  formatFullSuggestedCommandsForDisplay,
+  formatMarkdownCodeFenceForDisplay,
+  formatReviewReceiptForDisplay,
   formatProofCalibrationDetailsForDisplay,
   formatProofCalibrationStatusForDisplay,
   formatProofCalibrationSummaryForDisplay,
@@ -10,19 +18,40 @@ import {
   formatProjectReviewDecisionForDisplay,
   formatProjectReviewDecisionReasonsForDisplay,
   formatProofStatusForDisplay,
+  formatReviewQueueForDisplay,
+  formatReviewRoutesForDisplay,
   formatReviewContractStatusForDisplay,
-  formatVerificationCountLine
+  formatTrustDeltaForDisplay,
+  formatVerificationCountLine,
+  formatVerifyCommandForDisplay
 } from "../core/output.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
+import { buildProofSnapshot } from "../core/proof-snapshot.js";
+import { appendReviewReceipt } from "../core/session.js";
+import { assertSafeSessionId } from "../core/session-id.js";
+import { normalizeCommandString } from "../core/verification-runs.js";
 import { runReplayCommand } from "./replay.js";
 import { runReportCommand } from "./report.js";
 import { runResumeCommand } from "./resume.js";
-import { runStatusCommand } from "./status.js";
+import { readCurrentSession, runStatusCommand } from "./status.js";
+import type {
+  ProofSnapshot,
+  ReviewReceiptDecision,
+  ReviewReceiptEvaluation,
+  ReviewReadinessState,
+  ReviewQueueAction,
+  ReviewQueueItem,
+  ReviewRoutes,
+  TrustDelta,
+  TrustDeltaItem,
+  TrustDeltaItemKind
+} from "../types/index.js";
 
 export interface HandoffCommandOptions {
   repoRoot: string;
   changedFiles?: string[] | undefined;
   now?: Date | undefined;
+  accept?: boolean | undefined;
 }
 
 export interface HandoffCommandResult {
@@ -39,6 +68,7 @@ export interface HandoffCommandResult {
 interface HandoffStatus {
   taskTitle: string;
   sessionId: string;
+  changedFiles: string[];
   riskLevel: string;
   changedFileCount: number;
   verification: {
@@ -53,6 +83,10 @@ interface HandoffStatus {
     projectReviewContract: HandoffProjectReviewContract;
     calibration?: HandoffProofCalibration | undefined;
     proofFreshness?: HandoffProofFreshness | undefined;
+    reviewReceipt: HandoffReviewReceipt;
+    trustDelta: HandoffTrustDelta;
+    reviewQueue: HandoffReviewQueueItem[];
+    reviewRoutes: HandoffReviewRoutes;
     contract: HandoffContract;
     proofGaps: HandoffProofGap[];
     readiness: HandoffReadiness;
@@ -62,6 +96,7 @@ interface HandoffStatus {
 }
 
 interface HandoffVerificationRun {
+  command: string;
   status: string;
   outputExcerpt?: string;
 }
@@ -72,12 +107,14 @@ interface HandoffFocusItem {
   proofStatus: Parameters<typeof formatProofStatusForDisplay>[0];
   reasons: string[];
   suggestedReviewerFocus: string;
+  suggestedCommand?: string;
 }
 
 interface HandoffProofGap {
   id: string;
   severity: string;
   message: string;
+  relatedFiles: string[];
   suggestedCommand?: string;
 }
 
@@ -147,6 +184,24 @@ interface HandoffProofFreshnessCategory {
   proofRequired: boolean;
 }
 
+type HandoffTrustDelta = TrustDelta;
+type HandoffTrustDeltaItem = TrustDeltaItem;
+type HandoffReviewQueueItem = ReviewQueueItem;
+type HandoffReviewRoutes = ReviewRoutes;
+type HandoffReviewReceipt = ReviewReceiptEvaluation;
+
+const trustDeltaKinds = new Set<TrustDeltaItemKind>([
+  "failed_proof",
+  "stale_proof",
+  "stale_receipt",
+  "review_receipt",
+  "missing_proof",
+  "manual_review",
+  "repo_calibration",
+  "ready",
+  "clean"
+]);
+
 interface HandoffContract {
   reviewPath?: {
     summary: string;
@@ -163,7 +218,7 @@ interface HandoffContractClaim {
 }
 
 interface HandoffReadiness {
-  state: string;
+  state: ReviewReadinessState;
   label: string;
   reason: string;
   nextAction: string;
@@ -182,10 +237,23 @@ interface HandoffArtifactPaths {
 export async function runHandoffCommand(
   options: HandoffCommandOptions
 ): Promise<HandoffCommandResult> {
-  const status = await readHandoffStatus(options);
   const paths = resolveAgentFlightPaths(options.repoRoot);
+  let status = await readHandoffStatus(options);
   const artifactPaths = buildHandoffArtifactPaths(paths, status.sessionId);
-  const preserveExistingArtifacts = await shouldPreserveExistingArtifacts(status, artifactPaths);
+  let acceptNotice = "";
+  let acceptedReceiptRecorded = false;
+  if (options.accept) {
+    if (canRecordAcceptedReceipt(status.review.readiness)) {
+      await recordAcceptedReviewReceipt(options, status, artifactPaths);
+      acceptedReceiptRecorded = true;
+      status = await readHandoffStatus(options);
+    } else {
+      acceptNotice = formatAcceptReceiptNotRecorded(status.review.readiness);
+    }
+  }
+  const preserveExistingArtifacts = acceptedReceiptRecorded
+    ? false
+    : await shouldPreserveExistingArtifacts(status, artifactPaths);
   const artifacts = preserveExistingArtifacts
     ? artifactPaths
     : await generateReviewArtifacts(options, artifactPaths);
@@ -196,11 +264,14 @@ export async function runHandoffCommand(
     reportPath: formatRepoRelativePath(options.repoRoot, artifacts.reportPath),
     replayPath: formatRepoRelativePath(options.repoRoot, artifacts.replayPath),
     resumePath: formatRepoRelativePath(options.repoRoot, artifacts.sessionResumePath),
-    currentResumePath: formatRepoRelativePath(options.repoRoot, artifacts.resumePath)
+    currentResumePath: formatRepoRelativePath(options.repoRoot, artifacts.resumePath),
+    acceptNotice
   });
   await writeTextFileSafe(artifactPaths.handoffPath, output, { overwrite: true });
   if (!preserveExistingArtifacts) {
     await writeTextFileSafe(artifactPaths.sessionHandoffPath, output, { overwrite: true });
+  } else {
+    await restoreCurrentResumePrompt(artifactPaths);
   }
 
   return {
@@ -219,6 +290,7 @@ function buildHandoffArtifactPaths(
   paths: ReturnType<typeof resolveAgentFlightPaths>,
   sessionId: string
 ): HandoffArtifactPaths {
+  assertSafeSessionId(sessionId);
   return {
     handoffPath: paths.currentHandoff,
     sessionHandoffPath: `${paths.reports}/${sessionId}-handoff.md`,
@@ -239,10 +311,15 @@ async function shouldPreserveExistingArtifacts(
     pathExists(paths.sessionHandoffPath),
     pathExists(paths.reportPath),
     pathExists(paths.replayPath),
-    pathExists(paths.resumePath),
     pathExists(paths.sessionResumePath)
   ]);
   return checks.every(Boolean);
+}
+
+async function restoreCurrentResumePrompt(paths: HandoffArtifactPaths): Promise<void> {
+  if (await pathExists(paths.resumePath)) return;
+  await ensureDir(dirname(paths.resumePath));
+  await copyFile(paths.sessionResumePath, paths.resumePath);
 }
 
 async function generateReviewArtifacts(
@@ -293,6 +370,7 @@ function renderHandoff(input: {
   replayPath: string;
   resumePath: string;
   currentResumePath: string;
+  acceptNotice?: string | undefined;
 }): string {
   const readiness = input.status.review.readiness;
   const ready = isReadyForSharing(readiness);
@@ -301,23 +379,40 @@ function renderHandoff(input: {
   return `AgentFlight handoff
 
 Task:
-${input.status.taskTitle}
+${escapeMarkdownTextForDisplay(input.status.taskTitle)}
 
 Session:
-${input.status.sessionId}
+${escapeMarkdownTextForDisplay(input.status.sessionId)}
 
 Changed files: ${input.status.changedFileCount}
 Risk: ${input.status.riskLevel}
 
 Decision:
-${formatProjectReviewDecisionForDisplay(input.status.review.projectReviewContract, readiness)}
+${md(formatProjectReviewDecisionForDisplay(input.status.review.projectReviewContract, readiness))}
 
 Why:
 ${formatProjectReviewDecisionReasonsForDisplay(input.status.review.projectReviewContract)
-  .map((reason) => `- ${reason}`)
+  .map((reason) => `- ${md(reason)}`)
   .join("\n")}
 
-Readiness: ${readiness.label}
+Review first:
+${formatReviewFocus(input.status.review.focus, 3)}
+
+Trust delta:
+${md(formatTrustDeltaForDisplay(input.status.review.trustDelta))}
+
+Review queue:
+${md(formatReviewQueueForDisplay(input.status.review.reviewQueue))}
+
+Review routing:
+${md(formatReviewRoutesForDisplay(input.status.review.reviewRoutes))}
+${formatFullSuggestedCommandsSection(input.status)}
+
+Review receipt:
+${md(formatReviewReceiptForDisplay(input.status.review.reviewReceipt))}
+${input.acceptNotice ? `\n${md(input.acceptNotice)}\n` : ""}
+
+Readiness: ${md(readiness.label)}
 Reason: ${formatReadinessReason(readiness, input.status.reason)}
 
 Verification:
@@ -326,9 +421,6 @@ ${formatVerificationDetails(
   input.status.verification.runs,
   hasUnresolvedFailedVerification(input.status.review.proofGaps)
 )}
-
-Review first:
-${formatReviewFocus(input.status.review.focus.slice(0, 3))}
 
 Required proof:
 ${formatProjectReviewContract(input.status.review.projectReviewContract)}
@@ -346,22 +438,63 @@ ${formatProofGaps(input.status.review.proofGaps)}
 ${needsFix ? "Fix before sharing" : "Next action"}:
 ${formatNextAction(readiness, input.status.nextAction)}
 
-Open first: ${formatOpenFirstArtifact(ready, input.handoffPath, input.reportPath)}
+Open first: ${md(formatOpenFirstArtifact(ready, input.handoffPath, input.reportPath))}
 
 Artifacts:
-- Handoff: ${input.handoffPath}
-- Current handoff: ${input.currentHandoffPath}
-- Report: ${input.reportPath}
-- Replay: ${input.replayPath}
-- Resume: ${input.resumePath}
-- Current resume: ${input.currentResumePath}
+- Handoff: ${md(input.handoffPath)}
+- Current handoff: ${md(input.currentHandoffPath)}
+- Report: ${md(input.reportPath)}
+- Replay: ${md(input.replayPath)}
+- Resume: ${md(input.resumePath)}
+- Current resume: ${md(input.currentResumePath)}
 
 Local only: no upload, no telemetry, no automatic PR comment.
 `;
 }
 
+function canRecordAcceptedReceipt(readiness: HandoffReadiness): boolean {
+  return readiness.state === "ready_for_review" || readiness.state === "clean_worktree";
+}
+
+function formatAcceptReceiptNotRecorded(readiness: HandoffReadiness): string {
+  return `Review receipt not recorded:
+- --accept records only when readiness is Ready for review or Clean worktree.
+- current readiness is ${md(readiness.label)}.`;
+}
+
+async function recordAcceptedReviewReceipt(
+  options: HandoffCommandOptions,
+  status: HandoffStatus,
+  artifactPaths: HandoffArtifactPaths
+): Promise<void> {
+  const session = await readCurrentSession(options.repoRoot);
+  const now = options.now ?? new Date();
+  const proofSnapshot = await buildProofSnapshot({
+    repoRoot: options.repoRoot,
+    changedFiles: status.changedFiles,
+    capturedAt: now.toISOString(),
+    gitCommit: session.git.commit ?? null
+  });
+
+  await appendReviewReceipt(options.repoRoot, session, {
+    decision: "accepted",
+    recordedAt: now,
+    summary: "Accepted local handoff.",
+    snapshot: {
+      branch: session.git.branch ?? null,
+      gitCommit: session.git.commit ?? null,
+      changedFiles: status.changedFiles,
+      readinessState: status.review.readiness.state,
+      verificationPassed: status.verification.passed,
+      verificationFailed: status.verification.failed,
+      artifactPath: formatRepoRelativePath(options.repoRoot, artifactPaths.sessionHandoffPath),
+      proofSnapshot
+    }
+  });
+}
+
 function isReadyForSharing(readiness: HandoffReadiness): boolean {
-  return readiness.state === "ready_for_review";
+  return readiness.state === "ready_for_review" || readiness.state === "clean_worktree";
 }
 
 function exitsSuccessfully(readiness: HandoffReadiness): boolean {
@@ -388,7 +521,7 @@ function formatReadinessReason(readiness: HandoffReadiness, fallback: string): s
   if (readiness.state === "blocked_by_failed_verification") {
     return "A verification command failed and must be fixed or rerun successfully.";
   }
-  return compactCommandInText(readiness.reason || fallback, readiness.suggestedCommand);
+  return md(compactCommandInText(readiness.reason || fallback, readiness.suggestedCommand));
 }
 
 function formatNextAction(readiness: HandoffReadiness, fallback: string): string {
@@ -398,7 +531,7 @@ function formatNextAction(readiness: HandoffReadiness, fallback: string): string
   if (readiness.state === "ready_for_review") {
     return "Share the local handoff packet for scoped review; use report/replay for details.";
   }
-  return compactCommandInText(readiness.nextAction || fallback, readiness.suggestedCommand);
+  return md(compactCommandInText(readiness.nextAction || fallback, readiness.suggestedCommand));
 }
 
 function formatVerificationDetails(
@@ -407,7 +540,8 @@ function formatVerificationDetails(
 ): string {
   if (runs.length === 0) return "- No verification runs recorded.";
 
-  const failedExcerpts = runs
+  const excerptRuns = showFailedExcerpts ? getUnresolvedFailedHandoffRuns(runs) : runs;
+  const failedExcerpts = excerptRuns
     .filter((run) => run.status === "failed" && run.outputExcerpt)
     .map((run) => run.outputExcerpt!.trim())
     .filter(Boolean);
@@ -424,19 +558,71 @@ function formatVerificationDetails(
         excerpt,
         index
       ) => `Failed verification excerpt${failedExcerpts.length > 1 ? ` ${index + 1}` : ""}:
-${excerpt}`
+${formatMarkdownCodeFenceForDisplay(excerpt, "text")}`
     )
     .join("\n\n");
 }
 
-function formatReviewFocus(items: HandoffFocusItem[]): string {
+function getUnresolvedFailedHandoffRuns(runs: HandoffVerificationRun[]): HandoffVerificationRun[] {
+  const laterPassedCommands = new Set<string>();
+  const unresolvedRuns: HandoffVerificationRun[] = [];
+
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    const run = runs[index];
+    if (!run) continue;
+
+    const command = normalizeHandoffCommand(run);
+    if (run.status === "passed") {
+      if (command) laterPassedCommands.add(command);
+      continue;
+    }
+
+    if (run.status === "failed" && (!command || !laterPassedCommands.has(command))) {
+      unresolvedRuns.unshift(run);
+    }
+  }
+
+  return unresolvedRuns;
+}
+
+function normalizeHandoffCommand(run: HandoffVerificationRun): string {
+  return run.command.trim() ? normalizeCommandString(run.command) : "";
+}
+
+function formatReviewFocus(items: HandoffFocusItem[], limit = items.length): string {
   if (items.length === 0) return "- No changed files to review.";
-  return items
+  const visibleItems = items.slice(0, limit);
+  const remaining = items.length - visibleItems.length;
+  const rows = visibleItems
     .map(
       (item) =>
-        `${item.rank}. ${item.file}\n   Proof: ${formatProofStatusForDisplay(item.proofStatus)}\n   Why: ${item.reasons.join("; ")}\n   Focus: ${item.suggestedReviewerFocus}`
+        `${item.rank}. ${md(item.file)}\n   Proof: ${md(formatProofStatusForDisplay(item.proofStatus))}\n   Why: ${md(item.reasons.join("; "))}\n   Focus: ${md(item.suggestedReviewerFocus)}${item.suggestedCommand ? `\n   Suggested proof: ${md(formatVerifyCommandForDisplay(item.suggestedCommand))}` : ""}`
     )
     .join("\n");
+  return remaining > 0
+    ? `${rows}\n- ${remaining} more review focus ${remaining === 1 ? "file" : "files"} in report/replay.`
+    : rows;
+}
+
+function formatFullSuggestedCommandsSection(status: HandoffStatus): string {
+  const commands = markdownText(
+    formatFullSuggestedCommandsForDisplay(collectSuggestedCommands(status))
+  );
+  return commands ? `\n${commands}\n` : "";
+}
+
+function collectSuggestedCommands(status: HandoffStatus): string[] {
+  return collectSuggestedCommandsForDisplay({
+    proofGaps: status.review.proofGaps,
+    trustDelta: status.review.trustDelta,
+    reviewQueue: status.review.reviewQueue,
+    reviewRoutes: status.review.reviewRoutes,
+    focus: status.review.focus,
+    projectReviewContract: status.review.projectReviewContract,
+    calibration: status.review.calibration,
+    contract: status.review.contract,
+    readiness: status.review.readiness
+  });
 }
 
 function formatProofGaps(gaps: HandoffProofGap[]): string {
@@ -454,46 +640,47 @@ function formatProjectReviewContract(contract: HandoffProjectReviewContract): st
 
 function formatProjectRequirement(requirement: HandoffProjectRequirement): string {
   const details = formatProjectRequirementDetailsForDisplay(requirement)
-    .map((line) => `\n   ${line}`)
+    .map((line) => `\n   ${md(line)}`)
     .join("");
-  return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
+  return `- ${md(formatProjectRequirementStatusForDisplay(requirement.status))} - ${md(requirement.label)}${details}`;
 }
 
 function formatProofCalibration(calibration: HandoffProofCalibration | undefined): string {
   if (!calibration) return "- No repo calibration history loaded.";
   if (calibration.suggestions.length === 0) {
-    return `- ${formatProofCalibrationSummaryForDisplay(calibration)}`;
+    return `- ${md(formatProofCalibrationSummaryForDisplay(calibration))}`;
   }
   return [
-    `- ${formatProofCalibrationSummaryForDisplay(calibration)}`,
+    `- ${md(formatProofCalibrationSummaryForDisplay(calibration))}`,
     ...calibration.suggestions.map(formatProofCalibrationSuggestion)
   ].join("\n");
 }
 
 function formatProofCalibrationSuggestion(suggestion: HandoffProofCalibrationSuggestion): string {
   const details = formatProofCalibrationDetailsForDisplay(suggestion)
-    .map((line) => `\n   ${line}`)
+    .map((line) => `\n   ${md(line)}`)
     .join("");
-  return `- ${formatProofCalibrationStatusForDisplay(suggestion.status)} - ${suggestion.category}${details}`;
+  return `- ${md(formatProofCalibrationStatusForDisplay(suggestion.status))} - ${md(suggestion.category)}${details}`;
 }
 
 function formatProofFreshnessSection(freshness: HandoffProofFreshness | undefined): string {
   const lines = formatProofFreshnessAttributionForDisplay(freshness);
   if (lines.length === 0) return "";
-  return `\nProof freshness:\n${lines.map((line) => `- ${line}`).join("\n")}\n`;
+  return `\nProof freshness:\n${lines.map((line) => `- ${md(line)}`).join("\n")}\n`;
 }
 
 function formatReviewContract(contract: HandoffContract, limit: number): string {
   if (contract.claims.length === 0) return "- No review contract claims recorded.";
   const visibleClaims = contract.claims.slice(0, limit);
   const rows = visibleClaims.map(
-    (claim) => `- ${formatReviewContractStatusForDisplay(claim.status)} - ${claim.text}`
+    (claim) =>
+      `- ${md(formatReviewContractStatusForDisplay(claim.status))} - ${escapeMarkdownTextForDisplay(claim.text)}`
   );
   const remaining = contract.claims.length - visibleClaims.length;
   if (remaining > 0) {
     rows.push(`- ${remaining} more claim${remaining === 1 ? "" : "s"} in report/replay.`);
   }
-  return [formatHandoffReviewPath(contract), ...rows].filter(Boolean).join("\n");
+  return [md(formatHandoffReviewPath(contract)), ...rows].filter(Boolean).join("\n");
 }
 
 function formatHandoffReviewPath(contract: HandoffContract): string {
@@ -502,11 +689,19 @@ function formatHandoffReviewPath(contract: HandoffContract): string {
 
 function formatProofGap(gap: HandoffProofGap): string {
   if (gap.id === "failed-verification") {
-    return `- ${gap.severity}: A verification command failed and must be fixed or rerun successfully.`;
+    return `- ${md(gap.severity)}: A verification command failed and must be fixed or rerun successfully.`;
   }
 
   const message = compactCommandInText(gap.message, gap.suggestedCommand);
-  return `- ${gap.severity}: ${message}`;
+  const files =
+    gap.relatedFiles.length > 0
+      ? `\n  Files: ${md(formatFileListForHandoff(gap.relatedFiles))}`
+      : "";
+  return `- ${md(gap.severity)}: ${md(message)}${files}`;
+}
+
+function formatFileListForHandoff(files: string[]): string {
+  return files.slice(0, 8).join(", ") + (files.length > 8 ? `, and ${files.length - 8} more` : "");
 }
 
 function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
@@ -520,6 +715,7 @@ function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
   return {
     taskTitle: readString(task.title, "Untitled task"),
     sessionId: readString(session.id, "unknown"),
+    changedFiles: readArray(payload.changedFiles).map((file) => readString(file, "unknown")),
     riskLevel: readString(risk.level, "unknown"),
     changedFileCount: readNumber(payload.changedFileCount, 0),
     verification: {
@@ -537,6 +733,10 @@ function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
       projectReviewContract: parseProjectReviewContract(readObject(review.projectReviewContract)),
       ...parseProofCalibration(review.calibration),
       ...parseProofFreshness(review.proofFreshness),
+      reviewReceipt: parseReviewReceipt(review.reviewReceipt),
+      trustDelta: parseTrustDelta(readObject(review.trustDelta)),
+      reviewQueue: readArray(review.reviewQueue).map(parseReviewQueueItem),
+      reviewRoutes: parseReviewRoutes(readObject(review.reviewRoutes)),
       contract: parseContract(readObject(review.contract)),
       proofGaps: readArray(review.proofGaps).map(parseProofGap),
       readiness
@@ -646,6 +846,194 @@ function parseProofFreshnessCategory(value: unknown): HandoffProofFreshnessCateg
   };
 }
 
+function parseReviewReceipt(value: unknown): HandoffReviewReceipt {
+  const receipt = readObject(value);
+  const state = parseReviewReceiptState(receipt.state);
+  return {
+    state,
+    label: readString(receipt.label, "No review receipt"),
+    summary: readString(receipt.summary, "No local review receipt recorded yet."),
+    nextAction: readString(
+      receipt.nextAction,
+      "Run agentflight handoff --accept after local review."
+    ),
+    staleFiles: readArray(receipt.staleFiles).map((file) => readString(file, "unknown")),
+    ...parseReviewReceiptRecord(receipt.receipt)
+  };
+}
+
+function parseReviewReceiptRecord(value: unknown): Pick<HandoffReviewReceipt, "receipt"> {
+  const receipt = readObject(value);
+  const id = readString(receipt.id, "");
+  const decision = parseReviewReceiptDecision(receipt.decision);
+  const recordedAt = readString(receipt.recordedAt, "");
+  const summary = readString(receipt.summary, "");
+  const snapshot = readObject(receipt.snapshot);
+  if (!id || !decision || !recordedAt || !summary) return {};
+
+  return {
+    receipt: {
+      id,
+      decision,
+      recordedAt,
+      summary,
+      snapshot: {
+        branch: nullableString(snapshot.branch),
+        gitCommit: nullableString(snapshot.gitCommit),
+        changedFiles: readArray(snapshot.changedFiles).map((file) => readString(file, "unknown")),
+        readinessState: parseReviewReadinessState(snapshot.readinessState),
+        verificationPassed: readNumber(snapshot.verificationPassed, 0),
+        verificationFailed: readNumber(snapshot.verificationFailed, 0),
+        artifactPath: readString(snapshot.artifactPath, ""),
+        ...parseReceiptProofSnapshot(snapshot.proofSnapshot)
+      }
+    }
+  };
+}
+
+function parseReceiptProofSnapshot(value: unknown): { proofSnapshot?: ProofSnapshot } {
+  const snapshot = readObject(value);
+  if (snapshot.schemaVersion !== 1 || snapshot.hashAlgorithm !== "sha256") return {};
+  return { proofSnapshot: snapshot as unknown as ProofSnapshot };
+}
+
+function parseReviewReceiptState(value: unknown): HandoffReviewReceipt["state"] {
+  if (
+    value === "none" ||
+    value === "current" ||
+    value === "stale" ||
+    value === "needs_changes" ||
+    value === "blocked" ||
+    value === "superseded"
+  ) {
+    return value;
+  }
+  return "none";
+}
+
+function parseReviewReceiptDecision(value: unknown): ReviewReceiptDecision | null {
+  if (
+    value === "accepted" ||
+    value === "needs_changes" ||
+    value === "blocked" ||
+    value === "superseded"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function parseTrustDelta(value: Record<string, unknown>): HandoffTrustDelta {
+  const summary = readString(value.summary, "No trust delta recorded.");
+  return {
+    summary,
+    items: readArray(value.items).map(parseTrustDeltaItem)
+  };
+}
+
+function parseTrustDeltaItem(value: unknown): HandoffTrustDeltaItem {
+  const item = readObject(value);
+  const suggestedCommand = readString(item.suggestedCommand, "");
+  return {
+    kind: parseTrustDeltaKind(item.kind),
+    severity: parseTrustDeltaSeverity(item.severity),
+    message: readString(item.message, "No trust delta detail recorded."),
+    relatedFiles: readArray(item.relatedFiles).map((file) => readString(file, "unknown")),
+    ...(suggestedCommand ? { suggestedCommand } : {}),
+    relatedProofGapIds: readArray(item.relatedProofGapIds).map((id) => readString(id, ""))
+  };
+}
+
+function parseReviewQueueItem(value: unknown): HandoffReviewQueueItem {
+  const item = readObject(value);
+  const suggestedCommand = readString(item.suggestedCommand, "");
+  return {
+    rank: readNumber(item.rank, 0),
+    action: parseReviewQueueAction(item.action),
+    label: readString(item.label, "Inspect review item"),
+    detail: readString(item.detail, "Inspect this item before trusting the change."),
+    relatedFiles: readArray(item.relatedFiles).map((file) => readString(file, "unknown")),
+    ...(suggestedCommand ? { suggestedCommand } : {}),
+    relatedProofGapIds: readArray(item.relatedProofGapIds).map((id) => readString(id, ""))
+  };
+}
+
+function parseReviewRoutes(value: Record<string, unknown>): HandoffReviewRoutes {
+  return {
+    summary: readString(value.summary, "No reviewer routing needed for the current worktree."),
+    items: readArray(value.items)
+      .map(parseReviewRouteItem)
+      .filter((item): item is HandoffReviewRoutes["items"][number] => Boolean(item))
+  };
+}
+
+function parseReviewRouteItem(value: unknown): HandoffReviewRoutes["items"][number] | null {
+  const item = readObject(value);
+  const role = parseReviewRouteRole(item.role);
+  const status = parseReviewRouteStatus(item.status);
+  if (!role || !status) return null;
+
+  const suggestedCommand = readString(item.suggestedCommand, "");
+  return {
+    role,
+    label: readString(item.label, "Reviewer"),
+    status,
+    priority: readNumber(item.priority, 0),
+    summary: readString(item.summary, "Review this route before trusting the change."),
+    reason: readString(item.reason, "No route reason recorded."),
+    relatedFiles: readArray(item.relatedFiles).map((file) => readString(file, "unknown")),
+    ...(suggestedCommand ? { suggestedCommand } : {}),
+    relatedProofGapIds: readArray(item.relatedProofGapIds).map((id) => readString(id, ""))
+  };
+}
+
+function parseReviewRouteRole(value: unknown): HandoffReviewRoutes["items"][number]["role"] | null {
+  if (
+    value === "maintainer" ||
+    value === "verification" ||
+    value === "security" ||
+    value === "docs_dx" ||
+    value === "release"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function parseReviewRouteStatus(
+  value: unknown
+): HandoffReviewRoutes["items"][number]["status"] | null {
+  if (value === "clear" || value === "needs_review" || value === "blocked") return value;
+  return null;
+}
+
+function parseTrustDeltaKind(value: unknown): TrustDeltaItemKind {
+  if (typeof value === "string" && trustDeltaKinds.has(value as TrustDeltaItemKind)) {
+    return value as TrustDeltaItemKind;
+  }
+  return "ready";
+}
+
+function parseTrustDeltaSeverity(value: unknown): HandoffTrustDeltaItem["severity"] {
+  if (value === "blocking" || value === "warning" || value === "info") return value;
+  return "info";
+}
+
+function parseReviewQueueAction(value: unknown): ReviewQueueAction {
+  if (
+    value === "fix_failed_proof" ||
+    value === "rerun_stale_proof" ||
+    value === "refresh_review_receipt" ||
+    value === "run_missing_proof" ||
+    value === "inspect_manual_review" ||
+    value === "consider_repo_calibration" ||
+    value === "inspect_file"
+  ) {
+    return value;
+  }
+  return "inspect_file";
+}
+
 function parseProofFreshnessState(value: unknown): HandoffProofFreshness["state"] | null {
   if (
     value === "current" ||
@@ -715,7 +1103,7 @@ function parseContractClaim(value: unknown): HandoffContractClaim {
 
 function parseReadiness(value: Record<string, unknown>): HandoffReadiness {
   return {
-    state: readString(value.state, "unknown"),
+    state: parseReviewReadinessState(value.state),
     label: readString(value.label, "Unknown"),
     reason: readString(value.reason, "No readiness reason recorded."),
     nextAction: readString(value.nextAction, "Review the generated AgentFlight artifacts."),
@@ -725,9 +1113,24 @@ function parseReadiness(value: Record<string, unknown>): HandoffReadiness {
   };
 }
 
+function parseReviewReadinessState(value: unknown): ReviewReadinessState {
+  if (
+    value === "ready_for_review" ||
+    value === "not_ready_for_review" ||
+    value === "needs_verification" ||
+    value === "blocked_by_failed_verification" ||
+    value === "clean_worktree" ||
+    value === "unknown"
+  ) {
+    return value;
+  }
+  return "unknown";
+}
+
 function parseVerificationRun(value: unknown): HandoffVerificationRun {
   const run = readObject(value);
   return {
+    command: readString(run.command, ""),
     status: readString(run.status, "unknown"),
     ...(typeof run.outputExcerpt === "string" ? { outputExcerpt: run.outputExcerpt } : {})
   };
@@ -740,7 +1143,10 @@ function parseFocusItem(value: unknown): HandoffFocusItem {
     file: readString(item.file, "unknown"),
     proofStatus: parseProofStatus(item.proofStatus),
     reasons: readArray(item.reasons).map((reason) => readString(reason, "unknown")),
-    suggestedReviewerFocus: readString(item.suggestedReviewerFocus, "Inspect manually.")
+    suggestedReviewerFocus: readString(item.suggestedReviewerFocus, "Inspect manually."),
+    ...(typeof item.suggestedCommand === "string"
+      ? { suggestedCommand: item.suggestedCommand }
+      : {})
   };
 }
 
@@ -750,6 +1156,7 @@ function parseProofGap(value: unknown): HandoffProofGap {
     id: readString(gap.id, "proof-gap"),
     severity: readString(gap.severity, "info"),
     message: readString(gap.message, "Proof gap recorded."),
+    relatedFiles: readArray(gap.relatedFiles).map((file) => readString(file, "unknown")),
     ...(typeof gap.suggestedCommand === "string" ? { suggestedCommand: gap.suggestedCommand } : {})
   };
 }
@@ -760,12 +1167,24 @@ function readObject(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function md(value: string): string {
+  return escapeMarkdownBlockForDisplay(value);
+}
+
+function markdownText(value: string): string {
+  return escapeMarkdownBlockForDisplay(value);
+}
+
 function readArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
 function readString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function readNumber(value: unknown, fallback: number): number {

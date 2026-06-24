@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { stableAnchorId } from "../../src/core/ids.js";
 import { buildReviewContract } from "../../src/core/review-contract.js";
 import type { ProofGap, ReviewFocusItem, ReviewReadinessDecision } from "../../src/types/index.js";
 
@@ -178,17 +179,17 @@ describe("review contract", () => {
       {
         kind: "changed_file",
         label: "Changed file: src/core/session.ts",
-        target: "review-focus-file-src-core-session-ts"
+        target: reviewFocusTarget("src/core/session.ts")
       },
       {
         kind: "proof_snapshot",
         label: "Proof status: missing",
-        target: "review-focus-file-src-core-session-ts"
+        target: reviewFocusTarget("src/core/session.ts")
       },
       {
         kind: "proof_gap",
         label: "Proof gap: missing-source-proof",
-        target: "proof-gap-missing-source-proof"
+        target: proofGapTarget("missing-source-proof")
       },
       {
         kind: "suggested_command",
@@ -296,11 +297,11 @@ describe("review contract", () => {
       summary: "Review 4 failed claims, 2 stale claims, and 1 manual-review claim before sharing.",
       nextAction: "Fix the failed command, then rerun agentflight verify -- npm test.",
       inspectClaimIds: [
-        "file-src-auth-reset-ts",
-        "proof-gap-failed-verification",
+        fileClaimId("src/auth/reset.ts"),
+        proofGapClaimId("failed-verification"),
         "readiness-review-readiness",
         "task-session-task",
-        "file-src-ui-form-tsx"
+        fileClaimId("src/ui/form.tsx")
       ]
     });
   });
@@ -391,7 +392,7 @@ describe("review contract", () => {
     });
 
     expect(contract.claims[1]).toMatchObject({
-      id: "project-requirement-auth-contract",
+      id: projectRequirementClaimId("auth-contract"),
       source: "project_requirement",
       status: "unsupported",
       text: "Required proof: Auth/session contract",
@@ -414,12 +415,12 @@ describe("review contract", () => {
         {
           kind: "changed_file",
           label: "Changed file: src/auth/session.ts",
-          target: "review-focus-file-src-auth-session-ts"
+          target: reviewFocusTarget("src/auth/session.ts")
         },
         {
           kind: "proof_gap",
           label: "Proof gap: auth-contract",
-          target: "proof-gap-auth-contract"
+          target: proofGapTarget("auth-contract")
         },
         {
           kind: "suggested_command",
@@ -468,4 +469,24 @@ function readiness(overrides: Partial<ReviewReadinessDecision>): ReviewReadiness
     proofGaps: [],
     ...overrides
   };
+}
+
+function fileClaimId(file: string): string {
+  return `file-${stableAnchorId(file)}`;
+}
+
+function projectRequirementClaimId(id: string): string {
+  return `project-requirement-${stableAnchorId(id)}`;
+}
+
+function proofGapClaimId(id: string): string {
+  return `proof-gap-${stableAnchorId(id)}`;
+}
+
+function reviewFocusTarget(file: string): string {
+  return `review-focus-file-${stableAnchorId(file)}`;
+}
+
+function proofGapTarget(id: string): string {
+  return `proof-gap-${stableAnchorId(id)}`;
 }

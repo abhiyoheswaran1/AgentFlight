@@ -83,6 +83,45 @@ describe("verification command detection", () => {
     await expect(readFile(join(repoRoot, run.stderrPath), "utf8")).resolves.toContain("nope");
     expect(run.outputExcerpt).toContain("nope");
   });
+
+  it("rejects unsafe session ids before reserving verification evidence paths", async () => {
+    const repoRoot = await createTempRepo();
+    const session = { ...testSession(repoRoot), id: "../../../tmp/agentflight-core-poc" };
+    let ranCommand = false;
+
+    await expect(
+      runVerificationCommand({
+        repoRoot,
+        session,
+        commandArgs: ["node", "-e", "console.log('unsafe')"],
+        commandRunner: async () => {
+          ranCommand = true;
+          return { exitCode: 0, stdout: "unsafe\n", stderr: "" };
+        }
+      })
+    ).rejects.toThrow("Unsafe AgentFlight session id");
+    expect(ranCommand).toBe(false);
+  });
+
+  it("strips terminal controls from display excerpts while preserving raw evidence", async () => {
+    const repoRoot = await createTempRepo();
+    const session = testSession(repoRoot);
+    const rawStderr = "\u001b]52;c;SGVsbG8=\u0007\u001b[2JVISIBLE_FAILURE\u202E\n";
+
+    const run = await runVerificationCommand({
+      repoRoot,
+      session,
+      commandArgs: ["node", "-e", "process.exit(1)"],
+      commandRunner: async () => ({
+        exitCode: 1,
+        stdout: "",
+        stderr: rawStderr
+      })
+    });
+
+    expect(run.outputExcerpt).toBe("VISIBLE_FAILURE");
+    await expect(readFile(join(repoRoot, run.stderrPath), "utf8")).resolves.toBe(rawStderr);
+  });
 });
 
 describe("buildVerificationSummary", () => {
@@ -164,6 +203,12 @@ describe("buildOutputExcerpt", () => {
   it("truncates very long single lines", () => {
     const excerpt = buildOutputExcerpt("x".repeat(500), "", { maxLineLength: 10 });
     expect(excerpt).toBe(`${"x".repeat(10)}…`);
+  });
+
+  it("strips terminal control and bidi characters from display excerpts", () => {
+    expect(buildOutputExcerpt("", "\u001b]52;c;SGVsbG8=\u0007\u001b[2JFAILED\u202E")).toBe(
+      "FAILED"
+    );
   });
 });
 

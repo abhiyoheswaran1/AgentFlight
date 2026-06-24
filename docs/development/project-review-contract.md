@@ -45,6 +45,9 @@ core API calls can still run without a contract for legacy tests and fixtures.
 - `categories`: changed-file categories that activate the rule.
 - `requiredProof`: proof kinds accepted for the rule. The matching behavior is
   OR-based: any passing required proof kind satisfies the automated proof part.
+  When several accepted proof kinds exist, AgentFlight prefers current proof
+  over covered proof over stale proof, then uses the latest run as the
+  tie-breaker.
 - `manualReview`: human checks that remain visible even when automated proof is
   current.
 - `severity`: `blocking`, `warning`, or `info`.
@@ -87,6 +90,10 @@ Missing required proof creates a proof gap using the rule id. Failed proof keeps
 using the shared `failed-verification` gap. Stale proof keeps using the shared
 `stale-verification-proof` gap.
 
+When several requirements are stale, Trust Delta and the review queue merge the
+stale requirement files into one rerun step. The individual requirement rows
+remain visible in contract details.
+
 ## Proof Freshness Attribution
 
 When proof is stale, AgentFlight records which changed files no longer match the
@@ -128,8 +135,9 @@ Each matched requirement also carries local, source-free explanation metadata:
   change.
 
 These fields are derived from paths, categories, configured proof commands,
-recorded verification runs, and source-free proof freshness. They do not include
-source contents or external analysis.
+recorded verification runs, and proof freshness fingerprints. AgentFlight may
+hash changed files locally to compare fingerprints, but it does not store,
+render, upload, or analyze source contents.
 
 ## Review Surfaces
 
@@ -146,6 +154,97 @@ The rendered data stays source-free: file paths, categories, proof kinds, proof
 statuses, proof-gap ids, matched-category explanations, satisfying proof
 commands, suggested commands, and manual check labels.
 
+## Review Receipts
+
+`agentflight handoff --accept` records a local review receipt when a reviewer
+accepts the handoff. The receipt is a local note attached to the session, not
+identity, signature, approval automation, or a PR comment.
+
+The receipt snapshot stores:
+
+- decision
+- recorded timestamp
+- changed paths
+- readiness state
+- proof pass/fail counts
+- branch and commit
+- handoff artifact path
+- source-free proof snapshot fingerprints
+
+Status, handoff, report, replay, resume, history, and status JSON show whether
+the latest accepted receipt is current or stale. If changed-file fingerprints no
+longer match the receipt snapshot, AgentFlight marks the receipt stale and adds
+a review queue step to refresh the handoff after re-review.
+
+If unresolved proof fails after an accepted receipt was recorded, AgentFlight
+also marks the receipt stale. The receipt can still show what was accepted, but
+the current review path must resolve the failed proof and regenerate the
+handoff before the acceptance can be trusted again.
+
+Review receipts stay local. Receipt freshness may compare local changed-file
+fingerprints, but receipts do not store, render, upload, or analyze source
+contents, full diffs, stdout/stderr evidence, hosted services, or model output.
+
+## Trust Delta And Review Queue
+
+Trust Delta summarizes the current trust change before a reviewer reads the
+full contract. AgentFlight builds it from existing local metadata:
+
+- unresolved failed proof
+- stale proof-required files and manual-review stale files
+- missing required proof gaps
+- manual-review requirements
+- repo-calibration suggestions from similar local ready handoffs
+- stale accepted review receipts
+
+The review queue turns those same signals into ordered next steps. Proof
+failures, stale proof, and missing proof come before manual review. File
+inspection stays visible after proof actions, so reviewers still see where to
+look.
+
+Dense review rows may shorten long suggested commands. Status and handoff keep
+a separate full-command block when a command is shortened, so reviewers can
+copy the exact `agentflight verify -- ...` action without opening another
+artifact.
+
+Trust Delta and review queue data remain source-free. They use paths,
+changed-file categories, proof-gap ids, proof commands, proof freshness
+metadata, Project Review Contract statuses, and repo-calibration summaries.
+Proof freshness may compare local changed-file fingerprints, but Trust Delta and
+review queue do not store, render, upload, or analyze source contents,
+historical stdout/stderr evidence, full diffs, or external services.
+
+## Review Routing
+
+Review routing answers who should inspect each review path. AgentFlight derives
+routes for:
+
+- Maintainer: highest-signal changed files and the current trust state.
+- Verification: failed, stale, missing, incomplete, or under-proven proof.
+- Security: auth, payment, secret, database, dependency, and runtime config
+  paths.
+- Docs/DX: documentation, examples, AgentFlight config, command copy, and
+  report/replay/resume copy.
+- Release: package metadata, changelog/devlog, CI/config, release audit notes,
+  and dependency metadata.
+
+Routes are advisory. They do not change readiness, proof gaps, exit codes,
+review receipt state, or Project Review Contract status. Status, handoff,
+Markdown reports, HTML replays, resume prompts, and status JSON all show the
+same route list.
+
+Status and resume may point reviewers at an existing handoff artifact when the
+current work is ready for review. That shortcut should only appear when the
+latest recorded review summary still matches the current ready changed-file
+count. If the current ready work changed after the last review artifact was
+generated, the next action should ask for a fresh handoff.
+
+Review routing stays source-free. It uses changed-file paths and categories,
+proof gaps, proof freshness, Trust Delta, review queue, repo calibration, review
+receipt state, and readiness. Proof freshness may compare local changed-file
+fingerprints, but routing does not store, render, upload, or analyze source
+contents, full diffs, stdout/stderr evidence, hosted services, or model output.
+
 ## Repo Calibration
 
 Project Review Contract defines what proof the repo expects now. Repo
@@ -154,7 +253,14 @@ recorded as ready for review.
 
 Calibration is suggestion-only. It does not change required-proof status, proof
 gaps, readiness, or exit codes by itself. It helps reviewers notice cases where
-proof exists but is weaker than this repo's local history.
+proof exists but is weaker than this repo's local history. When enough similar
+accepted review receipts exist, calibration uses those sessions before ready-only
+handoffs. If accepted receipt history is sparse, it falls back to ready handoffs
+for backward compatibility.
+
+Accepted handoffs form a calibration boundary. If a session records more proof
+after an accepted receipt, AgentFlight does not treat that later proof as part
+of the accepted handoff when it builds future repo-calibration suggestions.
 
 Calibration reads:
 
@@ -204,5 +310,5 @@ Review path: Review 2 unsupported claims and 1 manual-review claim before sharin
 ## Scope Boundaries
 
 Project Review Contract covers local review surfaces only. Hosted review, PR
-comments, CI policy enforcement, named verification profiles, source upload, and
-telemetry remain outside this release.
+comments, CI policy enforcement, verification-profile management, source upload,
+and telemetry remain outside this contract layer.

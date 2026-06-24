@@ -59,6 +59,7 @@ export interface AgentFlightSession {
   repoSummary?: string;
   verificationCommands: string[];
   verificationRuns?: VerificationRun[];
+  reviewReceipts?: ReviewReceipt[];
   events?: SessionEvent[];
   tools: {
     projscan: ToolAdapterResult;
@@ -75,6 +76,7 @@ export type SessionEventType =
   | "report_generated"
   | "replay_generated"
   | "resume_generated"
+  | "review_receipt_recorded"
   | "doctor_run";
 
 export interface SessionEvent {
@@ -169,6 +171,27 @@ export interface VerificationRun {
    * the evidence files above.
    */
   proofSnapshot?: ProofSnapshot;
+}
+
+export type ReviewReceiptDecision = "accepted" | "needs_changes" | "blocked" | "superseded";
+
+export interface ReviewReceiptSnapshot {
+  branch: string | null;
+  gitCommit: string | null;
+  changedFiles: string[];
+  readinessState: ReviewReadinessState;
+  verificationPassed: number;
+  verificationFailed: number;
+  artifactPath?: string;
+  proofSnapshot?: ProofSnapshot;
+}
+
+export interface ReviewReceipt {
+  id: string;
+  decision: ReviewReceiptDecision;
+  recordedAt: string;
+  summary: string;
+  snapshot: ReviewReceiptSnapshot;
 }
 
 export type VerificationProofKind = "test" | "build" | "typecheck" | "lint" | "install" | "unknown";
@@ -341,6 +364,88 @@ export interface ProofCalibration {
   suggestions: ProofCalibrationSuggestion[];
 }
 
+export type TrustDeltaItemKind =
+  | "failed_proof"
+  | "stale_proof"
+  | "stale_receipt"
+  | "review_receipt"
+  | "missing_proof"
+  | "manual_review"
+  | "repo_calibration"
+  | "ready"
+  | "clean";
+
+export interface TrustDeltaItem {
+  kind: TrustDeltaItemKind;
+  severity: ProofGap["severity"];
+  message: string;
+  relatedFiles: string[];
+  suggestedCommand?: string;
+  relatedProofGapIds: string[];
+}
+
+export interface TrustDelta {
+  summary: string;
+  items: TrustDeltaItem[];
+}
+
+export type ReviewQueueAction =
+  | "fix_failed_proof"
+  | "rerun_stale_proof"
+  | "refresh_review_receipt"
+  | "run_missing_proof"
+  | "inspect_manual_review"
+  | "consider_repo_calibration"
+  | "inspect_file";
+
+export interface ReviewQueueItem {
+  rank: number;
+  action: ReviewQueueAction;
+  label: string;
+  detail: string;
+  relatedFiles: string[];
+  suggestedCommand?: string;
+  relatedProofGapIds: string[];
+}
+
+export type ReviewRouteRole = "maintainer" | "verification" | "security" | "docs_dx" | "release";
+
+export type ReviewRouteStatus = "clear" | "needs_review" | "blocked";
+
+export interface ReviewRouteItem {
+  role: ReviewRouteRole;
+  label: string;
+  status: ReviewRouteStatus;
+  priority: number;
+  summary: string;
+  reason: string;
+  relatedFiles: string[];
+  suggestedCommand?: string;
+  relatedProofGapIds: string[];
+}
+
+export interface ReviewRoutes {
+  summary: string;
+  items: ReviewRouteItem[];
+}
+
+export type ReviewReceiptEvaluationState =
+  | "none"
+  | "current"
+  | "stale"
+  | "needs_changes"
+  | "blocked"
+  | "superseded";
+
+export interface ReviewReceiptEvaluation {
+  state: ReviewReceiptEvaluationState;
+  label: string;
+  summary: string;
+  nextAction: string;
+  staleFiles: string[];
+  receipt?: ReviewReceipt;
+}
+
 export type ReviewContractClaimStatus =
   | "supported"
   | "needs_review"
@@ -411,6 +516,10 @@ export interface ReviewIntelligence {
   focus: ReviewFocusItem[];
   projectReviewContract?: ProjectReviewContractEvaluation;
   calibration?: ProofCalibration;
+  reviewReceipt?: ReviewReceiptEvaluation;
+  trustDelta?: TrustDelta;
+  reviewQueue?: ReviewQueueItem[];
+  reviewRoutes?: ReviewRoutes;
   proofFreshness?: ProofFreshnessAttribution;
   proofGaps: ProofGap[];
   readiness: ReviewReadinessDecision;

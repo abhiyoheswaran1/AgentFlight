@@ -6,6 +6,7 @@ import { listChangedFiles } from "./git.js";
 import { runCommand, type CommandRunner } from "./process.js";
 import { buildProofSnapshot } from "./proof-snapshot.js";
 import { resolveAgentFlightPaths } from "./paths.js";
+import { assertSafeSessionId } from "./session-id.js";
 import { getVerificationRuns } from "./session.js";
 import {
   formatCommand,
@@ -81,6 +82,7 @@ export async function runVerificationCommand(
 
   const now = options.now ?? (() => new Date());
   const startedAt = now();
+  assertSafeSessionId(options.session.id);
   const runNumber = getVerificationRuns(options.session).length + 1;
   const { stdoutPath, stderrPath } = await reserveVerificationEvidencePaths({
     repoRoot: options.repoRoot,
@@ -181,6 +183,7 @@ interface ReserveVerificationEvidencePathsOptions {
 async function reserveVerificationEvidencePaths(
   options: ReserveVerificationEvidencePathsOptions
 ): Promise<{ stdoutPath: string; stderrPath: string }> {
+  assertSafeSessionId(options.sessionId);
   const paths = resolveAgentFlightPaths(options.repoRoot);
   const evidenceDir = join(paths.evidence, options.sessionId);
   await ensureDir(evidenceDir);
@@ -231,6 +234,7 @@ export function buildOutputExcerpt(
   const lines = trimmed
     .split("\n")
     .slice(-maxLines)
+    .map(sanitizeOutputExcerptLineForDisplay)
     .map((line) => (line.length > maxLineLength ? `${line.slice(0, maxLineLength)}…` : line));
 
   let excerpt = lines.join("\n");
@@ -239,6 +243,58 @@ export function buildOutputExcerpt(
   }
 
   return excerpt;
+}
+
+function sanitizeOutputExcerptLineForDisplay(line: string): string {
+  let output = "";
+  for (let index = 0; index < line.length; index += 1) {
+    const code = line.charCodeAt(index);
+    if (code === 0x1b) {
+      index = skipAnsiSequence(line, index);
+      continue;
+    }
+    if (isBidiControl(code) || isTerminalControl(code)) continue;
+    output += line[index];
+  }
+  return output;
+}
+
+function skipAnsiSequence(line: string, escapeIndex: number): number {
+  const introducer = line[escapeIndex + 1];
+  if (introducer === "]") return skipOscSequence(line, escapeIndex + 2);
+  if (introducer === "[") return skipCsiSequence(line, escapeIndex + 2);
+  return escapeIndex;
+}
+
+function skipOscSequence(line: string, startIndex: number): number {
+  for (let index = startIndex; index < line.length; index += 1) {
+    const code = line.charCodeAt(index);
+    if (code === 0x07) return index;
+    if (code === 0x1b && line[index + 1] === "\\") return index + 1;
+  }
+  return line.length - 1;
+}
+
+function skipCsiSequence(line: string, startIndex: number): number {
+  for (let index = startIndex; index < line.length; index += 1) {
+    const code = line.charCodeAt(index);
+    if (code >= 0x40 && code <= 0x7e) return index;
+  }
+  return line.length - 1;
+}
+
+function isBidiControl(code: number): boolean {
+  return (code >= 0x202a && code <= 0x202e) || (code >= 0x2066 && code <= 0x2069);
+}
+
+function isTerminalControl(code: number): boolean {
+  return (
+    (code >= 0x00 && code <= 0x08) ||
+    code === 0x0b ||
+    code === 0x0c ||
+    (code >= 0x0e && code <= 0x1f) ||
+    (code >= 0x7f && code <= 0x9f)
+  );
 }
 
 function formatProofSnapshotError(error: unknown): string {

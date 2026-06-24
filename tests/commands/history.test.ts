@@ -3,7 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runHistoryCommand } from "../../src/commands/history.js";
 import { initAgentFlight } from "../../src/core/config.js";
+import { runCommand } from "../../src/core/process.js";
+import { buildProofSnapshot } from "../../src/core/proof-snapshot.js";
 import {
+  addReviewReceipt,
   addSessionEvent,
   appendVerificationRun,
   saveSession,
@@ -152,6 +155,111 @@ describe("history command", () => {
     expect(history.output).toContain("Start only: no verification or review artifacts recorded.");
     expect(history.output).not.toContain(repoRoot);
     expect(history.output).toContain(older.session.id);
+  });
+
+  it("shows local review receipt summaries and current/stale state in history", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+    await writeFile(join(repoRoot, "README.md"), "accepted handoff\n", "utf8");
+    const receiptSnapshot = await buildProofSnapshot({
+      repoRoot,
+      changedFiles: ["README.md"],
+      capturedAt: "2026-06-13T11:30:00.000Z",
+      gitCommit: "abc123"
+    });
+    const started = await startSession({
+      repoRoot,
+      task: "Accepted review",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "abc123", dirty: true, changedFiles: ["README.md"] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await saveSession(
+      repoRoot,
+      addReviewReceipt(started.session, {
+        decision: "accepted",
+        recordedAt: "2026-06-13T11:30:00.000Z",
+        summary: "Accepted local handoff.",
+        snapshot: {
+          branch: "main",
+          gitCommit: "abc123",
+          changedFiles: ["README.md"],
+          readinessState: "ready_for_review",
+          verificationPassed: 0,
+          verificationFailed: 0,
+          artifactPath: `.agentflight/reports/${started.session.id}-handoff.md`,
+          proofSnapshot: receiptSnapshot
+        }
+      })
+    );
+
+    const currentHistory = await runHistoryCommand({ repoRoot });
+
+    expect(currentHistory.output).toContain(
+      "Review receipt: accepted (current) at 2026-06-13T11:30:00.000Z"
+    );
+    expect(currentHistory.output).toContain("Accepted local handoff.");
+
+    await writeFile(join(repoRoot, "README.md"), "changed after acceptance\n", "utf8");
+    const staleHistory = await runHistoryCommand({ repoRoot });
+
+    expect(staleHistory.output).toContain(
+      "Review receipt: accepted (stale) at 2026-06-13T11:30:00.000Z"
+    );
+  });
+
+  it("marks current accepted receipts stale when new files are added after acceptance", async () => {
+    const repoRoot = await createTempRepo();
+    await initAgentFlight({ repoRoot, now: new Date("2026-06-13T09:00:00.000Z") });
+    await writeFile(join(repoRoot, "README.md"), "accepted handoff\n", "utf8");
+    await initializeGitRepo(repoRoot);
+    const receiptSnapshot = await buildProofSnapshot({
+      repoRoot,
+      changedFiles: ["README.md"],
+      capturedAt: "2026-06-13T11:30:00.000Z",
+      gitCommit: "abc123"
+    });
+    const started = await startSession({
+      repoRoot,
+      task: "Accepted review with later file",
+      now: new Date("2026-06-13T11:00:00.000Z"),
+      git: { branch: "main", commit: "abc123", dirty: true, changedFiles: ["README.md"] },
+      packageManager: "npm",
+      tools: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+    await saveSession(
+      repoRoot,
+      addReviewReceipt(started.session, {
+        decision: "accepted",
+        recordedAt: "2026-06-13T11:30:00.000Z",
+        summary: "Accepted local handoff.",
+        snapshot: {
+          branch: "main",
+          gitCommit: "abc123",
+          changedFiles: ["README.md"],
+          readinessState: "ready_for_review",
+          verificationPassed: 0,
+          verificationFailed: 0,
+          artifactPath: `.agentflight/reports/${started.session.id}-handoff.md`,
+          proofSnapshot: receiptSnapshot
+        }
+      })
+    );
+    await mkdir(join(repoRoot, "docs"), { recursive: true });
+    await writeFile(join(repoRoot, "docs", "new-guide.md"), "new after acceptance\n", "utf8");
+
+    const history = await runHistoryCommand({ repoRoot });
+
+    expect(history.output).toContain(
+      "Review receipt: accepted (stale) at 2026-06-13T11:30:00.000Z"
+    );
   });
 
   it("compacts non-current start-only sessions without hiding them", async () => {
@@ -612,6 +720,21 @@ describe("history command", () => {
     }
   });
 });
+
+async function initializeGitRepo(repoRoot: string): Promise<void> {
+  await runGit(repoRoot, ["init"]);
+  await runGit(repoRoot, ["config", "user.email", "agentflight@example.invalid"]);
+  await runGit(repoRoot, ["config", "user.name", "AgentFlight Test"]);
+  await runGit(repoRoot, ["add", "README.md", ".agentflight/config.json"]);
+  await runGit(repoRoot, ["commit", "-m", "Initial test state"]);
+}
+
+async function runGit(repoRoot: string, args: string[]): Promise<void> {
+  const result = await runCommand("git", args, { cwd: repoRoot, timeoutMs: 10_000 });
+  if (result.exitCode !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
+  }
+}
 
 async function writeReportReviewSummary(
   repoRoot: string,

@@ -1,8 +1,291 @@
 # AgentFlight Devlog
 
-This log records setup, dogfooding, and verification evidence for the AgentFlight MVP.
+This log records setup, dogfooding, and verification evidence for AgentFlight.
+Older entries may preserve historical command transcripts and release notes;
+current public positioning is "local-first review layer for coding agent
+sessions."
 
 ## 2026-06-24
+
+### Prepare v0.13.0 Release
+
+Goal:
+
+- Ship the accumulated review-workflow improvements as a minor release after
+  verification, audit, commit, tag, and npm Trusted Publishing.
+
+Release theme:
+
+- AgentFlight v0.13.0 makes the existing local review workflow more actionable:
+  Trust Delta, Review Queue, Review Receipts, role-aware routing, stronger
+  Project Review Contract accuracy, and safer/noisier-edge-case handling across
+  status, handoff, report, replay, resume, history, and JSON output.
+
+Release prep notes:
+
+- Created `.agentloop/tasks/2026-06-24-release-agentflight-v0-13-0.md`.
+- Added `docs/development/v0.13.0-release-audit.md`.
+- Promoted the Unreleased changelog entries into `0.13.0`.
+- Release remains local-first and source-free. No hosted review, PR comments,
+  CI policy enforcement, JSON/CI expansion, named verification profiles,
+  telemetry, login, billing, or GitHub App work was added during release prep.
+- ProjScan scale/manual-signoff warning is accepted for release prep because
+  the final review reports no concrete cycles, risky functions, dependency
+  changes, contract changes, taint flows, or dataflow risks.
+
+### Second Review Surface Maintenance Pass
+
+Goal:
+
+- Continue the post-routing maintenance loop without adding a release step or
+  new product surface.
+- Use focused failing tests before changing review artifact behavior.
+
+Implemented locally:
+
+- HTML replay now treats resolved failed verification runs as historical in
+  mixed failure histories and sends urgent failed-run links to the unresolved
+  failed run.
+- Handoff now prints unresolved failed verification excerpts only, while report
+  and replay still keep the full verification ledger.
+- Clean-worktree handoff runs preserve existing session report, replay,
+  handoff, and resume artifacts when the current resume prompt is missing, then
+  restore the current resume by directly copying the session artifact.
+- Session ids loaded from local session metadata are validated before artifact
+  paths are built.
+- Project Review Contract proof selection now prefers a current accepted proof
+  kind over a stale accepted proof kind when a rule allows either proof.
+- Project Review Contract rules that accept multiple proof kinds now stay
+  supported when one accepted proof kind is current and another accepted proof
+  kind has an unresolved failure.
+- Repo calibration ignores verification runs recorded after the accepted
+  handoff receipt, so later proof does not rewrite what the accepted handoff
+  represented.
+- Trust Delta and review queue stale-proof rows now carry all stale
+  Project Review Contract files.
+- Markdown report and resume output sanitize more identity, list, and review
+  focus fields.
+- Handoff, Markdown report, and resume aggregate sections now use a Markdown
+  block sanitizer that preserves generated list structure while escaping active
+  Markdown syntax inside dynamic review text.
+- Status, handoff, Markdown report, and resume now collect full suggested
+  commands through one shared helper.
+- Status, handoff, and resume now show capped Review Focus counts.
+- Markdown report, resume prompt, and status changed-area output now cap large
+  changed-file lists.
+- Verification display excerpts strip terminal control, OSC, and bidi control
+  characters without changing raw stdout/stderr evidence files.
+- Core verification evidence writing now validates session ids before reserving
+  local evidence paths.
+- The process runner now allows large verifier output so passing commands do not
+  false-fail at Node's default 1 MiB buffer.
+
+Bug/security/performance notes:
+
+- The pass changes artifact selection and display. It does not alter raw
+  stdout/stderr evidence files.
+- Session-id validation rejects path traversal from persisted local metadata
+  before AgentFlight writes handoff artifacts.
+- Session-id validation now also protects direct verification evidence writes.
+- Repo calibration still reads bounded local session metadata only. It now
+  limits accepted-session learning to proof available at the handoff boundary.
+- Raw verification stdout/stderr remains unmodified in evidence files. Only
+  display excerpts are stripped of terminal control characters.
+- ProjScan initially flagged the clean-worktree resume restore as a concrete
+  `readFile` to `writeFile` taint flow. The implementation now uses a direct
+  local file copy for that internal artifact restore path, and the taint finding
+  is gone.
+
+Verification evidence:
+
+- `npm test -- tests/core/review-intelligence.test.ts tests/core/proof-calibration.test.ts tests/renderers/html-replay.test.ts tests/commands/evidence-output.test.ts tests/core/output.test.ts tests/renderers/markdown-report.test.ts tests/renderers/resume-prompt.test.ts tests/core/session.test.ts tests/commands/workflow.test.ts`
+  passed with 192 tests.
+- `npm test -- tests/core/verification.test.ts tests/core/process.test.ts tests/core/output.test.ts tests/core/review-intelligence.test.ts tests/core/proof-calibration.test.ts tests/commands/evidence-output.test.ts tests/commands/workflow.test.ts tests/renderers/markdown-report.test.ts tests/renderers/resume-prompt.test.ts tests/renderers/html-replay.test.ts`
+  passed with 204 tests.
+- `npm test -- tests/commands/evidence-output.test.ts -t "preserves existing review artifacts when clean-worktree handoff runs later"`
+  passed after the direct-copy restore change.
+- `npm run verify` passed: typecheck, lint, 28 test files / 341 tests, build.
+- `npm run format:check` passed.
+- `npm audit --audit-level=moderate` found `0 vulnerabilities`.
+- `npx agentloopkit@latest verify` passed.
+- `npx projscan@latest doctor --format json` passed with health `100/A` and
+  no issues.
+- `npx projscan@latest preflight --mode before_commit --format json` returned
+  `caution` for manual review sign-off on large handoff risk: 59 changed files
+  exceeded the threshold of 50 and the maximum changed-file risk score was
+  `257.1`.
+- `npx projscan@latest review --format json` returned the known scale-only
+  `block` verdict with no concrete cycles, risky functions, dependency changes,
+  contract changes, taint flows, or dataflow risks.
+- Built-CLI dogfood `node dist/cli.js verify -- npm run verify` passed and
+  captured the full verification run as local AgentFlight evidence.
+- Built-CLI dogfood `status`, `report`, `replay`, `resume`, and `handoff`
+  agreed on ready-for-review state with manual documentation review remaining.
+- Dogfood friction note: the current AgentFlight session title can lag behind
+  the AgentLoop active task when a long maintenance sequence continues across
+  task boundaries. The review state stayed accurate, but the session label is a
+  future ergonomics improvement.
+
+### Review Surface Bug Hunt And Maintenance Pass
+
+Goal:
+
+- Keep improving the current review surfaces after role-aware routing without
+  adding a new command, hosted workflow, PR automation, or release step.
+- Use AgentFlight, ProjScan, and AgentLoopKit as the local development loop.
+
+Implemented locally:
+
+- History now checks live changed files for the current session when evaluating
+  accepted receipt freshness. New files added after acceptance mark the receipt
+  stale; non-Git directories fall back to the receipt snapshot instead of
+  failing.
+- Initial handoff Markdown now escapes raw HTML and collapses task, branch,
+  commit, package-manager, and suggested-proof text to one-line Markdown-safe
+  values.
+- Generated handoff failure excerpts now render as fenced `text` blocks, so
+  stderr output that looks like headings, tables, or code fences does not alter
+  the handoff structure.
+- Review Contract claim text in handoff, Markdown report, and resume output now
+  uses the same inline Markdown sanitizer for task-derived claim text.
+- Verification routing now reports a clear proof route when proof-required files
+  remain current and only docs/manual-review files changed after proof capture.
+- Status and resume now reuse a ready handoff artifact only when the latest
+  recorded review summary matches the current ready changed-file count. If the
+  ready review state changed, they ask for a fresh handoff instead.
+- Handoff JSON parsing now preserves the `review_receipt` Trust Delta kind.
+- Simplified stale receipt comparison by removing an unreachable fallback.
+
+Bug/security/performance notes:
+
+- The pass focused on source-free local metadata and Markdown rendering safety.
+  It did not change stored stdout/stderr evidence, upload data, add telemetry,
+  or add release/distribution surfaces.
+- Targeted regression coverage now includes history receipt freshness for new
+  files, Markdown-safe initial handoff output, fenced handoff failure excerpts,
+  review-route proof freshness wording, and stale-artifact recommendations in
+  status/resume.
+
+Verification evidence:
+
+- `npm test -- tests/commands/history.test.ts tests/core/output.test.ts tests/core/session.test.ts tests/core/review-intelligence.test.ts tests/commands/evidence-output.test.ts tests/commands/workflow.test.ts tests/renderers/markdown-report.test.ts tests/renderers/resume-prompt.test.ts`
+  passed with 175 tests.
+
+### Add Role-Aware Review Routing
+
+Product direction:
+
+- AgentFlight should show who needs to inspect each review path, not only what
+  proof exists.
+- Routing must stay local, deterministic, and source-free. It should reuse
+  Review Intelligence data rather than adding a new command, hosted workflow,
+  PR comment, or source-content analysis.
+
+Implemented locally:
+
+- Added role-aware review routes for maintainers, verification reviewers,
+  security reviewers, Docs/DX reviewers, and release reviewers.
+- Derived routes from changed-file categories, proof gaps, proof freshness,
+  Trust Delta, review queue, repo calibration, review receipt state, and
+  readiness.
+- Threaded route output through status, handoff, Markdown report, HTML replay,
+  resume, and status JSON.
+- Added a replay `#review-routes` section and review-path shortcut when a route
+  needs attention.
+- Updated README, changelog, product direction, and Project Review Contract
+  docs.
+
+Bug/security/performance notes:
+
+- Added regression coverage for core route classification, command display,
+  workflow JSON, Markdown report output, HTML replay output, and resume output.
+- Route derivation uses local metadata and proof freshness fingerprints. It does
+  not store, render, upload, or analyze source contents, full diffs,
+  stdout/stderr evidence, hosted services, or model output.
+
+### Role-Routing Bug And Security Pass
+
+Implemented locally:
+
+- Kept long suggested proof commands recoverable in status and handoff after
+  dense review rows shorten them.
+- Made `agentflight start` persist configured verification commands from
+  `.agentflight/config.json` when present.
+- Marked accepted review receipts stale when unresolved failed proof finishes
+  after acceptance.
+- Aligned status JSON next action with terminal status when a ready handoff
+  artifact already exists.
+- Escaped raw HTML in Markdown report, resume prompt, and handoff Markdown
+  surfaces without changing captured stdout/stderr evidence files.
+- Capped dense Review Contract proof-reference links and routed hidden replay
+  focus anchors back to the changed-files section.
+- Kept print/PDF replay details visible when `<details>` sections are closed on
+  screen.
+
+Verification evidence:
+
+- `npm test -- tests/core/output.test.ts tests/core/review-intelligence.test.ts tests/renderers/html-replay.test.ts tests/renderers/markdown-report.test.ts tests/renderers/resume-prompt.test.ts tests/commands/workflow.test.ts`
+  passed with 119 tests.
+- `npm run typecheck` passed.
+
+### Add Local Review Receipts And Handoff Staleness
+
+Product direction:
+
+- AgentFlight should not stop at "ready for review." It should let a reviewer
+  record local handoff acceptance and later show whether that acceptance still
+  matches the current changed-file state.
+- The receipt must stay local and source-free. It is a review note, not
+  identity, signature, cloud approval, or PR automation.
+
+Implemented locally:
+
+- Added optional review receipt metadata to session records.
+- Added `agentflight handoff --accept` to record an accepted local receipt.
+- Added receipt evaluation to Review Intelligence, including current and stale
+  states.
+- Added stale receipt guidance to Trust Delta and the review queue.
+- Threaded receipt state through status, handoff, Markdown report, HTML replay,
+  resume, history, and status JSON.
+- Updated repo calibration to prefer accepted receipt history when enough
+  similar accepted sessions exist.
+
+Bug/security/performance notes:
+
+- Added regression coverage for receipt persistence, stale receipt detection,
+  handoff acceptance, status JSON, report, replay escaping, resume, history, and
+  calibration preference.
+- Receipt staleness uses changed paths and source-free proof snapshot
+  fingerprints. It does not read stdout/stderr evidence, upload source, call a
+  model, post a PR comment, or add a hosted review surface.
+
+### Add Trust Delta Review Guidance
+
+Product direction:
+
+- AgentFlight should tell reviewers which signal changed the trust state before
+  they read the full contract: failed proof, stale proof, missing proof, manual
+  review, or repo-history under-proofing.
+- The guidance must reuse existing local review metadata and stay source-free.
+
+Implemented locally:
+
+- Added a Trust Delta model to Review Intelligence.
+- Added a review queue that orders proof reruns, missing-proof commands, manual
+  checks, repo-calibration suggestions, and file inspection.
+- Threaded both through status, handoff, Markdown report, HTML replay, resume,
+  and status JSON.
+- Updated README and Project Review Contract docs with the Trust Delta review
+  path.
+
+Bug/security/performance notes:
+
+- Added regression coverage for failed proof, missing proof, stale proof,
+  docs-only manual review, repo calibration, status JSON, handoff, report,
+  replay, resume, compact command display, and HTML escaping.
+- Trust Delta uses local metadata and proof freshness fingerprints. It does not
+  store, render, upload, or analyze source contents, historical stdout/stderr
+  evidence, full diffs, hosted services, or model output.
 
 ### Prepare v0.12.0 Release
 
@@ -4533,7 +4816,7 @@ Implemented since v0.5.1:
 
 - Improved replay navigation and review ergonomics for long evidence ledgers.
 - Added first-run workspace hygiene guidance for `.agentflight/` runtime paths.
-- Updated product positioning to "local-first review layer for AI coding
+- Updated product positioning to "local-first review layer for coding agent
   sessions."
 - Added optional ProjScan review hints to Review Intelligence without making
   Review Intelligence invoke ProjScan.
@@ -5357,9 +5640,9 @@ Changes:
 - Added `docs/agentflight_logo/icon.svg` to the npm `files` list.
 - Updated `package.json` homepage to `https://www.baseframelabs.com/apps/agentflight`.
 - Updated GitHub About metadata:
-  - Description: `Local-first flight recorder for AI coding agents.`
+  - Description: `Local-first review layer for coding agent sessions.`
   - Website: `https://www.baseframelabs.com/apps/agentflight`
-  - Topics: AI coding agents, Codex, Claude Code, local-first, verification, developer tools.
+  - Topics: coding agents, agentic engineering, Codex, Claude Code, local-first, verification, developer tools.
 
 ### v0.3.2 Dogfood And Replay UI Polish
 

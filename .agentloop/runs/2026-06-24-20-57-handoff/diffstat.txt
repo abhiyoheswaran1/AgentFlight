@@ -1,0 +1,45 @@
+ AGENTFLIGHT_DEVLOG.md                       | 265 +++++++-
+ CHANGELOG.md                                | 126 +++-
+ README.md                                   | 162 ++++-
+ docs/development/product-direction.md       |  66 +-
+ docs/development/project-review-contract.md | 116 +++-
+ src/cli.ts                                  |  10 +-
+ src/commands/handoff.ts                     | 507 ++++++++++++--
+ src/commands/history.ts                     |  67 +-
+ src/commands/resume.ts                      |  17 +-
+ src/commands/start.ts                       |   6 +-
+ src/commands/status.ts                      |  82 ++-
+ src/core/artifacts.ts                       |   2 +
+ src/core/output.ts                          | 283 +++++++-
+ src/core/process.ts                         |   4 +-
+ src/core/project-review-contract.ts         | 144 ++--
+ src/core/proof-calibration.ts               | 124 +++-
+ src/core/review-contract.ts                 |   7 +-
+ src/core/review-intelligence.ts             | 990 ++++++++++++++++++++++++++--
+ src/core/session.ts                         | 114 +++-
+ src/core/verification.ts                    |  56 ++
+ src/renderers/html-replay.ts                | 335 ++++++++--
+ src/renderers/markdown-report.ts            | 206 ++++--
+ src/renderers/resume-prompt.ts              | 184 +++++-
+ src/types/index.ts                          | 109 +++
+ tests/commands/evidence-output.test.ts      | 144 +++-
+ tests/commands/history.test.ts              | 123 ++++
+ tests/commands/workflow.test.ts             | 319 ++++++++-
+ tests/core/output.test.ts                   | 262 +++++++-
+ tests/core/proof-calibration.test.ts        | 175 +++++
+ tests/core/review-contract.test.ts          |  39 +-
+ tests/core/review-intelligence.test.ts      | 935 +++++++++++++++++++++++++-
+ tests/core/session.test.ts                  | 144 ++++
+ tests/core/verification.test.ts             |  45 ++
+ tests/renderers/html-replay.test.ts         | 468 ++++++++++++-
+ tests/renderers/markdown-report.test.ts     | 319 ++++++++-
+ tests/renderers/resume-prompt.test.ts       | 249 +++++++
+ 36 files changed, 6777 insertions(+), 427 deletions(-)
+docs/superpowers/plans/2026-06-24-review-receipts-handoff-staleness.md | untracked
+docs/superpowers/plans/2026-06-24-role-aware-review-routing.md | untracked
+docs/superpowers/plans/2026-06-24-trust-delta-review-guidance.md | untracked
+src/core/ids.ts | untracked
+src/core/proof-kind.ts | untracked
+src/core/session-id.ts | untracked
+tests/core/ids.test.ts | untracked
+tests/core/process.test.ts | untracked

@@ -2,6 +2,136 @@
 
 All notable AgentFlight changes are documented here.
 
+## Unreleased
+
+No unreleased changes.
+
+## [0.13.0] - 2026-06-24
+
+### Added
+
+- Added Trust Delta guidance across status, handoff, Markdown report, HTML
+  replay, resume, and status JSON. It summarizes failed proof, stale proof,
+  missing proof, manual review, and repo-history under-proofing from existing
+  local metadata.
+- Added a review queue that orders proof reruns, missing-proof commands, manual
+  checks, repo-calibration guidance, and file inspection without adding a new
+  command.
+- Added local review receipts via `agentflight handoff --accept`, with current
+  or stale receipt state across status, handoff, Markdown report, HTML replay,
+  resume, history, and status JSON.
+- Added role-aware review routing across status, handoff, Markdown report, HTML
+  replay, resume, and status JSON so maintainers, verification reviewers,
+  security reviewers, Docs/DX reviewers, and release reviewers can see their
+  specific local review path.
+
+### Changed
+
+- `agentflight start` now stores configured `.agentflight/config.json`
+  verification commands in the session when present, so later status, handoff,
+  report, replay, and resume guidance matches the proof commands shown at
+  start.
+- Status and handoff now include a small full-command recovery block when dense
+  review sections shorten long suggested proof commands.
+- Status and resume now open existing ready artifacts only when the latest
+  recorded review summary still matches the current ready changed-file count.
+- Repo calibration now prefers accepted local review receipts when enough
+  similar accepted sessions exist, while keeping ready handoffs as fallback
+  history.
+- Repo calibration now ignores verification runs recorded after the accepted
+  handoff boundary, so later exploratory proof does not change what the
+  accepted handoff taught AgentFlight.
+- Repo calibration history loading now stops after enough newest ready sessions
+  are loaded instead of parsing every local session file.
+- Review routing reuses existing source-free Review Intelligence signals rather
+  than adding a new command or hosted workflow.
+- Review routing no longer sends stale non-release receipts to the Release
+  route, and verification routing no longer describes legacy proof freshness as
+  current.
+- Verification routing now keeps the proof route clear when only manual-review
+  files are stale after proof capture.
+- Project Review Contract stale proof status now applies only to requirements
+  whose own proof-required files changed after proof was captured.
+- Project Review Contract rules that accept multiple proof kinds now choose the
+  best current accepted proof instead of letting an older stale proof of another
+  accepted kind win.
+- Project Review Contract rules that accept multiple proof kinds no longer mark
+  the requirement failed when another accepted proof kind is already current.
+- Text review surfaces now show when Review Focus rows are capped instead of
+  silently omitting lower-priority files.
+- Markdown reports, resume prompts, and status changed-area output now cap large
+  changed-file lists with a remaining count.
+- Status, handoff, Markdown report, and resume now use one shared suggested
+  command collector for full-command recovery blocks.
+
+### Fixed
+
+- Accepted review receipts now become stale when an unresolved verification
+  failure happens after local acceptance.
+- History now marks accepted review receipts stale when new changed files appear
+  after acceptance while preserving non-Git fallback behavior.
+- Status JSON now uses the same open-first next action as terminal status when
+  a ready handoff artifact already exists.
+- Markdown report, resume prompt, and handoff Markdown artifacts now escape raw
+  HTML in dynamic review text, file paths, task names, and failure excerpts
+  while preserving raw stdout/stderr evidence files.
+- Handoff failed-verification excerpts now render as fenced text blocks, so
+  Markdown-looking failure output stays readable without changing artifact
+  structure.
+- Handoff output now promotes only unresolved failed verification excerpts when
+  mixed resolved and unresolved failures exist.
+- HTML replay now points urgent failed-run navigation at unresolved failed runs
+  and marks resolved failures as historical in mixed failure histories.
+- Clean-worktree handoff runs now preserve existing session report, replay,
+  handoff, and resume artifacts even if the current resume prompt was removed,
+  and restore the current resume from the session artifact when available.
+- Clean-worktree resume restoration now uses a direct local artifact copy
+  instead of routing session resume content through a read/write transform.
+- Persisted session ids are now validated before session artifact paths are
+  built, preventing unsafe local metadata from escaping `.agentflight`.
+- Core verification evidence writing now validates persisted session ids before
+  reserving stdout/stderr evidence paths.
+- Display excerpts now strip terminal control, OSC, and bidi control characters
+  while preserving raw stdout/stderr evidence files.
+- Passing verification commands that write more than 1 MiB no longer false-fail
+  due to the process runner's output buffer limit.
+- Trust Delta and review queue stale-proof rows now retain all stale
+  Project Review Contract files instead of only the first stale requirement.
+- Handoff now retains proof-gap related files and focus suggested proof commands
+  when reading status JSON.
+- Markdown aggregate sections in handoff, report, and resume now preserve
+  generated list structure while escaping active Markdown syntax inside dynamic
+  review text.
+- Review Contract proof references in replay now cap dense visible links and
+  fall back to changed-file anchors when a review-focus row is hidden by the
+  visible-row limit.
+- Escaped full-command summaries inside Markdown `<details>` blocks.
+- Added a replay anchor for Review Readiness proof references and kept full
+  commands visible in print/PDF output.
+- Capped long proof-freshness and required-proof file lists in dense review
+  surfaces.
+
+### Security
+
+- Trust Delta and review queue use source-free local metadata only: paths,
+  changed-file categories, proof gaps, proof commands, proof freshness,
+  Project Review Contract status, and repo-calibration summaries.
+- Review receipts store source-free local metadata only: receipt decision,
+  timestamp, changed paths, proof counts, readiness state, commit/branch, and
+  proof snapshot fingerprints. They do not add identity, signatures, upload,
+  telemetry, or automatic PR comments.
+- Review routing uses source-free local metadata only: changed-file paths and
+  categories, proof gaps, proof freshness, Trust Delta, review queue,
+  calibration, review receipt state, and readiness.
+- Proof freshness and receipt freshness hash changed files locally for
+  fingerprints, but AgentFlight does not store, render, upload, or analyze
+  source contents, full diffs, or historical stdout/stderr evidence for these
+  review signals.
+
+### Verification
+
+- Release audit: `docs/development/v0.13.0-release-audit.md`.
+
 ## [0.12.0] - 2026-06-24
 
 ### Added
@@ -18,8 +148,8 @@ All notable AgentFlight changes are documented here.
 ### Security
 
 - Repo calibration reads bounded local session metadata only. It does not read
-  historical stdout/stderr evidence files, source contents, or full diffs, and
-  it does not upload, sync, or call external services.
+  historical stdout/stderr evidence files or full diffs, and it does not upload,
+  sync, or call external services.
 
 ### Verification
 

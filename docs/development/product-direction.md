@@ -1,19 +1,21 @@
 # AgentFlight Product Direction
 
-Date: 2026-06-20
+Date: 2026-06-24
 
-Status: working direction for post-v0.6.0 development. Do not treat this as a
-release plan.
+Status: current product direction for the unreleased local review workflow. Do
+not treat this as a release checklist.
 
 ## Product North Star
 
 AgentFlight is a local-first review layer for coding agent sessions.
 
-It should help real engineers answer three questions quickly:
+It should help real engineers answer five questions quickly:
 
 1. What changed?
 2. What proof exists or failed?
-3. Is this ready to review, and what should I open first?
+3. What changed the trust state, and what should I do next?
+4. Did local review acceptance happen, and is that acceptance still current?
+5. Who needs to inspect which review path before the work is trusted?
 
 The product should keep building around agentic engineering trust, review
 speed, and maintainable evidence. Cloud, accounts, billing, hosted review,
@@ -35,7 +37,47 @@ for failed or incomplete proof.
 User problem: engineers should not need to choose between five AgentFlight
 commands when deciding whether work is reviewable.
 
-### 2. First-Run Workspace Hygiene
+### 2. Trust Delta And Review Queue
+
+Trust Delta should sit near the top of status, handoff, report, replay, and
+resume. It should tell reviewers which signal changed trust: failed proof,
+stale proof, missing proof, manual review, or repo-history under-proofing.
+
+The review queue should turn that delta into the next local steps: fix failed
+proof, rerun stale proof, run missing proof, complete manual review, then
+inspect the highest-signal files.
+
+User problem: reviewers need proof artifacts plus the reason trust changed and
+the action that clears the risk.
+
+### 3. Review Receipt And Handoff Staleness
+
+Accepted handoffs should stay visible after review. `handoff --accept` records a
+local receipt with timestamp, decision, changed paths, proof counts, readiness,
+commit/branch, and proof snapshot fingerprints.
+
+Status, handoff, report, replay, resume, and history should show whether the
+latest accepted receipt is current or stale. If files change after acceptance,
+the review queue should ask the reviewer to refresh the handoff after re-review.
+The receipt is a local review note, not identity, a signature, approval
+automation, hosted review, or a PR comment.
+
+User problem: engineers need to know whether a review decision still applies
+after another agent loop or manual edit changes the repo.
+
+### 4. Role-Aware Review Routing
+
+Review routing should show who needs to inspect each review path: maintainer,
+verification, security, Docs/DX, and release. It should reuse changed-file
+categories, proof gaps, Trust Delta, review queue, receipt state, calibration,
+and readiness rather than storing, rendering, uploading, or analyzing source
+contents or adding a new command.
+
+User problem: a review packet can still leave an engineer asking who should
+look at what. Role routing turns the existing local evidence into a short
+review assignment map without PR comments or hosted workflow.
+
+### 5. First-Run Workspace Hygiene
 
 First-run generated files should not make a simple trial look riskier than the
 actual user change. AgentFlight runtime files stay filtered, project config
@@ -50,7 +92,7 @@ Generated helper files such as `.agentflight/.gitignore` should remain visible,
 but should not outrank `.agentflight/config.json` or real app changes in the
 first-run review path.
 
-### 3. Local Session Discovery
+### 6. Local Session Discovery
 
 Users should be able to find recent local sessions and existing report/replay
 artifacts without remembering `.agentflight/` paths. This should stay read-only:
@@ -64,7 +106,7 @@ Start-only sessions without proof or review artifacts should remain visible,
 but they should not take the same scan space as sessions with handoff, report,
 replay, or resume artifacts.
 
-### 4. Replay And Review Ergonomics
+### 7. Replay And Review Ergonomics
 
 Long sessions need faster navigation and less repetition. Replay should remain
 the best artifact to inspect when verification is complete, while report should
@@ -77,15 +119,19 @@ Markdown reports should answer proof and readiness before chronology. Long
 timelines belong later in the report because replay remains the better artifact
 for inspecting the full flight record.
 
-### 5. Proof Guidance Quality
+### 8. Proof Guidance Quality
 
 Suggested verification commands should be compact, relevant, and consistent
 across status, report, replay, resume, and handoff. Failure excerpts should stay
 stderr-preferred and raw evidence should remain intact.
 
+When AgentFlight shortens a long command in a dense review row, the same surface
+should keep the full command nearby. Reviewers should not need to guess which
+proof command the compact label represents.
+
 User problem: proof guidance should reduce uncertainty, not add output noise.
 
-### 6. Engine-Backed Review Ranking
+### 9. Engine-Backed Review Ranking
 
 ProjScan-enriched ranking can improve prioritization, but it should stay
 deterministic, optional, and explainable. AgentFlight should not become a hidden

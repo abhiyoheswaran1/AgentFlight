@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-24-20-57-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-24-20-57",
+  "createdAtEpochMs": 1782327434780,
+  "task": {
+    "path": ".agentloop/tasks/2026-06-24-second-review-surface-maintenance-pass.md",
+    "title": "Second review surface maintenance pass",
+    "status": "done"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-24-20-56-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-24-20-57-pr-summary.md",
+  "changedFileCount": 61
+}

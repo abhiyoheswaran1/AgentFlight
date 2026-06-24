@@ -1,0 +1,21 @@
+ AGENTFLIGHT_DEVLOG.md                       |  27 +++
+ CHANGELOG.md                                |  18 ++
+ README.md                                   |  39 +++-
+ docs/development/product-direction.md       |  25 ++-
+ docs/development/project-review-contract.md |  22 +++
+ src/commands/handoff.ts                     |  92 +++++++++
+ src/commands/resume.ts                      |   2 +
+ src/commands/status.ts                      |  10 +
+ src/core/output.ts                          |  32 ++++
+ src/core/review-intelligence.ts             | 286 ++++++++++++++++++++++++++++
+ src/renderers/html-replay.ts                |  79 +++++++-
+ src/renderers/markdown-report.ts            |  28 +++
+ src/renderers/resume-prompt.ts              |  22 ++-
+ src/types/index.ts                          |  43 +++++
+ tests/commands/workflow.test.ts             |  22 +++
+ tests/core/output.test.ts                   |  39 +++-
+ tests/core/review-intelligence.test.ts      |  97 ++++++++++
+ tests/renderers/html-replay.test.ts         |  28 +++
+ tests/renderers/markdown-report.test.ts     |  32 ++++
+ tests/renderers/resume-prompt.test.ts       |  30 +++
+ 20 files changed, 961 insertions(+), 12 deletions(-)

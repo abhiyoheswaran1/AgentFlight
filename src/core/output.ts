@@ -2,18 +2,40 @@ import type {
   ProofFreshnessAttribution,
   ProofCalibration,
   ProofCalibrationSuggestion,
+  ReviewReceiptEvaluation,
+  ReviewQueueItem,
+  ReviewRoutes,
+  ReviewRouteStatus,
   ReviewContract,
   ReviewContractClaim,
   ReviewContractClaimStatus,
   ReviewContractProofReference,
   ProjectReviewRequirementState,
   ReviewProofStatus,
+  TrustDelta,
+  TrustDeltaItem,
   ToolAdapterResult
 } from "../types/index.js";
 import { formatRepoRelativePath } from "./paths.js";
 
 export interface CommandOutput {
   output: string;
+}
+
+export interface SuggestedCommandSource {
+  suggestedCommand?: string | undefined;
+}
+
+export interface SuggestedCommandDisplayInput {
+  proofGaps?: SuggestedCommandSource[] | undefined;
+  trustDelta?: { items: SuggestedCommandSource[] } | undefined;
+  reviewQueue?: SuggestedCommandSource[] | undefined;
+  reviewRoutes?: { items: SuggestedCommandSource[] } | undefined;
+  focus?: SuggestedCommandSource[] | undefined;
+  projectReviewContract?: { requirements: SuggestedCommandSource[] } | undefined;
+  calibration?: { suggestions: SuggestedCommandSource[] } | undefined;
+  contract?: { claims: SuggestedCommandSource[] } | undefined;
+  readiness?: SuggestedCommandSource | undefined;
 }
 
 export interface VerificationFailureCounts {
@@ -24,6 +46,8 @@ export interface VerificationFailureCounts {
 }
 
 const DEFAULT_COMMAND_DISPLAY_LENGTH = 96;
+const DEFAULT_FILE_DISPLAY_LIMIT = 8;
+const DEFAULT_REVIEW_CONTRACT_PROOF_REFERENCE_LIMIT = 4;
 export const AGENTFLIGHT_PROJECT_CONFIG_GUIDANCE =
   ".agentflight/config.json is project config. Review or commit it when shared AgentFlight defaults are useful.";
 export const AGENTFLIGHT_RUNTIME_EVIDENCE_GUIDANCE =
@@ -48,7 +72,7 @@ export function formatCommandForDisplay(
   options: { maxLength?: number } = {}
 ): string {
   const maxLength = options.maxLength ?? DEFAULT_COMMAND_DISPLAY_LENGTH;
-  const normalized = command.trim().replace(/\s+/g, " ");
+  const normalized = normalizeCommandForDisplay(command);
   if (normalized.length <= maxLength) return normalized;
   return `${normalized.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
 }
@@ -57,9 +81,128 @@ export function formatVerifyCommandForDisplay(command: string): string {
   return `agentflight verify -- ${formatCommandForDisplay(command)}`;
 }
 
+export function normalizeCommandForDisplay(command: string): string {
+  return command.trim().replace(/\s+/g, " ");
+}
+
+export function commandNeedsFullDisplay(command: string): boolean {
+  return formatCommandForDisplay(command) !== normalizeCommandForDisplay(command);
+}
+
+export function formatFullSuggestedCommandsForDisplay(commands: string[]): string {
+  const visibleCommands = [...new Set(commands.map(normalizeCommandForDisplay))]
+    .filter(Boolean)
+    .filter(commandNeedsFullDisplay);
+  if (visibleCommands.length === 0) return "";
+  return `Full suggested commands:\n${visibleCommands
+    .map((command) => `- agentflight verify -- ${command}`)
+    .join("\n")}`;
+}
+
+export function collectSuggestedCommandsForDisplay(
+  input: SuggestedCommandDisplayInput | undefined
+): string[] {
+  if (!input) return [];
+  return [
+    ...commandsFrom(input.proofGaps),
+    ...commandsFrom(input.trustDelta?.items),
+    ...commandsFrom(input.reviewQueue),
+    ...commandsFrom(input.reviewRoutes?.items),
+    ...commandsFrom(input.focus),
+    ...commandsFrom(input.projectReviewContract?.requirements),
+    ...commandsFrom(input.calibration?.suggestions),
+    ...commandsFrom(input.contract?.claims),
+    ...commandsFrom(input.readiness ? [input.readiness] : [])
+  ];
+}
+
+function commandsFrom(values: SuggestedCommandSource[] | undefined): string[] {
+  return [
+    ...new Set(
+      (values ?? [])
+        .map((value) => value.suggestedCommand)
+        .filter((command): command is string => Boolean(command))
+        .map(normalizeCommandForDisplay)
+        .filter(Boolean)
+    )
+  ];
+}
+
+export function escapeHtmlForDisplay(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+export function escapeMarkdownTextForDisplay(value: string): string {
+  const escaped = value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return escaped
+    .replaceAll("\\", "\\\\")
+    .replaceAll("`", "\\`")
+    .replaceAll("!", "\\!")
+    .replaceAll("[", "\\[")
+    .replaceAll("]", "\\]")
+    .replace(/^([#>*+-])(?=\s)/, "\\$1")
+    .replace(/^(\d+)\.(?=\s)/, "$1\\.");
+}
+
+export function escapeMarkdownBlockForDisplay(value: string): string {
+  return value.split("\n").map(escapeMarkdownBlockLineForDisplay).join("\n");
+}
+
+function escapeMarkdownBlockLineForDisplay(line: string): string {
+  const list = line.match(/^(\s*(?:[-*+]|\d+\.)\s+)(.*)$/);
+  if (list) return `${list[1]}${escapeMarkdownTextForDisplay(list[2] ?? "")}`;
+
+  const indented = line.match(/^(\s{2,})(.*)$/);
+  if (indented) return `${indented[1]}${escapeMarkdownTextForDisplay(indented[2] ?? "")}`;
+
+  return escapeMarkdownTextForDisplay(line);
+}
+
+export function formatMarkdownCodeFenceForDisplay(value: string, language = "text"): string {
+  const longestBacktickRun = Math.max(
+    2,
+    ...Array.from(value.matchAll(/`+/g), (match) => match[0].length)
+  );
+  const fence = "`".repeat(longestBacktickRun + 1);
+  const safeLanguage = language.replace(/[^\w-]/g, "") || "text";
+  return `${fence}${safeLanguage}\n${value}\n${fence}`;
+}
+
+export function formatFileListForDisplay(
+  files: string[],
+  options: { maxFiles?: number } = {}
+): string {
+  const maxFiles = options.maxFiles ?? DEFAULT_FILE_DISPLAY_LIMIT;
+  const cleanFiles = files.map(sanitizeInlineDisplayText);
+  if (cleanFiles.length <= maxFiles) return cleanFiles.join(", ");
+  const visibleFiles = cleanFiles.slice(0, maxFiles);
+  return `${visibleFiles.join(", ")} and ${files.length - visibleFiles.length} more`;
+}
+
 export function compactCommandInText(text: string, command: string | undefined): string {
-  if (!command) return text;
-  return text.split(command).join(formatCommandForDisplay(command));
+  const normalizedText = sanitizeInlineDisplayText(text);
+  if (!command) return normalizedText;
+  return normalizedText
+    .split(normalizeCommandForDisplay(command))
+    .join(formatCommandForDisplay(command));
+}
+
+function sanitizeInlineDisplayText(value: string): string {
+  return value
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 export function formatProofStatusForDisplay(status: ReviewProofStatus): string {
@@ -173,7 +316,7 @@ export function formatProjectRequirementDetailsForDisplay(
     satisfiedProofLine(requirement.satisfiedProof),
     listDisplayLine("Accepted proof", requirement.requiredProof),
     listDisplayLine("Manual review", requirement.manualReview, "; "),
-    listDisplayLine("Files", requirement.relatedFiles),
+    fileListDisplayLine("Files", requirement.relatedFiles),
     ...remainingReviewLines(requirement),
     optionalDisplayLine(
       "Suggested proof",
@@ -228,6 +371,88 @@ export function formatProofFreshnessAttributionForDisplay(
   ].filter((line): line is string => Boolean(line));
 }
 
+export function formatTrustDeltaForDisplay(delta: TrustDelta | undefined): string {
+  if (!delta) return "- No trust delta recorded.";
+  return [
+    `- ${delta.summary}`,
+    ...delta.items.map((item) => `- ${formatTrustDeltaItemForDisplay(item)}`)
+  ].join("\n");
+}
+
+export function formatTrustDeltaItemForDisplay(item: TrustDeltaItem): string {
+  const files = item.relatedFiles.length
+    ? `\n  Files: ${formatFileListForDisplay(item.relatedFiles)}`
+    : "";
+  const command = item.suggestedCommand
+    ? `\n  Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}`
+    : "";
+  return `${item.severity} - ${compactCommandInText(item.message, item.suggestedCommand)}${files}${command}`;
+}
+
+export function formatReviewQueueForDisplay(queue: ReviewQueueItem[] | undefined): string {
+  if (!queue || queue.length === 0) return "- No review queue recorded.";
+  return queue.map(formatReviewQueueItemForDisplay).join("\n");
+}
+
+export function formatReviewQueueItemForDisplay(item: ReviewQueueItem): string {
+  const files = item.relatedFiles.length
+    ? `\n   Files: ${formatFileListForDisplay(item.relatedFiles)}`
+    : "";
+  const command = item.suggestedCommand
+    ? `\n   Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}`
+    : "";
+  return `${item.rank}. ${item.label}\n   ${compactCommandInText(item.detail, item.suggestedCommand)}${files}${command}`;
+}
+
+export function formatReviewRoutesForDisplay(routes: ReviewRoutes | undefined): string {
+  if (!routes || routes.items.length === 0) {
+    return "- No reviewer routing needed for the current worktree.";
+  }
+
+  return [`- ${routes.summary}`, ...routes.items.map(formatReviewRouteItemForDisplay)].join("\n");
+}
+
+export function formatReviewRouteItemForDisplay(item: ReviewRoutes["items"][number]): string {
+  const reason = item.reason
+    ? `\n   Why: ${compactCommandInText(item.reason, item.suggestedCommand)}`
+    : "";
+  const files = item.relatedFiles.length
+    ? `\n   Files: ${formatFileListForDisplay(item.relatedFiles)}`
+    : "";
+  const command = item.suggestedCommand
+    ? `\n   Suggested proof: ${formatVerifyCommandForDisplay(item.suggestedCommand)}`
+    : "";
+  return `${item.priority}. ${item.label} - ${formatReviewRouteStatusForDisplay(item.status)}\n   ${compactCommandInText(item.summary, item.suggestedCommand)}${reason}${files}${command}`;
+}
+
+export function formatReviewRouteStatusForDisplay(status: ReviewRouteStatus): string {
+  const labels: Record<ReviewRouteStatus, string> = {
+    clear: "clear",
+    needs_review: "needs review",
+    blocked: "blocked"
+  };
+  return labels[status];
+}
+
+export function formatReviewReceiptForDisplay(
+  receipt: ReviewReceiptEvaluation | undefined
+): string {
+  if (!receipt || receipt.state === "none") return "- No local review receipt recorded yet.";
+
+  const lines = [
+    receipt.label,
+    receipt.receipt?.summary ? `- ${receipt.receipt.summary}` : undefined,
+    receipt.receipt?.recordedAt ? `- Recorded: ${receipt.receipt.recordedAt}` : undefined,
+    `- State: ${receipt.summary}`,
+    receipt.staleFiles.length > 0
+      ? `- Stale files: ${formatFileListForDisplay(receipt.staleFiles)}`
+      : undefined,
+    `- Next: ${receipt.nextAction}`
+  ].filter((line): line is string => Boolean(line));
+
+  return lines.join("\n");
+}
+
 interface ProofFreshnessDisplayInput {
   state: ProofFreshnessAttribution["state"];
   reason: string;
@@ -244,7 +469,7 @@ function freshnessCategoryLine(
 ): string | undefined {
   if (categories.length === 0) return undefined;
   return `${label}: ${categories
-    .map((entry) => `${entry.category} (${entry.files.join(", ")})`)
+    .map((entry) => `${entry.category} (${formatFileListForDisplay(entry.files)})`)
     .join("; ")}`;
 }
 
@@ -298,6 +523,10 @@ function listDisplayLine(label: string, values: string[], separator = ", "): str
   return values.length > 0 ? `${label}: ${values.join(separator)}` : undefined;
 }
 
+function fileListDisplayLine(label: string, values: string[]): string | undefined {
+  return values.length > 0 ? `${label}: ${formatFileListForDisplay(values)}` : undefined;
+}
+
 function satisfiedProofLine(
   proof: ProjectRequirementDisplayInput["satisfiedProof"]
 ): string | undefined {
@@ -337,21 +566,44 @@ export function getReviewContractPathClaims(
 }
 
 export function formatReviewContractProofReferencesForDisplay(
-  claim: Pick<ReviewContractClaim, "proofReferences">
+  claim: Pick<ReviewContractClaim, "proofReferences">,
+  options: { maxReferences?: number } = {}
 ): string {
   const references = claim.proofReferences ?? [];
   if (references.length === 0) return "";
-  return `Proof refs: ${references.map(formatReviewContractProofReferenceLabelForDisplay).join("; ")}`;
+  const { visibleReferences, hiddenCount } = selectReviewContractProofReferencesForDisplay(
+    references,
+    options
+  );
+  const labels = visibleReferences.map(formatReviewContractProofReferenceLabelForDisplay);
+  if (hiddenCount > 0) labels.push(`and ${hiddenCount} more`);
+  return `Proof refs: ${labels.join("; ")}`;
+}
+
+export function selectReviewContractProofReferencesForDisplay(
+  references: ReviewContractProofReference[],
+  options: { maxReferences?: number } = {}
+): { visibleReferences: ReviewContractProofReference[]; hiddenCount: number } {
+  const maxReferences = Math.max(
+    0,
+    options.maxReferences ?? DEFAULT_REVIEW_CONTRACT_PROOF_REFERENCE_LIMIT
+  );
+  const visibleReferences = references.slice(0, maxReferences);
+  return {
+    visibleReferences,
+    hiddenCount: Math.max(0, references.length - visibleReferences.length)
+  };
 }
 
 export function formatReviewContractProofReferenceLabelForDisplay(
   reference: ReviewContractProofReference
 ): string {
   const suggestedProofPrefix = "Suggested proof: ";
-  if (reference.kind === "suggested_command" && reference.label.startsWith(suggestedProofPrefix)) {
-    return `${suggestedProofPrefix}${formatCommandForDisplay(reference.label.slice(suggestedProofPrefix.length))}`;
+  const label = sanitizeInlineDisplayText(reference.label);
+  if (reference.kind === "suggested_command" && label.startsWith(suggestedProofPrefix)) {
+    return `${suggestedProofPrefix}${formatCommandForDisplay(label.slice(suggestedProofPrefix.length))}`;
   }
-  return reference.label;
+  return label;
 }
 
 export function formatVerificationCountLine(counts: VerificationFailureCounts): string {
@@ -400,12 +652,13 @@ function compareAgentFlightGeneratedFilePaths(left: string, right: string): numb
   );
 }
 
+const agentFlightGeneratedFilePathPriorities = new Map([
+  [".agentflight/config.json", 0],
+  [".agentflight/.gitignore", 1]
+]);
+
 function agentFlightGeneratedFilePathPriority(file: string): number {
-  const priorities = new Map([
-    [".agentflight/config.json", 0],
-    [".agentflight/.gitignore", 1]
-  ]);
-  return priorities.get(file) ?? 10;
+  return agentFlightGeneratedFilePathPriorities.get(file) ?? 10;
 }
 
 export function formatToolForReport(label: string, result: ToolAdapterResult): string {

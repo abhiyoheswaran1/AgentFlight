@@ -1,11 +1,16 @@
 import { readdir, readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { withFileLock, writeJsonFileSafe, writeTextFileSafe } from "./fs-safe.js";
+import { escapeMarkdownTextForDisplay } from "./output.js";
 import { resolveAgentFlightPaths } from "./paths.js";
+import { assertSafeSessionId } from "./session-id.js";
 import { getUnresolvedFailedRuns } from "./verification-runs.js";
 import type {
   AgentFlightSession,
   GitInfo,
+  ReviewReceipt,
+  ReviewReceiptDecision,
+  ReviewReceiptSnapshot,
   ReviewReadinessDecision,
   ReviewReadinessState,
   RiskLevel,
@@ -52,6 +57,7 @@ export interface SessionSummary {
   verificationUnresolvedFailed: number;
   verificationResolvedFailed: number;
   latestReview?: SessionReviewSummary;
+  latestReviewReceipt?: SessionReviewReceiptSummary;
   sessionPath: string;
 }
 
@@ -64,6 +70,13 @@ export interface SessionReviewSummary {
   verificationFailed: number;
   artifactPath: string | null;
   generatedAt: string;
+}
+
+export interface SessionReviewReceiptSummary {
+  decision: ReviewReceiptDecision;
+  recordedAt: string;
+  summary: string;
+  snapshot: ReviewReceiptSnapshot;
 }
 
 export interface BuildArtifactReviewMetadataOptions {
@@ -95,6 +108,13 @@ export interface SessionEventInput {
   title: string;
   message?: string | undefined;
   metadata?: Record<string, unknown> | undefined;
+}
+
+export interface ReviewReceiptInput {
+  decision: ReviewReceiptDecision;
+  recordedAt?: Date | string | undefined;
+  summary: string;
+  snapshot: ReviewReceiptSnapshot;
 }
 
 const unavailableTool: ToolAdapterResult = {
@@ -144,6 +164,7 @@ export function buildSessionRecord(options: BuildSessionRecordOptions): AgentFli
 
 export async function startSession(options: StartSessionOptions): Promise<StartSessionResult> {
   const session = buildSessionRecord(options);
+  assertSafeSessionId(session.id);
   const paths = resolveAgentFlightPaths(options.repoRoot);
   const sessionPath = `${paths.sessions}/${session.id}.json`;
 
@@ -161,6 +182,14 @@ export async function startSession(options: StartSessionOptions): Promise<StartS
 
 export function getVerificationRuns(session: AgentFlightSession): VerificationRun[] {
   return session.verificationRuns ?? [];
+}
+
+export function getReviewReceipts(session: AgentFlightSession): ReviewReceipt[] {
+  return session.reviewReceipts ?? [];
+}
+
+export function getLatestReviewReceipt(session: AgentFlightSession): ReviewReceipt | null {
+  return getReviewReceipts(session).at(-1) ?? null;
 }
 
 export function buildArtifactReviewMetadata(
@@ -231,6 +260,7 @@ async function readSessionDir(sessionsPath: string): Promise<SessionDirEntry[]> 
 async function loadSessionSummary(sessionPath: string): Promise<LoadedSessionSummary> {
   try {
     const session = JSON.parse(await readFile(sessionPath, "utf8")) as AgentFlightSession;
+    assertSafeSessionId(session.id);
     return { summary: summarizeSession(session, sessionPath) };
   } catch (error) {
     return {
@@ -262,6 +292,15 @@ function summarizeSession(session: AgentFlightSession, sessionPath: string): Ses
   };
   const latestReview = getLatestRecordedReviewSummary(session);
   if (latestReview) summary.latestReview = latestReview;
+  const latestReceipt = getLatestReviewReceipt(session);
+  if (latestReceipt) {
+    summary.latestReviewReceipt = {
+      decision: latestReceipt.decision,
+      recordedAt: latestReceipt.recordedAt,
+      summary: latestReceipt.summary,
+      snapshot: latestReceipt.snapshot
+    };
+  }
 
   return summary;
 }
@@ -344,6 +383,15 @@ export function getLatestRecordedReviewSummary(
   }
 
   return cleanFallback;
+}
+
+export function reviewSummaryMatchesCurrentWork(
+  summary: SessionReviewSummary | null,
+  input: { state: ReviewReadinessState; changedFiles: number }
+): boolean {
+  return Boolean(
+    summary && summary.state === input.state && summary.changedFiles === input.changedFiles
+  );
 }
 
 function isArtifactGeneratedEvent(event: SessionEvent): boolean {
@@ -449,7 +497,42 @@ export function addSessionEvent(
   };
 }
 
+export function addReviewReceipt(
+  session: AgentFlightSession,
+  input: ReviewReceiptInput
+): AgentFlightSession {
+  const receipts = getReviewReceipts(session);
+  const recordedAt = normalizeEventTimestamp(input.recordedAt);
+  const receipt: ReviewReceipt = {
+    id: `receipt-${formatDateForId(new Date(recordedAt))}-${slugify(input.decision)}-${String(receipts.length + 1).padStart(3, "0")}`,
+    decision: input.decision,
+    recordedAt,
+    summary: input.summary,
+    snapshot: input.snapshot
+  };
+  const nextSession = {
+    ...session,
+    reviewReceipts: [...receipts, receipt]
+  };
+
+  return addSessionEvent(nextSession, {
+    type: "review_receipt_recorded",
+    timestamp: recordedAt,
+    title: "Review receipt recorded",
+    message: input.summary,
+    metadata: {
+      decision: input.decision,
+      artifactPath: input.snapshot.artifactPath ?? null,
+      readinessState: input.snapshot.readinessState,
+      verificationPassed: input.snapshot.verificationPassed,
+      verificationFailed: input.snapshot.verificationFailed,
+      changedFiles: input.snapshot.changedFiles
+    }
+  });
+}
+
 export async function saveSession(repoRoot: string, session: AgentFlightSession): Promise<void> {
+  assertSafeSessionId(session.id);
   const paths = resolveAgentFlightPaths(repoRoot);
 
   await writeJsonFileSafe(`${paths.sessions}/${session.id}.json`, session, { overwrite: true });
@@ -477,12 +560,23 @@ export async function appendVerificationRun(
   }));
 }
 
+export async function appendReviewReceipt(
+  repoRoot: string,
+  session: AgentFlightSession,
+  input: ReviewReceiptInput
+): Promise<AgentFlightSession> {
+  return mutatePersistedSession(repoRoot, session, (latestSession) =>
+    addReviewReceipt(latestSession, input)
+  );
+}
+
 async function mutatePersistedSession(
   repoRoot: string,
   session: AgentFlightSession,
   mutate: (session: AgentFlightSession) => AgentFlightSession
 ): Promise<AgentFlightSession> {
   const paths = resolveAgentFlightPaths(repoRoot);
+  assertSafeSessionId(session.id);
   const lockPath = `${paths.sessions}/${session.id}.lock`;
 
   return withFileLock(lockPath, async () => {
@@ -498,10 +592,12 @@ async function readPersistedSession(
   fallback: AgentFlightSession
 ): Promise<AgentFlightSession> {
   const paths = resolveAgentFlightPaths(repoRoot);
+  assertSafeSessionId(fallback.id);
   const sessionPath = `${paths.sessions}/${fallback.id}.json`;
 
   try {
     const session = JSON.parse(await readFile(sessionPath, "utf8")) as AgentFlightSession;
+    assertSafeSessionId(session.id);
     return session.id === fallback.id ? session : fallback;
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") return fallback;
@@ -540,22 +636,24 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
 
 function renderInitialHandoff(session: AgentFlightSession): string {
   const proof = session.verificationCommands.length
-    ? session.verificationCommands.map((command) => `- ${command}`).join("\n")
+    ? session.verificationCommands
+        .map((command) => `- ${escapeMarkdownTextForDisplay(command)}`)
+        .join("\n")
     : "- No verification commands detected yet.";
 
   return `# AgentFlight Handoff
 
 ## Task
-${session.task.title}
+${escapeMarkdownTextForDisplay(session.task.title)}
 
 ## Session
-- ID: ${session.id}
-- Project: ${basename(session.repoRoot)}
-- Started: ${session.startedAt}
-- Git branch: ${session.git.branch ?? "unknown"}
-- Git commit: ${session.git.commit ?? "unknown"}
+- ID: ${escapeMarkdownTextForDisplay(session.id)}
+- Project: ${escapeMarkdownTextForDisplay(basename(session.repoRoot))}
+- Started: ${escapeMarkdownTextForDisplay(session.startedAt)}
+- Git branch: ${escapeMarkdownTextForDisplay(session.git.branch ?? "unknown")}
+- Git commit: ${escapeMarkdownTextForDisplay(session.git.commit ?? "unknown")}
 - Dirty at start: ${session.git.dirty ? "yes" : "no"}
-- Package manager: ${session.packageManager ?? "unknown"}
+- Package manager: ${escapeMarkdownTextForDisplay(session.packageManager ?? "unknown")}
 
 ## Suggested proof
 ${proof}

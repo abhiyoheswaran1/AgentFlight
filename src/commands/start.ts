@@ -48,6 +48,10 @@ export async function runStartCommand(options: StartCommandOptions): Promise<Sta
   const packageJson = await readPackageJson(options.repoRoot);
   const verificationCommands = detectVerificationCommands(packageJson);
   const configuredVerificationCommands = config?.verification.commands ?? [];
+  const sessionVerificationCommands =
+    configuredVerificationCommands.length > 0
+      ? configuredVerificationCommands
+      : verificationCommands;
   const git = options.git ?? (await getGitInfo(options.repoRoot));
   const packageManager = options.packageManager ?? (await detectPackageManager(options.repoRoot));
   const tools = options.tools ?? (await inspectStartTools(options.repoRoot, options.task));
@@ -58,7 +62,7 @@ export async function runStartCommand(options: StartCommandOptions): Promise<Sta
     now: options.now,
     git,
     packageManager,
-    verificationCommands,
+    verificationCommands: sessionVerificationCommands,
     tools
   });
   const initializedSection = autoInitNotice ? `\n${autoInitNotice}\n` : "\n";
