@@ -2,6 +2,29 @@
 
 All notable AgentFlight changes are documented here.
 
+## [0.12.0] - 2026-06-24
+
+### Added
+
+- Added repo-calibrated proof guidance that compares current proof with similar
+  local ready handoffs and suggests additional proof commands when current proof
+  is weaker than local history.
+- Status, handoff, Markdown report, HTML replay, resume, and status JSON now
+  include repo calibration when local session history is available.
+- Proof freshness now attributes stale proof to the files and categories that
+  changed after verification, so docs-only changes can stay manual-review
+  guidance while source/test changes still recommend rerunning proof.
+
+### Security
+
+- Repo calibration reads bounded local session metadata only. It does not read
+  historical stdout/stderr evidence files, source contents, or full diffs, and
+  it does not upload, sync, or call external services.
+
+### Verification
+
+- Release audit: `docs/development/v0.12.0-release-audit.md`.
+
 ## [0.11.0] - 2026-06-24
 
 ### Added

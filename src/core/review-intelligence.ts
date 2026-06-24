@@ -4,11 +4,13 @@ import {
   evaluateProjectReviewContract,
   projectRequirementProofGaps
 } from "./project-review-contract.js";
+import { buildProofCalibration } from "./proof-calibration.js";
 import { buildReviewContract } from "./review-contract.js";
 import { getVerificationRuns } from "./session.js";
 import { getUnresolvedFailedRuns } from "./verification.js";
 import type {
   AgentFlightSession,
+  ProofFreshnessAttribution,
   ProofSnapshot,
   ProjectReviewContractConfig,
   ProjectReviewContractEvaluation,
@@ -33,6 +35,7 @@ export interface BuildReviewIntelligenceOptions {
   currentProofSnapshot?: ProofSnapshot | undefined;
   projscanHints?: ProjScanReviewHint[] | undefined;
   projectReviewContract?: ProjectReviewContractConfig | undefined;
+  historicalSessions?: AgentFlightSession[] | undefined;
 }
 
 const baseScores: Record<RiskCategory, number> = {
@@ -237,10 +240,26 @@ export function buildReviewIntelligence(
     proofGaps,
     readiness
   });
+  const calibration = options.historicalSessions
+    ? buildProofCalibration({
+        currentSessionId: options.session.id,
+        changedFiles: options.changedFiles,
+        verificationRuns: runs,
+        verificationCommands,
+        historicalSessions: options.historicalSessions
+      })
+    : undefined;
 
   return {
     focus,
     ...(projectReviewContract ? { projectReviewContract } : {}),
+    ...(calibration ? { calibration } : {}),
+    proofFreshness: {
+      state: proofFreshness.state,
+      reason: proofFreshness.reason,
+      staleFiles: proofFreshness.staleFiles,
+      staleCategories: proofFreshness.staleCategories
+    },
     proofGaps,
     readiness,
     contract
@@ -282,12 +301,11 @@ function summarizeProofKinds(runs: VerificationRun[]): {
   return { passed, failed };
 }
 
-type ProofFreshnessState = "current" | "stale" | "legacy" | "unavailable" | "none";
-
 interface ProofFreshnessSummary {
-  state: ProofFreshnessState;
+  state: ProofFreshnessAttribution["state"];
   run?: VerificationRun | undefined;
   staleFiles: string[];
+  staleCategories: ProofFreshnessAttribution["staleCategories"];
   reason: string;
 }
 
@@ -300,6 +318,7 @@ function summarizeProofFreshness(
     return {
       state: "none",
       staleFiles: [],
+      staleCategories: [],
       reason: "No passing verification proof has been recorded."
     };
   }
@@ -310,6 +329,7 @@ function summarizeProofFreshness(
       state: "legacy",
       run: latestPassedRun,
       staleFiles: [],
+      staleCategories: [],
       reason: "Passing verification proof was recorded before proof freshness snapshots existed."
     };
   }
@@ -319,17 +339,20 @@ function summarizeProofFreshness(
       state: "unavailable",
       run: latestPassedRun,
       staleFiles: [],
+      staleCategories: [],
       reason:
         proofSnapshot.unavailableReason ?? "Proof freshness cannot be compared in this worktree."
     };
   }
 
   const comparison = compareProofSnapshotToCurrent(proofSnapshot, currentProofSnapshot);
+  const staleCategories = buildProofFreshnessCategories(comparison.staleFiles);
   return {
     state: comparison.current ? "current" : "stale",
     run: latestPassedRun,
     staleFiles: comparison.staleFiles,
-    reason: comparison.reason
+    staleCategories,
+    reason: comparison.current ? comparison.reason : formatProofFreshnessReason(staleCategories)
   };
 }
 
@@ -415,20 +438,100 @@ function addStaleProofGap(
   if (input.proofFreshness.state !== "stale") return;
   if (input.proofKinds.passed.size === 0) return;
 
+  const proofRequiredStaleFiles = staleProofRequiredFiles(input.proofFreshness);
   const relatedFiles =
-    input.proofFreshness.staleFiles.length > 0
-      ? input.proofFreshness.staleFiles
+    proofRequiredStaleFiles.length > 0
+      ? proofRequiredStaleFiles
       : proofRequiredFiles(input.changedFiles);
   if (relatedFiles.length === 0) return;
 
   const gap: ProofGap = {
     id: "stale-verification-proof",
     severity: "warning",
-    message: `Verification proof is stale. ${input.proofFreshness.reason}`,
+    message: input.proofFreshness.reason,
     relatedFiles
   };
   if (input.proofFreshness.run?.command) gap.suggestedCommand = input.proofFreshness.run.command;
   gaps.push(gap);
+}
+
+function buildProofFreshnessCategories(
+  staleFiles: string[]
+): ProofFreshnessAttribution["staleCategories"] {
+  const byCategory = new Map<
+    RiskCategory,
+    { category: RiskCategory; files: string[]; proofRequired: boolean }
+  >();
+  for (const file of staleFiles) {
+    const category = categorizeFile(file);
+    const current = byCategory.get(category) ?? {
+      category,
+      files: [],
+      proofRequired: isProofRequiredStaleFile(file, category)
+    };
+    current.files.push(file);
+    current.proofRequired ||= isProofRequiredStaleFile(file, category);
+    byCategory.set(category, current);
+  }
+  return [...byCategory.values()]
+    .map((entry) => ({
+      ...entry,
+      files: entry.files.sort((left, right) => left.localeCompare(right))
+    }))
+    .sort(
+      (left, right) =>
+        Number(right.proofRequired) - Number(left.proofRequired) ||
+        left.category.localeCompare(right.category)
+    );
+}
+
+function isProofRequiredStaleFile(
+  file: string,
+  category: RiskCategory = categorizeFile(file)
+): boolean {
+  if (isGeneratedGuidanceFile(file)) return false;
+  return proofRequiredCategories().has(category);
+}
+
+function proofRequiredCategories(): Set<RiskCategory> {
+  return new Set(categoryProofGapRules.flatMap((rule) => rule.categories));
+}
+
+function staleProofRequiredFiles(proofFreshness: ProofFreshnessSummary): string[] {
+  return proofFreshness.staleCategories
+    .filter((entry) => entry.proofRequired)
+    .flatMap((entry) => entry.files)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function formatProofFreshnessReason(
+  staleCategories: ProofFreshnessAttribution["staleCategories"]
+): string {
+  const proofRequired = staleCategories.filter((entry) => entry.proofRequired);
+  const reviewOnly = staleCategories.filter((entry) => !entry.proofRequired);
+  if (proofRequired.length === 0 && reviewOnly.length === 0) {
+    return "Changed files were added or changed after proof was captured.";
+  }
+  if (proofRequired.length === 0) {
+    return `${formatCategoryList(reviewOnly)} changed after proof was captured; manual review remains.`;
+  }
+  const rerun = `Verification proof is stale for ${formatCategoryList(proofRequired)} changes after proof was captured. Rerun verification for these files.`;
+  if (reviewOnly.length === 0) return rerun;
+  return `${rerun} ${capitalizeFirst(formatCategoryList(reviewOnly))} changes also need manual review.`;
+}
+
+function formatCategoryList(
+  categories: Pick<ProofFreshnessAttribution["staleCategories"][number], "category">[]
+): string {
+  const labels = [...new Set(categories.map((entry) => entry.category))];
+  if (labels.length === 0) return "Changed files";
+  if (labels.length === 1) return labels[0]!;
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels.at(-1)}`;
+}
+
+function capitalizeFirst(value: string): string {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function proofRequiredFiles(changedFiles: string[]): string[] {

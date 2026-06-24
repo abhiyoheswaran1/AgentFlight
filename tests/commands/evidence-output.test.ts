@@ -185,6 +185,57 @@ describe("evidence-aware session outputs", () => {
     expect(status.output).not.toContain("diff --git");
   });
 
+  it("carries repo calibration through JSON status and handoff", async () => {
+    const repoRoot = await startedRepo(["npm test", "npm run e2e:auth"]);
+    const current = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    ) as AgentFlightSession;
+    const changedFile = "src/auth/session.ts";
+
+    await saveSession(repoRoot, {
+      ...current,
+      verificationRuns: [calibrationRun(current.id, "npm test", changedFile)]
+    });
+    await writeCalibrationSession(
+      repoRoot,
+      "af-auth-history-1",
+      ["src/auth/session.ts"],
+      ["npm test", "npm run e2e:auth"]
+    );
+    await writeCalibrationSession(
+      repoRoot,
+      "af-auth-history-2",
+      ["src/auth/password.ts"],
+      ["npm test", "npm run e2e:auth"]
+    );
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: [changedFile],
+      format: "json"
+    });
+    const payload = JSON.parse(status.output);
+
+    expect(payload.review.calibration).toMatchObject({
+      state: "under_proven",
+      similarReadySessions: 2,
+      suggestions: [
+        {
+          category: "auth",
+          suggestedCommand: "npm run e2e:auth"
+        }
+      ]
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: [changedFile]
+    });
+    expect(handoff.output).toContain("Repo calibration:");
+    expect(handoff.output).toContain("under-proven - auth");
+    expect(handoff.output).toContain("Suggested proof: agentflight verify -- npm run e2e:auth");
+  });
+
   it("marks stale proof in status and handoff when files changed after verification", async () => {
     const repoRoot = await startedRepo(["npm test"]);
     const changedFile = "src/auth/reset.ts";
@@ -230,7 +281,10 @@ describe("evidence-aware session outputs", () => {
       "Review path: Review 3 stale claims and 2 unsupported claims before sharing."
     );
     expect(status.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
-    expect(status.output).toContain("Verification proof is stale");
+    expect(status.output).toContain("Proof freshness:");
+    expect(status.output).toContain(
+      "Verification proof is stale for auth changes after proof was captured."
+    );
     expect(status.output).toContain("Readiness: Needs verification");
     expect(status.output).toContain("agentflight verify -- npm test");
 
@@ -247,6 +301,17 @@ describe("evidence-aware session outputs", () => {
     expect(payload.review.proofGaps[0]).toMatchObject({
       id: "stale-verification-proof",
       relatedFiles: [changedFile]
+    });
+    expect(payload.review.proofFreshness).toMatchObject({
+      state: "stale",
+      staleFiles: [changedFile],
+      staleCategories: [
+        {
+          category: "auth",
+          files: [changedFile],
+          proofRequired: true
+        }
+      ]
     });
 
     const snapshot = await runSnapshotCommand({
@@ -276,14 +341,101 @@ describe("evidence-aware session outputs", () => {
       "Review path: Review 3 stale claims and 2 unsupported claims before sharing."
     );
     expect(handoff.output).toContain("stale - Changed file reviewed: src/auth/reset.ts");
-    expect(handoff.output).toContain("Verification proof is stale");
+    expect(handoff.output).toContain("Proof freshness:");
+    expect(handoff.output).toContain(
+      "Verification proof is stale for auth changes after proof was captured."
+    );
     expect(handoff.output).toContain("Fix before sharing:");
-    await expect(readFile(handoff.reportPath, "utf8")).resolves.toContain("- Proof: stale");
-    await expect(readFile(handoff.replayPath, "utf8")).resolves.toContain("Proof:</span> stale");
-    await expect(readFile(handoff.sessionResumePath, "utf8")).resolves.toContain("- Proof: stale");
+    const report = await readFile(handoff.reportPath, "utf8");
+    expect(report).toContain("- Proof: stale");
+    expect(report).toContain("## Proof Freshness");
+    expect(report).toContain("Rerun verification for these files.");
+    const replay = await readFile(handoff.replayPath, "utf8");
+    expect(replay).toContain("Proof:</span> stale");
+    expect(replay).toContain("Proof Freshness");
+    expect(replay).toContain("Rerun verification for these files.");
+    const resume = await readFile(handoff.sessionResumePath, "utf8");
+    expect(resume).toContain("- Proof: stale");
+    expect(resume).toContain("## Proof Freshness");
+    expect(resume).toContain("Rerun verification for these files.");
 
     const history = await runHistoryCommand({ repoRoot, limit: 1 });
     expect(history.output).toContain("Recorded readiness: Needs verification");
+  });
+
+  it("keeps docs-only stale proof as manual review guidance", async () => {
+    const repoRoot = await startedRepo(["npm test"]);
+    const changedFile = "README.md";
+    await writeFile(join(repoRoot, changedFile), "new docs proof state\n", "utf8");
+
+    const session = JSON.parse(
+      await readFile(join(repoRoot, ".agentflight", "current", "session.json"), "utf8")
+    ) as AgentFlightSession;
+    const stdoutPath = `.agentflight/evidence/${session.id}/verification-1.stdout.txt`;
+    const stderrPath = `.agentflight/evidence/${session.id}/verification-1.stderr.txt`;
+    await mkdir(join(repoRoot, ".agentflight", "evidence", session.id), { recursive: true });
+    await writeFile(join(repoRoot, stdoutPath), "old proof ok\n", "utf8");
+    await writeFile(join(repoRoot, stderrPath), "", "utf8");
+    await saveSession(repoRoot, {
+      ...session,
+      verificationRuns: [
+        {
+          command: "npm test",
+          startedAt: "2026-06-13T12:00:00.000Z",
+          finishedAt: "2026-06-13T12:00:05.000Z",
+          durationMs: 5000,
+          exitCode: 0,
+          status: "passed",
+          stdoutPath,
+          stderrPath,
+          proofSnapshot: proofSnapshot({ [changedFile]: "old-docs" })
+        }
+      ]
+    });
+
+    const status = await runStatusCommand({
+      repoRoot,
+      changedFiles: [changedFile],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+
+    expect(status.output).toContain("Proof freshness:");
+    expect(status.output).toContain(
+      "docs changed after proof was captured; manual review remains."
+    );
+    expect(status.output).not.toContain("stale-verification-proof");
+    expect(status.output).toContain("Readiness: Ready for review");
+
+    const jsonStatus = await runStatusCommand({
+      repoRoot,
+      changedFiles: [changedFile],
+      format: "json"
+    });
+    const payload = JSON.parse(jsonStatus.output);
+    expect(payload.review.proofGaps.map((gap: { id: string }) => gap.id)).not.toContain(
+      "stale-verification-proof"
+    );
+    expect(payload.review.proofFreshness).toMatchObject({
+      state: "stale",
+      staleCategories: [
+        {
+          category: "docs",
+          files: [changedFile],
+          proofRequired: false
+        }
+      ]
+    });
+
+    const handoff = await runHandoffCommand({
+      repoRoot,
+      changedFiles: [changedFile],
+      now: new Date("2026-06-13T12:05:00.000Z")
+    });
+    expect(handoff.exitCode).toBe(0);
+    expect(handoff.output).toContain("Proof freshness:");
+    expect(handoff.output).toContain(
+      "docs changed after proof was captured; manual review remains."
+    );
   });
 
   it("rejects unsupported status formats", async () => {
@@ -1524,6 +1676,67 @@ async function startedRepo(verificationCommands: string[]): Promise<string> {
     }
   });
   return repoRoot;
+}
+
+async function writeCalibrationSession(
+  repoRoot: string,
+  id: string,
+  changedFiles: string[],
+  commands: string[]
+): Promise<void> {
+  const session: AgentFlightSession = {
+    id,
+    task: { title: id },
+    startedAt: id.endsWith("2") ? "2026-06-13T12:02:00.000Z" : "2026-06-13T12:01:00.000Z",
+    repoRoot,
+    git: { branch: "main", commit: "abc123", dirty: true, changedFiles },
+    packageManager: "npm",
+    verificationCommands: commands,
+    verificationRuns: commands.map((command) => calibrationRun(id, command, changedFiles[0]!)),
+    events: [
+      {
+        id: `evt-${id}-report`,
+        type: "report_generated",
+        timestamp: "2026-06-13T12:10:00.000Z",
+        title: "Report generated",
+        metadata: {
+          path: `.agentflight/reports/${id}-proof.md`,
+          readiness: {
+            state: "ready_for_review",
+            label: "Ready for review",
+            riskLevel: "high",
+            changedFiles: changedFiles.length,
+            verificationPassed: commands.length,
+            verificationFailed: 0
+          }
+        }
+      }
+    ],
+    tools: {
+      projscan: { available: false, warnings: [] },
+      agentloopkit: { available: false, warnings: [] }
+    }
+  };
+
+  await writeFile(
+    join(repoRoot, ".agentflight", "sessions", `${id}.json`),
+    `${JSON.stringify(session, null, 2)}\n`,
+    "utf8"
+  );
+}
+
+function calibrationRun(sessionId: string, command: string, changedFile: string): VerificationRun {
+  return {
+    command,
+    startedAt: "2026-06-13T12:00:00.000Z",
+    finishedAt: "2026-06-13T12:00:05.000Z",
+    durationMs: 5000,
+    exitCode: 0,
+    status: "passed",
+    stdoutPath: `.agentflight/evidence/${sessionId}/verification-1.stdout.txt`,
+    stderrPath: `.agentflight/evidence/${sessionId}/verification-1.stderr.txt`,
+    proofSnapshot: proofSnapshot({ [changedFile]: command })
+  };
 }
 
 function legacySessions(repoRoot: string): Array<{

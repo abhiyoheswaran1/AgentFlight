@@ -1,0 +1,25 @@
+ AGENTFLIGHT_DEVLOG.md                       |  72 +++++++++
+ CHANGELOG.md                                |  23 +++
+ README.md                                   |  61 ++++++--
+ docs/development/project-review-contract.md |  60 ++++++++
+ docs/examples/basic-agentflight-session.md  |   9 +-
+ package-lock.json                           |   4 +-
+ package.json                                |   2 +-
+ src/commands/handoff.ts                     | 151 +++++++++++++++++++
+ src/commands/replay.ts                      |   5 +
+ src/commands/report.ts                      |   5 +
+ src/commands/resume.ts                      |   7 +
+ src/commands/status.ts                      |  44 +++++-
+ src/core/output.ts                          |  67 +++++++++
+ src/core/project-review-contract.ts         |   2 +-
+ src/core/review-intelligence.ts             | 117 ++++++++++++++-
+ src/renderers/html-replay.ts                |  57 +++++++
+ src/renderers/markdown-report.ts            |  45 ++++++
+ src/renderers/resume-prompt.ts              |  38 +++++
+ src/types/index.ts                          |  40 +++++
+ tests/commands/evidence-output.test.ts      | 223 +++++++++++++++++++++++++++-
+ tests/core/review-intelligence.test.ts      | 208 ++++++++++++++++++++++++++
+ tests/renderers/html-replay.test.ts         |  95 ++++++++++++
+ tests/renderers/markdown-report.test.ts     | 119 +++++++++++++++
+ tests/renderers/resume-prompt.test.ts       |  87 +++++++++++
+ 24 files changed, 1513 insertions(+), 28 deletions(-)

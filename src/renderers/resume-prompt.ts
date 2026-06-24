@@ -2,6 +2,10 @@ import {
   compactCommandInText,
   formatProjectRequirementDetailsForDisplay,
   formatProjectRequirementStatusForDisplay,
+  formatProofCalibrationDetailsForDisplay,
+  formatProofCalibrationStatusForDisplay,
+  formatProofCalibrationSummaryForDisplay,
+  formatProofFreshnessAttributionForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractProofReferencesForDisplay,
   formatReviewContractReviewPathForDisplay,
@@ -10,6 +14,9 @@ import {
 } from "../core/output.js";
 import type {
   ProofGap,
+  ProofCalibration,
+  ProofCalibrationSuggestion,
+  ProofFreshnessAttribution,
   ProjectReviewContractEvaluation,
   ProjectReviewRequirementStatus,
   ReviewContract,
@@ -28,6 +35,8 @@ export interface ResumePromptInput {
   verificationGaps: string[];
   reviewFocus?: ReviewFocusItem[] | undefined;
   projectReviewContract?: ProjectReviewContractEvaluation | undefined;
+  calibration?: ProofCalibration | undefined;
+  proofFreshness?: ProofFreshnessAttribution | undefined;
   reviewContract?: ReviewContract | undefined;
   proofGaps?: ProofGap[] | undefined;
   readiness?: ReviewReadinessDecision | undefined;
@@ -68,6 +77,11 @@ ${renderReviewFocus(input.reviewFocus ?? [])}
 
 ## Required Proof
 ${renderRequiredProof(input.projectReviewContract)}
+
+${renderProofFreshnessSection(input.proofFreshness)}
+
+## Repo Calibration
+${renderRepoCalibration(input.calibration)}
 
 ## Review Contract
 ${renderReviewContract(input.reviewContract, Boolean(input.openFirstArtifact))}
@@ -114,6 +128,30 @@ function renderProjectRequirement(requirement: ProjectReviewRequirementStatus): 
     .map((line) => `\n   - ${line}`)
     .join("");
   return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
+}
+
+function renderRepoCalibration(calibration: ProofCalibration | undefined): string {
+  if (!calibration) return "No repo calibration history loaded.";
+  if (calibration.suggestions.length === 0) {
+    return formatProofCalibrationSummaryForDisplay(calibration);
+  }
+  return [
+    formatProofCalibrationSummaryForDisplay(calibration),
+    ...calibration.suggestions.map(renderRepoCalibrationSuggestion)
+  ].join("\n");
+}
+
+function renderRepoCalibrationSuggestion(suggestion: ProofCalibrationSuggestion): string {
+  const details = formatProofCalibrationDetailsForDisplay(suggestion)
+    .map((line) => `\n   - ${line}`)
+    .join("");
+  return `- ${formatProofCalibrationStatusForDisplay(suggestion.status)} - ${suggestion.category}${details}`;
+}
+
+function renderProofFreshnessSection(freshness: ProofFreshnessAttribution | undefined): string {
+  const lines = formatProofFreshnessAttributionForDisplay(freshness);
+  if (lines.length === 0) return "";
+  return `## Proof Freshness\n${lines.map((line) => `- ${line}`).join("\n")}\n`;
 }
 
 function renderReviewContract(

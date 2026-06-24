@@ -3,6 +3,10 @@ import {
   formatCommandForDisplay,
   formatProjectRequirementDetailsForDisplay,
   formatProjectRequirementStatusForDisplay,
+  formatProofCalibrationDetailsForDisplay,
+  formatProofCalibrationStatusForDisplay,
+  formatProofCalibrationSummaryForDisplay,
+  formatProofFreshnessAttributionForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractProofReferencesForDisplay,
   formatReviewContractReviewPathForDisplay,
@@ -16,6 +20,8 @@ import type { VerificationFailureCounts } from "../core/output.js";
 import type {
   ProjectReviewContractEvaluation,
   ProjectReviewRequirementStatus,
+  ProofCalibration,
+  ProofCalibrationSuggestion,
   ReviewIntelligence,
   RiskAnalysis,
   SessionEvent,
@@ -82,6 +88,11 @@ ${renderReviewFirst(input)}
 ## Required Proof
 ${renderRequiredProof(input)}
 
+${renderProofFreshnessSection(input)}
+
+## Repo Calibration
+${renderRepoCalibration(input.review?.calibration)}
+
 ## Review Contract
 ${renderReviewContract(input)}
 
@@ -124,6 +135,11 @@ ${renderReviewFirst(input)}
 ### Required proof
 ${renderRequiredProof(input)}
 
+${renderProofFreshnessSection(input, "###")}
+
+### Repo calibration
+${renderRepoCalibration(input.review?.calibration)}
+
 ### Proof gaps:
 ${renderPrCommentProofGaps(input)}
 
@@ -153,6 +169,11 @@ ${renderReviewFirst(input)}
 
 ## Required Proof
 ${renderRequiredProof(input)}
+
+${renderProofFreshnessSection(input)}
+
+## Repo Calibration
+${renderRepoCalibration(input.review?.calibration)}
 
 ## Review Contract
 ${renderReviewContract(input)}
@@ -275,6 +296,30 @@ function renderProjectRequirement(requirement: ProjectReviewRequirementStatus): 
     .map((line) => `\n  - ${line}`)
     .join("");
   return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
+}
+
+function renderRepoCalibration(calibration: ProofCalibration | undefined): string {
+  if (!calibration) return "- No repo calibration history loaded.";
+  if (calibration.suggestions.length === 0) {
+    return `- ${formatProofCalibrationSummaryForDisplay(calibration)}`;
+  }
+  return [
+    `- ${formatProofCalibrationSummaryForDisplay(calibration)}`,
+    ...calibration.suggestions.map(renderRepoCalibrationSuggestion)
+  ].join("\n");
+}
+
+function renderRepoCalibrationSuggestion(suggestion: ProofCalibrationSuggestion): string {
+  const details = formatProofCalibrationDetailsForDisplay(suggestion)
+    .map((line) => `\n  - ${line}`)
+    .join("");
+  return `- ${formatProofCalibrationStatusForDisplay(suggestion.status)} - ${suggestion.category}${details}`;
+}
+
+function renderProofFreshnessSection(input: MarkdownReportInput, heading = "##"): string {
+  const lines = formatProofFreshnessAttributionForDisplay(input.review?.proofFreshness);
+  if (lines.length === 0) return "";
+  return `${heading} Proof Freshness\n${lines.map((line) => `- ${line}`).join("\n")}`;
 }
 
 function renderProofGaps(input: MarkdownReportInput): string {

@@ -146,6 +146,55 @@ describe("markdown proof report", () => {
     expect(timelineIndex).toBeLessThan(headingLineIndex(markdown, "## Tooling"));
   });
 
+  it("renders proof freshness attribution when proof is stale", () => {
+    const markdown = renderMarkdownReport({
+      task: "Docs freshness",
+      sessionId: "af-freshness",
+      startedAt: "2026-06-17T12:00:00.000Z",
+      changedFiles: ["README.md"],
+      risk: {
+        level: "low",
+        changedFiles: 1,
+        categories: [{ category: "docs", files: ["README.md"] }],
+        reasons: ["Only low-risk docs, tests, or isolated UI files changed."]
+      },
+      verificationCommands: ["npm test"],
+      verificationEvidence: [],
+      timelineEvents: [],
+      review: {
+        focus: [],
+        proofFreshness: {
+          state: "stale",
+          reason: "docs changed after proof was captured; manual review remains.",
+          staleFiles: ["README.md"],
+          staleCategories: [
+            {
+              category: "docs",
+              files: ["README.md"],
+              proofRequired: false
+            }
+          ]
+        },
+        proofGaps: [],
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Verification evidence matches the observed review risk.",
+          nextAction: "Run agentflight handoff to generate the local review packet.",
+          proofGaps: []
+        }
+      },
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("## Proof Freshness");
+    expect(markdown).toContain("docs changed after proof was captured; manual review remains.");
+    expect(markdown).toContain("Manual-review stale files: docs (README.md)");
+  });
+
   it("renders project review contract required proof before claim details", () => {
     const markdown = renderMarkdownReport({
       task: "Update auth flow",
@@ -259,6 +308,76 @@ describe("markdown proof report", () => {
     expect(markdown).toContain("Files: src/auth/session.ts");
     expect(markdown).toContain("Suggested proof: agentflight verify -- npm test");
     expect(headingLineIndex(markdown, "## Required Proof")).toBeLessThan(
+      headingLineIndex(markdown, "## Review Contract")
+    );
+  });
+
+  it("renders repo calibration suggestions as compact local guidance", () => {
+    const markdown = renderMarkdownReport({
+      task: "Update auth flow",
+      sessionId: "af-calibrated",
+      startedAt: "2026-06-24T12:00:00.000Z",
+      changedFiles: ["src/auth/session.ts"],
+      risk: {
+        level: "high",
+        changedFiles: 1,
+        categories: [{ category: "auth", files: ["src/auth/session.ts"] }],
+        reasons: ["Authentication-sensitive files changed."]
+      },
+      verificationCommands: ["npm test", "npm run e2e:auth"],
+      verificationEvidence: [],
+      timelineEvents: [],
+      review: {
+        focus: [],
+        proofGaps: [],
+        calibration: {
+          source: "local_session_history",
+          state: "under_proven",
+          summary:
+            "Similar local ready handoffs suggest 1 additional proof command for this change.",
+          scannedSessions: 4,
+          similarReadySessions: 2,
+          suggestions: [
+            {
+              id: "repo-calibration-auth-e2e",
+              status: "under_proven",
+              category: "auth",
+              message:
+                "Similar local ready handoffs for auth changes usually included npm run e2e:auth.",
+              currentProof: ["npm test"],
+              historicalProof: ["npm run e2e:auth", "npm test"],
+              suggestedCommand: "npm run e2e:auth",
+              similarReadySessions: 2,
+              matchedSessionIds: ["af-auth-1", "af-auth-2"]
+            }
+          ]
+        },
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Verification evidence matches the observed review risk.",
+          nextAction: "Run agentflight handoff to generate the local review packet.",
+          proofGaps: []
+        }
+      },
+      tooling: {
+        projscan: { available: true, warnings: [] },
+        agentloopkit: { available: true, warnings: [] }
+      }
+    });
+
+    expect(markdown).toContain("## Repo Calibration");
+    expect(markdown).toContain(
+      "Similar local ready handoffs suggest 1 additional proof command for this change."
+    );
+    expect(markdown).toContain("- under-proven - auth");
+    expect(markdown).toContain("Current proof: npm test");
+    expect(markdown).toContain("Historical proof: npm run e2e:auth, npm test");
+    expect(markdown).toContain("Suggested proof: agentflight verify -- npm run e2e:auth");
+    expect(headingLineIndex(markdown, "## Required Proof")).toBeLessThan(
+      headingLineIndex(markdown, "## Repo Calibration")
+    );
+    expect(headingLineIndex(markdown, "## Repo Calibration")).toBeLessThan(
       headingLineIndex(markdown, "## Review Contract")
     );
   });

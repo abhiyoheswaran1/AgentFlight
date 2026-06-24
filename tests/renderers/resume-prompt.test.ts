@@ -112,4 +112,91 @@ describe("resume prompt", () => {
     expect(prompt).toContain("Do not claim completion without proof.");
     expect(prompt).toContain("Run relevant verification before declaring success.");
   });
+
+  it("includes repo calibration guidance without replacing proof gaps", () => {
+    const prompt = renderResumePrompt({
+      task: "Update auth flow",
+      sessionId: "af-calibrated-resume",
+      branch: "main",
+      changedFiles: ["src/auth/session.ts"],
+      riskLevel: "high",
+      riskReasons: ["Authentication-sensitive files changed."],
+      verificationGaps: [],
+      calibration: {
+        source: "local_session_history",
+        state: "under_proven",
+        summary: "Similar local ready handoffs suggest 1 additional proof command for this change.",
+        scannedSessions: 4,
+        similarReadySessions: 2,
+        suggestions: [
+          {
+            id: "repo-calibration-auth-e2e",
+            status: "under_proven",
+            category: "auth",
+            message:
+              "Similar local ready handoffs for auth changes usually included npm run e2e:auth.",
+            currentProof: ["npm test"],
+            historicalProof: ["npm run e2e:auth", "npm test"],
+            suggestedCommand: "npm run e2e:auth",
+            similarReadySessions: 2,
+            matchedSessionIds: ["af-auth-1", "af-auth-2"]
+          }
+        ]
+      },
+      proofGaps: [],
+      readiness: {
+        state: "ready_for_review",
+        label: "Ready for review",
+        reason: "Verification evidence matches the observed review risk.",
+        nextAction: "Run agentflight handoff to generate the local review packet.",
+        proofGaps: []
+      },
+      nextAction: "Run agentflight handoff to generate the local review packet."
+    });
+
+    expect(prompt).toContain("## Repo Calibration");
+    expect(prompt).toContain(
+      "Similar local ready handoffs suggest 1 additional proof command for this change."
+    );
+    expect(prompt).toContain("- under-proven - auth");
+    expect(prompt).toContain("Suggested proof: agentflight verify -- npm run e2e:auth");
+    expect(prompt).toContain("## Proof Gaps\nNo proof gaps recorded.");
+  });
+
+  it("includes proof freshness attribution when proof is stale", () => {
+    const prompt = renderResumePrompt({
+      task: "Docs freshness",
+      sessionId: "af-freshness",
+      branch: "main",
+      changedFiles: ["README.md"],
+      riskLevel: "low",
+      riskReasons: ["Only low-risk docs, tests, or isolated UI files changed."],
+      verificationGaps: [],
+      proofFreshness: {
+        state: "stale",
+        reason: "docs changed after proof was captured; manual review remains.",
+        staleFiles: ["README.md"],
+        staleCategories: [
+          {
+            category: "docs",
+            files: ["README.md"],
+            proofRequired: false
+          }
+        ]
+      },
+      proofGaps: [],
+      readiness: {
+        state: "ready_for_review",
+        label: "Ready for review",
+        reason: "Verification evidence matches the observed review risk.",
+        nextAction: "Run agentflight handoff to generate the local review packet.",
+        proofGaps: []
+      },
+      nextAction: "Run agentflight handoff to generate the local review packet."
+    });
+
+    expect(prompt).toContain("## Proof Freshness");
+    expect(prompt).toContain("docs changed after proof was captured; manual review remains.");
+    expect(prompt).toContain("Manual-review stale files: docs (README.md)");
+  });
 });

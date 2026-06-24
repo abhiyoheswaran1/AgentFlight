@@ -1,6 +1,10 @@
 import { pathExists, writeTextFileSafe } from "../core/fs-safe.js";
 import {
   compactCommandInText,
+  formatProofCalibrationDetailsForDisplay,
+  formatProofCalibrationStatusForDisplay,
+  formatProofCalibrationSummaryForDisplay,
+  formatProofFreshnessAttributionForDisplay,
   formatProjectRequirementDetailsForDisplay,
   formatProjectRequirementStatusForDisplay,
   formatProjectReviewDecisionForDisplay,
@@ -47,6 +51,8 @@ interface HandoffStatus {
   review: {
     focus: HandoffFocusItem[];
     projectReviewContract: HandoffProjectReviewContract;
+    calibration?: HandoffProofCalibration | undefined;
+    proofFreshness?: HandoffProofFreshness | undefined;
     contract: HandoffContract;
     proofGaps: HandoffProofGap[];
     readiness: HandoffReadiness;
@@ -105,6 +111,40 @@ interface HandoffProjectRequirement {
   satisfiedProof?: { kind: string; command: string };
   remainingReview?: string[];
   suggestedCommand?: string;
+}
+
+interface HandoffProofCalibration {
+  source: "local_session_history";
+  state: "no_history" | "aligned" | "under_proven";
+  summary: string;
+  scannedSessions: number;
+  similarReadySessions: number;
+  suggestions: HandoffProofCalibrationSuggestion[];
+}
+
+interface HandoffProofCalibrationSuggestion {
+  id: string;
+  status: "under_proven";
+  category: string;
+  message: string;
+  currentProof: string[];
+  historicalProof: string[];
+  suggestedCommand: string;
+  similarReadySessions: number;
+  matchedSessionIds: string[];
+}
+
+interface HandoffProofFreshness {
+  state: "current" | "stale" | "legacy" | "unavailable" | "none";
+  reason: string;
+  staleFiles: string[];
+  staleCategories: HandoffProofFreshnessCategory[];
+}
+
+interface HandoffProofFreshnessCategory {
+  category: string;
+  files: string[];
+  proofRequired: boolean;
 }
 
 interface HandoffContract {
@@ -292,6 +332,10 @@ ${formatReviewFocus(input.status.review.focus.slice(0, 3))}
 
 Required proof:
 ${formatProjectReviewContract(input.status.review.projectReviewContract)}
+${formatProofFreshnessSection(input.status.review.proofFreshness)}
+
+Repo calibration:
+${formatProofCalibration(input.status.review.calibration)}
 
 Review contract:
 ${formatReviewContract(input.status.review.contract, 5)}
@@ -415,6 +459,30 @@ function formatProjectRequirement(requirement: HandoffProjectRequirement): strin
   return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
 }
 
+function formatProofCalibration(calibration: HandoffProofCalibration | undefined): string {
+  if (!calibration) return "- No repo calibration history loaded.";
+  if (calibration.suggestions.length === 0) {
+    return `- ${formatProofCalibrationSummaryForDisplay(calibration)}`;
+  }
+  return [
+    `- ${formatProofCalibrationSummaryForDisplay(calibration)}`,
+    ...calibration.suggestions.map(formatProofCalibrationSuggestion)
+  ].join("\n");
+}
+
+function formatProofCalibrationSuggestion(suggestion: HandoffProofCalibrationSuggestion): string {
+  const details = formatProofCalibrationDetailsForDisplay(suggestion)
+    .map((line) => `\n   ${line}`)
+    .join("");
+  return `- ${formatProofCalibrationStatusForDisplay(suggestion.status)} - ${suggestion.category}${details}`;
+}
+
+function formatProofFreshnessSection(freshness: HandoffProofFreshness | undefined): string {
+  const lines = formatProofFreshnessAttributionForDisplay(freshness);
+  if (lines.length === 0) return "";
+  return `\nProof freshness:\n${lines.map((line) => `- ${line}`).join("\n")}\n`;
+}
+
 function formatReviewContract(contract: HandoffContract, limit: number): string {
   if (contract.claims.length === 0) return "- No review contract claims recorded.";
   const visibleClaims = contract.claims.slice(0, limit);
@@ -467,6 +535,8 @@ function parseHandoffStatus(payload: Record<string, unknown>): HandoffStatus {
     review: {
       focus: readArray(review.focus).map(parseFocusItem),
       projectReviewContract: parseProjectReviewContract(readObject(review.projectReviewContract)),
+      ...parseProofCalibration(review.calibration),
+      ...parseProofFreshness(review.proofFreshness),
       contract: parseContract(readObject(review.contract)),
       proofGaps: readArray(review.proofGaps).map(parseProofGap),
       readiness
@@ -513,6 +583,87 @@ function parseProjectRequirement(value: unknown): HandoffProjectRequirement {
     ...parseSatisfiedProof(requirement.satisfiedProof),
     ...(suggestedCommand ? { suggestedCommand } : {})
   };
+}
+
+function parseProofCalibration(value: unknown): Pick<HandoffStatus["review"], "calibration"> {
+  const calibration = readObject(value);
+  const source = readString(calibration.source, "");
+  const state = parseProofCalibrationState(calibration.state);
+  const summary = readString(calibration.summary, "");
+  if (source !== "local_session_history" || !state || !summary) return {};
+
+  return {
+    calibration: {
+      source,
+      state,
+      summary,
+      scannedSessions: readNumber(calibration.scannedSessions, 0),
+      similarReadySessions: readNumber(calibration.similarReadySessions, 0),
+      suggestions: readArray(calibration.suggestions).map(parseProofCalibrationSuggestion)
+    }
+  };
+}
+
+function parseProofCalibrationSuggestion(value: unknown): HandoffProofCalibrationSuggestion {
+  const suggestion = readObject(value);
+  return {
+    id: readString(suggestion.id, "repo-calibration"),
+    status: "under_proven",
+    category: readString(suggestion.category, "unknown"),
+    message: readString(suggestion.message, "Repo calibration suggestion recorded."),
+    currentProof: readArray(suggestion.currentProof).map((proof) => readString(proof, "unknown")),
+    historicalProof: readArray(suggestion.historicalProof).map((proof) =>
+      readString(proof, "unknown")
+    ),
+    suggestedCommand: readString(suggestion.suggestedCommand, ""),
+    similarReadySessions: readNumber(suggestion.similarReadySessions, 0),
+    matchedSessionIds: readArray(suggestion.matchedSessionIds).map((id) => readString(id, ""))
+  };
+}
+
+function parseProofFreshness(value: unknown): Pick<HandoffStatus["review"], "proofFreshness"> {
+  const freshness = readObject(value);
+  const state = parseProofFreshnessState(freshness.state);
+  const reason = readString(freshness.reason, "");
+  if (!state || !reason) return {};
+
+  return {
+    proofFreshness: {
+      state,
+      reason,
+      staleFiles: readArray(freshness.staleFiles).map((file) => readString(file, "unknown")),
+      staleCategories: readArray(freshness.staleCategories).map(parseProofFreshnessCategory)
+    }
+  };
+}
+
+function parseProofFreshnessCategory(value: unknown): HandoffProofFreshnessCategory {
+  const category = readObject(value);
+  return {
+    category: readString(category.category, "unknown"),
+    files: readArray(category.files).map((file) => readString(file, "unknown")),
+    proofRequired: category.proofRequired === true
+  };
+}
+
+function parseProofFreshnessState(value: unknown): HandoffProofFreshness["state"] | null {
+  if (
+    value === "current" ||
+    value === "stale" ||
+    value === "legacy" ||
+    value === "unavailable" ||
+    value === "none"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function parseProofCalibrationState(value: unknown): HandoffProofCalibration["state"] | null {
+  if (value === "no_history" || value === "aligned" || value === "under_proven") {
+    return value;
+  }
+  return null;
 }
 
 function parseMatchedCategory(value: unknown): { category: string; files: string[] } {

@@ -1,4 +1,7 @@
 import type {
+  ProofFreshnessAttribution,
+  ProofCalibration,
+  ProofCalibrationSuggestion,
   ReviewContract,
   ReviewContractClaim,
   ReviewContractClaimStatus,
@@ -179,6 +182,70 @@ export function formatProjectRequirementDetailsForDisplay(
         : undefined
     )
   ].filter((line): line is string => Boolean(line));
+}
+
+export function formatProofCalibrationStatusForDisplay(status: string): string {
+  return status.replaceAll("_", "-");
+}
+
+export function formatProofCalibrationDetailsForDisplay(
+  suggestion: Pick<
+    ProofCalibrationSuggestion,
+    "currentProof" | "historicalProof" | "suggestedCommand" | "similarReadySessions"
+  >
+): string[] {
+  return [
+    listDisplayLine("Current proof", suggestion.currentProof),
+    listDisplayLine("Historical proof", suggestion.historicalProof),
+    `Suggested proof: ${formatVerifyCommandForDisplay(suggestion.suggestedCommand)}`,
+    `Based on: ${suggestion.similarReadySessions} similar ready handoff${suggestion.similarReadySessions === 1 ? "" : "s"}`
+  ].filter((line): line is string => Boolean(line));
+}
+
+export function formatProofCalibrationSummaryForDisplay(
+  calibration: Pick<
+    ProofCalibration,
+    "summary" | "source" | "scannedSessions" | "similarReadySessions"
+  >
+): string {
+  return `${calibration.summary} Source: local session history; scanned ${calibration.scannedSessions}, matched ${calibration.similarReadySessions}.`;
+}
+
+export function formatProofFreshnessAttributionForDisplay(
+  freshness: ProofFreshnessDisplayInput | undefined
+): string[] {
+  if (!freshness || freshness.state !== "stale") return [];
+  return [
+    freshness.reason,
+    freshnessCategoryLine(
+      "Proof-required stale files",
+      freshness.staleCategories.filter((entry) => entry.proofRequired)
+    ),
+    freshnessCategoryLine(
+      "Manual-review stale files",
+      freshness.staleCategories.filter((entry) => !entry.proofRequired)
+    )
+  ].filter((line): line is string => Boolean(line));
+}
+
+interface ProofFreshnessDisplayInput {
+  state: ProofFreshnessAttribution["state"];
+  reason: string;
+  staleCategories: Array<{
+    category: string;
+    files: string[];
+    proofRequired: boolean;
+  }>;
+}
+
+function freshnessCategoryLine(
+  label: string,
+  categories: ProofFreshnessDisplayInput["staleCategories"]
+): string | undefined {
+  if (categories.length === 0) return undefined;
+  return `${label}: ${categories
+    .map((entry) => `${entry.category} (${entry.files.join(", ")})`)
+    .join("; ")}`;
 }
 
 const projectReviewDecisionRules: Array<{

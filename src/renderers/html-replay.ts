@@ -4,6 +4,10 @@ import {
   getReviewContractPathClaims,
   formatProjectRequirementDetailsForDisplay,
   formatProjectRequirementStatusForDisplay,
+  formatProofCalibrationDetailsForDisplay,
+  formatProofCalibrationStatusForDisplay,
+  formatProofCalibrationSummaryForDisplay,
+  formatProofFreshnessAttributionForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractProofReferenceLabelForDisplay,
   formatReviewContractStatusForDisplay,
@@ -12,6 +16,8 @@ import {
 import type { VerificationFailureCounts } from "../core/output.js";
 import type {
   ProofGap,
+  ProofCalibration,
+  ProofCalibrationSuggestion,
   ProjectReviewContractEvaluation,
   ProjectReviewRequirementStatus,
   ReviewContractClaim,
@@ -534,6 +540,10 @@ function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): str
     links.push({ href: "#review-path", label: "Review Path" });
     links.push({ href: "#review-focus", label: "Review Focus" });
     links.push({ href: "#required-proof", label: "Required Proof" });
+    if (formatProofFreshnessAttributionForDisplay(input.review.proofFreshness).length > 0)
+      links.push({ href: "#proof-freshness", label: "Proof Freshness" });
+    if (input.review.calibration)
+      links.push({ href: "#repo-calibration", label: "Repo Calibration" });
     links.push({ href: "#review-contract", label: "Review Contract" });
     links.push({ href: "#proof-gaps", label: "Proof Gaps" });
   }
@@ -589,6 +599,7 @@ function buildReviewPathItems(
   const items = [
     ...buildContractPathItems(review),
     ...buildProofGapPathItems(review.proofGaps),
+    ...buildCalibrationPathItems(review.calibration),
     ...buildFailedRunPathItems(firstFailedRunIndex),
     ...buildFocusPathItems(review.focus),
     ...buildVerificationPathItems(input),
@@ -623,6 +634,17 @@ function buildProofGapPathItems(gaps: ProofGap[]): ReviewPathItem[] {
       href: "#proof-gaps",
       title: "Fix proof gaps",
       detail: formatProofGapDetail(gaps)
+    }
+  ];
+}
+
+function buildCalibrationPathItems(calibration: ProofCalibration | undefined): ReviewPathItem[] {
+  if (!calibration || calibration.suggestions.length === 0) return [];
+  return [
+    {
+      href: "#repo-calibration",
+      title: "Check repo calibration",
+      detail: calibration.summary
     }
   ];
 }
@@ -758,6 +780,11 @@ function renderReview(review: ReviewIntelligence | undefined, firstFailedRunInde
       <div class="section-head"><h2 class="label">Required Proof</h2><span class="count">${escapeHtml(String(review.projectReviewContract?.requirements.length ?? 0))} requirements</span></div>
       ${renderRequiredProof(review.projectReviewContract)}
     </section>
+    ${renderProofFreshness(review)}
+    <section class="section" id="repo-calibration">
+      <div class="section-head"><h2 class="label">Repo Calibration</h2><span class="count">${escapeHtml(String(review.calibration?.suggestions.length ?? 0))} suggestions</span></div>
+      ${renderRepoCalibration(review.calibration)}
+    </section>
     <section class="section" id="review-contract">
       <div class="section-head"><h2 class="label">Review Contract</h2><span class="count">${escapeHtml(String(review.contract?.claims.length ?? 0))} claims</span></div>
       ${renderReviewContract(review)}
@@ -811,6 +838,36 @@ function renderProjectRequirementDetailLine(line: string): string {
   const [label, ...rest] = line.split(": ");
   if (!label || rest.length === 0) return escapeHtml(line);
   return `<span class="reason-strong">${escapeHtml(label)}:</span> ${escapeHtml(rest.join(": "))}`;
+}
+
+function renderProofFreshness(review: ReviewIntelligence): string {
+  const lines = formatProofFreshnessAttributionForDisplay(review.proofFreshness);
+  if (lines.length === 0) return "";
+  return `<section class="section" id="proof-freshness">
+      <div class="section-head"><h2 class="label">Proof Freshness</h2><span class="count">${escapeHtml(String(lines.length))} notes</span></div>
+      <div class="records">${lines
+        .map(
+          (line) =>
+            `<div class="record"><div class="record-key"><span class="record-cat">freshness</span></div><div class="record-body"><div class="reason">${escapeHtml(line)}</div></div></div>`
+        )
+        .join("")}</div>
+    </section>`;
+}
+
+function renderRepoCalibration(calibration: ProofCalibration | undefined): string {
+  if (!calibration) return `<p class="empty">No repo calibration history loaded.</p>`;
+  if (calibration.suggestions.length === 0) {
+    return `<p class="empty">${escapeHtml(formatProofCalibrationSummaryForDisplay(calibration))}</p>`;
+  }
+  return `<div class="callout"><div class="callout-state">Local proof history</div><div class="callout-reason">${escapeHtml(formatProofCalibrationSummaryForDisplay(calibration))}</div></div><div class="records">${calibration.suggestions.map(renderRepoCalibrationSuggestion).join("")}</div>`;
+}
+
+function renderRepoCalibrationSuggestion(suggestion: ProofCalibrationSuggestion): string {
+  const details = formatProofCalibrationDetailsForDisplay(suggestion)
+    .filter((line) => !line.startsWith("Suggested proof: "))
+    .map((line) => `<div class="reason">${renderProjectRequirementDetailLine(line)}</div>`)
+    .join("");
+  return `<div class="record"><div class="record-key"><span class="record-cat">${escapeHtml(formatProofCalibrationStatusForDisplay(suggestion.status))}</span></div><div class="record-body"><div>${escapeHtml(suggestion.category)}</div><div class="reason">${escapeHtml(suggestion.message)}</div>${details}<div class="reason">Suggested proof: ${renderSuggestedProof(suggestion.suggestedCommand)}</div></div></div>`;
 }
 
 function renderReviewContract(review: ReviewIntelligence): string {

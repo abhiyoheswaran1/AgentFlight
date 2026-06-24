@@ -4,6 +4,7 @@ import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
 import { formatRepoRelativePath, resolveAgentFlightPaths } from "../core/paths.js";
 import { buildProofSnapshot } from "../core/proof-snapshot.js";
+import { loadProofCalibrationHistory } from "../core/proof-calibration.js";
 import { resolveProjectReviewContractConfig } from "../core/project-review-contract.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
@@ -49,11 +50,15 @@ export async function runReplayCommand(
     capturedAt: now.toISOString(),
     gitCommit: session.git.commit ?? null
   });
+  const calibrationHistory = await loadProofCalibrationHistory(options.repoRoot, {
+    currentSessionId: session.id
+  });
   const review = buildReviewIntelligence({
     changedFiles,
     risk,
     session,
     currentProofSnapshot,
+    historicalSessions: calibrationHistory.sessions,
     projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
   });
   const relativeReplayPath = `.agentflight/reports/${session.id}-replay.html`;

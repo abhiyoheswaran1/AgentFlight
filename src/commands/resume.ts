@@ -5,6 +5,7 @@ import { loadConfig } from "../core/config.js";
 import { listChangedFiles } from "../core/git.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { buildProofSnapshot } from "../core/proof-snapshot.js";
+import { loadProofCalibrationHistory } from "../core/proof-calibration.js";
 import { resolveProjectReviewContractConfig } from "../core/project-review-contract.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
@@ -51,11 +52,15 @@ export async function runResumeCommand(
     capturedAt: now.toISOString(),
     gitCommit: session.git.commit ?? null
   });
+  const calibrationHistory = await loadProofCalibrationHistory(options.repoRoot, {
+    currentSessionId: session.id
+  });
   const review = buildReviewIntelligence({
     changedFiles,
     risk,
     session,
     currentProofSnapshot,
+    historicalSessions: calibrationHistory.sessions,
     projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
   });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
@@ -87,6 +92,8 @@ export async function runResumeCommand(
     verificationGaps: verification.gaps,
     reviewFocus: review.focus.slice(0, 5),
     projectReviewContract: review.projectReviewContract,
+    calibration: review.calibration,
+    proofFreshness: review.proofFreshness,
     reviewContract: review.contract,
     proofGaps: review.proofGaps,
     readiness: review.readiness,

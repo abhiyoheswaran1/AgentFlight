@@ -125,6 +125,9 @@ Required proof:
    Proof detail: No automated proof required.
    Remaining: Review documentation accuracy and scope manually.
 
+Repo calibration:
+- Not enough similar ready local handoffs yet. Source: local session history; scanned 0, matched 0.
+
 Next action:
 Run agentflight handoff to generate the local review packet.
 ```
@@ -136,8 +139,9 @@ npx agentflight@latest handoff
 ```
 
 The handoff tells you whether the work is ready, which contract rules matched,
-what proof satisfied them, and which manual review checks remain. It also
-generates the supporting local artifacts:
+what proof satisfied them, whether similar ready local sessions used stronger
+proof, and which manual review checks remain. It also generates the supporting
+local artifacts:
 
 - Markdown proof report
 - HTML replay ledger
@@ -178,6 +182,7 @@ The resume prompt includes:
 - risk
 - latest snapshot note
 - verification state
+- repo calibration, when enough similar ready handoffs exist
 - next recommended action
 - guardrails for the next agent
 

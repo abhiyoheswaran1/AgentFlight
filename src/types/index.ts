@@ -247,6 +247,21 @@ export interface ProofGap {
   relatedFiles: string[];
 }
 
+export type ProofFreshnessState = "current" | "stale" | "legacy" | "unavailable" | "none";
+
+export interface ProofFreshnessCategory {
+  category: RiskCategory;
+  files: string[];
+  proofRequired: boolean;
+}
+
+export interface ProofFreshnessAttribution {
+  state: ProofFreshnessState;
+  reason: string;
+  staleFiles: string[];
+  staleCategories: ProofFreshnessCategory[];
+}
+
 export type ProjectReviewRequirementState =
   | "supported"
   | "needs_review"
@@ -301,6 +316,29 @@ export interface ReviewReadinessDecision {
   suggestedCommand?: string;
   proofGaps: ProofGap[];
   failedVerificationSummary?: string;
+}
+
+export type ProofCalibrationState = "no_history" | "aligned" | "under_proven";
+
+export interface ProofCalibrationSuggestion {
+  id: string;
+  status: "under_proven";
+  category: RiskCategory;
+  message: string;
+  currentProof: string[];
+  historicalProof: string[];
+  suggestedCommand: string;
+  similarReadySessions: number;
+  matchedSessionIds: string[];
+}
+
+export interface ProofCalibration {
+  source: "local_session_history";
+  state: ProofCalibrationState;
+  summary: string;
+  scannedSessions: number;
+  similarReadySessions: number;
+  suggestions: ProofCalibrationSuggestion[];
 }
 
 export type ReviewContractClaimStatus =
@@ -372,6 +410,8 @@ export interface ReviewContract {
 export interface ReviewIntelligence {
   focus: ReviewFocusItem[];
   projectReviewContract?: ProjectReviewContractEvaluation;
+  calibration?: ProofCalibration;
+  proofFreshness?: ProofFreshnessAttribution;
   proofGaps: ProofGap[];
   readiness: ReviewReadinessDecision;
   contract?: ReviewContract;

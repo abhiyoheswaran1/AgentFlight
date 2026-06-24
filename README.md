@@ -19,6 +19,7 @@ AgentFlight helps you:
 - see changed files and risk
 - read a local Review Contract with claim-by-claim proof references
 - compare the change against a local Project Review Contract proof standard that explains why each rule matched
+- compare current proof against similar local ready handoffs from this repo
 - create snapshots during the session
 - generate a local review handoff
 - generate a proof report and local replay timeline
@@ -49,7 +50,7 @@ What you get:
 - `init` creates local `.agentflight/` project files and seeds detected verification commands into `.agentflight/config.json` when package scripts exist.
 - `start` records the task, git branch, commit, dirty state, package manager, and tool availability.
 - `verify` runs configured commands and stores stdout, stderr, exit code, timing, pass/fail status, and a source-free changed-file proof snapshot. Use `verify -- <command>` for one explicit proof command.
-- `status` answers what changed, how risky it is, what proof the repo requires, why those requirements matched, whether proof is current or stale, what the Review Contract claims, and what to do next.
+- `status` answers what changed, how risky it is, what proof the repo requires, why those requirements matched, whether proof is current or stale, which files invalidated stale proof, whether similar local ready handoffs used stronger proof, what the Review Contract claims, and what to do next.
 - `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.
 - `handoff` generates the local review packet: decision, readiness, required proof, proof reasons, Review Contract path, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 - `report` writes a Markdown proof report with claim-to-proof references for review.
@@ -75,6 +76,7 @@ Your coding agent / app
   |        +-> changed files, snapshots, timeline                |
   |                                                              |
   | Project Review Contract: repo proof standard + manual checks |
+  | Repo calibration: compare proof with similar ready handoffs   |
   |                                                              |
   | Handoff . Report . Replay . Resume . History                 |
   +--------------------------------------------------------------+
@@ -90,11 +92,11 @@ AgentFlight turns a loose coding agent session into a local proof trail:
 1. Start a session before you ask the coding agent to work.
 2. Capture real verification output with `agentflight verify`.
 3. Snapshot meaningful checkpoints.
-4. Read `status` to see changed files, risk, required proof, proof freshness, gaps, and next action.
+4. Read `status` to see changed files, risk, required proof, proof freshness, repo calibration, gaps, and next action.
 5. Run `handoff` when the work is ready to review or when you need a clear fix-before-sharing summary.
 6. Use `history --limit 1` to reopen the latest local handoff, report, replay, or resume artifact.
 
-The replay artifact is a self-contained local HTML file. It leads with the review verdict and a compact review path, then lays out risk, review focus, required proof, why each requirement matched, what proof satisfied it, Review Contract claims, proof freshness, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record. Review Contract claims link to the related proof, file focus, proof gap, or verification run where possible:
+The replay artifact is a self-contained local HTML file. It leads with the review verdict and a compact review path, then lays out risk, review focus, required proof, why each requirement matched, what proof satisfied it, repo calibration, Review Contract claims, proof freshness, proof gaps, the session timeline, and verification evidence (with inline failure excerpts, so you can see what broke without opening a log file) as a readable flight record. Review Contract claims link to the related proof, file focus, proof gap, or verification run where possible:
 
 ![AgentFlight replay: review verdict, risk, timeline, and verification evidence](docs/assets/agentflight-replay-scroll.gif)
 
@@ -156,6 +158,14 @@ Required proof:
    Files: src/auth/reset.ts
    Remaining: Review session, permission, identity, payment, or credential boundaries manually.
 
+Repo calibration:
+- Similar local ready handoffs suggest 1 additional proof command for this change. Source: local session history; scanned 4, matched 2.
+- under-proven - auth
+   Current proof: npm test
+   Historical proof: npm run e2e:auth, npm test
+   Suggested proof: agentflight verify -- npm run e2e:auth
+   Based on: 2 similar ready handoffs
+
 Review Contract:
 Review path: Ready for review with 3 supported claims and 1 manual-review claim.
 - supported - Session task: Add password reset flow
@@ -178,6 +188,15 @@ Next action:
 Run agentflight handoff to generate the local review packet.
 ```
 
+When proof goes stale, AgentFlight names the files that invalidated it:
+
+```text
+Proof freshness:
+- Verification proof is stale for auth changes after proof was captured. Rerun verification for these files. Docs changes also need manual review.
+- Proof-required stale files: auth (src/auth/reset.ts)
+- Manual-review stale files: docs (README.md)
+```
+
 `agentflight report`:
 
 ```text
@@ -198,6 +217,14 @@ Run agentflight handoff to generate the local review packet.
   - Manual review: Review session, permission, identity, payment, or credential boundaries manually.
   - Files: src/auth/reset.ts
   - Remaining: Review session, permission, identity, payment, or credential boundaries manually.
+
+## Repo Calibration
+- Similar local ready handoffs suggest 1 additional proof command for this change. Source: local session history; scanned 4, matched 2.
+- under-proven - auth
+  - Current proof: npm test
+  - Historical proof: npm run e2e:auth, npm test
+  - Suggested proof: agentflight verify -- npm run e2e:auth
+  - Based on: 2 similar ready handoffs
 
 ## Review Contract
 Review path: Ready for review with 3 supported claims and 1 manual-review claim.
@@ -247,6 +274,14 @@ Required proof:
    Manual review: Review session, permission, identity, payment, or credential boundaries manually.
    Files: src/auth/reset.ts
    Remaining: Review session, permission, identity, payment, or credential boundaries manually.
+
+Repo calibration:
+- Similar local ready handoffs suggest 1 additional proof command for this change. Source: local session history; scanned 4, matched 2.
+- under-proven - auth
+   Current proof: npm test
+   Historical proof: npm run e2e:auth, npm test
+   Suggested proof: agentflight verify -- npm run e2e:auth
+   Based on: 2 similar ready handoffs
 
 Review contract:
 Review path: Ready for review with 3 supported claims and 1 manual-review claim.
@@ -331,11 +366,12 @@ The current AgentFlight release supports:
 - review focus ranking for changed files
 - Project Review Contract rules that define required proof and manual checks by changed-file category
 - Project Review Contract explanations that show matched categories, satisfying proof, proof state, and remaining review
+- repo calibration suggestions that compare current proof with similar local ready handoffs
 - proof gap detection and review readiness recommendations
 - config-defined verification commands for repeated local proof capture
 - configurable generated/internal changed-file filters
 - verification evidence capture with `agentflight verify`
-- source-free proof freshness checks that flag stale proof when files change after verification
+- source-free proof freshness checks that show which files and categories changed after verification
 - Review Contract claims with source-free proof references across status, report, replay, resume, and handoff
 - inline failure excerpts in terminal output, handoffs, reports, and replays, so failures are visible without opening evidence files
 - session events
@@ -373,6 +409,13 @@ AgentFlight creates a local `.agentflight/` directory in your repo:
   `config.json` visible.
 
 Sessions store an `events` timeline with meaningful moments such as session start, verification attempts, snapshots, and generated artifacts. Verification runs also store source-free changed-file fingerprints so AgentFlight can tell whether proof is current or stale. Reports include filenames and summaries by default, not full source diffs.
+
+When prior local handoffs exist, AgentFlight can compare the current proof with
+similar sessions that were recorded as ready for review. This repo calibration
+uses session metadata, changed-file categories, verification commands, and
+source-free proof snapshots. It does not read historical stdout/stderr evidence,
+upload source, or enforce policy. It is guidance for reviewers when current
+proof is weaker than this repo's own local history.
 
 Runtime session data is ignored by the `.agentflight/.gitignore` created by
 `agentflight init`:
@@ -430,18 +473,18 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 
 - `agentflight init` initializes `.agentflight/` with safe writes, seeds detected verification commands and the default Project Review Contract into config when package scripts exist, and explains which local files are project config versus runtime evidence.
 - `agentflight start --task "..."` starts a session and writes the current handoff.
-- `agentflight status` summarizes changed files, risk, verification status, required proof, proof freshness, review focus, proof gaps, readiness, snapshots, and next action.
+- `agentflight status` summarizes changed files, risk, verification status, required proof, proof freshness, repo calibration, review focus, proof gaps, readiness, snapshots, and next action.
 - `agentflight status --format json` prints the same local status data as structured JSON for scripts.
 - `agentflight verify -- <command>` runs a proof command, records stdout/stderr evidence plus source-free changed-file proof fingerprints, and prints a small heartbeat while long commands are still active.
 - `agentflight verify` runs commands from `.agentflight/config.json`.
 - `agentflight verify --profile <name>` runs a named local command group from `.agentflight/config.json`.
 - `agentflight snapshot --note "..."` records current git, risk, and verification state as a timeline event.
-- `agentflight report` generates a Markdown proof report with review focus, required proof, Review Contract claims, and readiness.
+- `agentflight report` generates a Markdown proof report with review focus, required proof, repo calibration, Review Contract claims, and readiness.
 - `agentflight report --mode compact` writes a shorter local Markdown review summary.
 - `agentflight report --mode pr-comment` writes a local PR-comment draft without posting anywhere.
-- `agentflight replay` generates a local self-contained HTML replay with review focus, required proof, Review Contract claims, and proof gaps.
-- `agentflight resume` prints and saves a continuation prompt with the next safest action and current required-proof state.
-- `agentflight handoff` generates a local review handoff, report, replay, and resume prompt without posting anywhere. It exits non-zero when verification failures or missing required proof make the work not ready to share.
+- `agentflight replay` generates a local self-contained HTML replay with review focus, required proof, repo calibration, Review Contract claims, and proof gaps.
+- `agentflight resume` prints and saves a continuation prompt with the next safest action, current required-proof state, and repo calibration.
+- `agentflight handoff` generates a local review handoff, report, replay, and resume prompt without posting anywhere. It includes repo calibration when enough similar ready handoffs exist, and exits non-zero when verification failures or missing required proof make the work not ready to share.
 - `agentflight history` shows the latest action first, including recorded readiness, open-first artifact guidance, current-session marker, proof counts, and existing local handoff/report/replay/resume paths.
 - `agentflight history --task <text>` narrows existing local sessions by task title before applying `--limit`.
 - `agentflight history --state ready|blocked|needs_verification|unknown|current` narrows existing local sessions by recorded readiness or the current-session marker before applying `--limit`.

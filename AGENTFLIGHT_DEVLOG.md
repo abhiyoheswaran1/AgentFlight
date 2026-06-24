@@ -4,6 +4,78 @@ This log records setup, dogfooding, and verification evidence for the AgentFligh
 
 ## 2026-06-24
 
+### Prepare v0.12.0 Release
+
+Release focus:
+
+- Ship repo-calibrated proof guidance and proof freshness attribution as a
+  minor release.
+- Keep the release limited to existing status, handoff, report, replay, resume,
+  docs, and verification surfaces.
+- Record ProjScan's changed-file risk warning as a manual scale signoff unless
+  it reports concrete blockers.
+
+Release safeguards:
+
+- Use npm Trusted Publishing from the `v0.12.0` tag.
+- Do not add new product features during release prep.
+- Do not publish manually unless Trusted Publishing fails and manual recovery is
+  explicitly approved.
+
+### Add Proof Freshness Attribution
+
+Product direction:
+
+- AgentFlight should not stop at "proof is stale." It should show which files
+  changed after proof and whether those files call for rerunning verification or
+  manual review.
+- The guidance must stay local and source-free. It should use proof snapshot
+  paths, changed-file categories, and existing proof-required categories.
+
+Implemented locally:
+
+- Added proof freshness attribution to Review Intelligence.
+- Kept stale source/test proof as rerun guidance.
+- Kept docs-only stale proof as manual-review guidance instead of a rerun-only
+  stale-proof gap.
+- Threaded attribution through status, handoff, Markdown report, HTML replay,
+  resume, and status JSON.
+
+Bug/security/performance notes:
+
+- Added regression coverage for source stale proof, docs-only stale proof, JSON
+  status, handoff, report, replay, resume, and HTML escaping.
+- The attribution reads only source-free proof snapshot paths and categories.
+
+### Add Repo-Calibrated Proof Guidance
+
+Product direction:
+
+- AgentFlight should not stop at "proof exists." It should help reviewers see
+  when current proof is weaker than proof patterns from similar local ready
+  handoffs in the same repo.
+- The guidance must remain local, deterministic, source-free, and suggestion
+  only. It must not become cloud learning, policy enforcement, PR comments, or
+  hidden scoring.
+
+Implemented locally:
+
+- Added bounded local session-history loading for proof calibration.
+- Added a pure calibration evaluator that compares current proof commands with
+  commands from similar ready handoffs.
+- Threaded calibration through status, handoff, Markdown report, HTML replay,
+  resume, and status JSON.
+- Added docs explaining repo calibration, local-only inputs, and suggestion-only
+  behavior.
+
+Bug/security/performance notes:
+
+- Calibration ignores historical stdout/stderr evidence files and uses only
+  session metadata, changed-file categories, command names, proof snapshots, and
+  readiness metadata.
+- History scanning is capped and requires at least two similar ready handoffs
+  before suggesting an additional command.
+
 ### Prepare v0.11.0 Release
 
 Release focus:

@@ -579,6 +579,45 @@ describe("review intelligence", () => {
     });
   });
 
+  it("adds repo calibration guidance without blocking otherwise ready proof", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      session: testSession({
+        verificationCommands: ["npm test", "npm run e2e:auth"],
+        verificationRuns: [verificationRun("npm test", "passed")]
+      }),
+      historicalSessions: [
+        historicalReadySession({
+          id: "af-auth-1",
+          changedFiles: ["src/auth/session.ts"],
+          commands: ["npm test", "npm run e2e:auth"]
+        }),
+        historicalReadySession({
+          id: "af-auth-2",
+          changedFiles: ["src/auth/password.ts"],
+          commands: ["npm test", "npm run e2e:auth"]
+        })
+      ]
+    });
+
+    expect(review.proofGaps).toEqual([]);
+    expect(review.readiness.state).toBe("ready_for_review");
+    expect(review.calibration).toMatchObject({
+      state: "under_proven",
+      similarReadySessions: 2,
+      suggestions: [
+        {
+          category: "auth",
+          suggestedCommand: "npm run e2e:auth",
+          currentProof: ["npm test"],
+          historicalProof: ["npm run e2e:auth", "npm test"]
+        }
+      ]
+    });
+  });
+
   it("evaluates project review contract requirements for matching change types", () => {
     const changedFiles = ["src/auth/session.ts"];
     const review = buildReviewIntelligence({
@@ -796,6 +835,48 @@ describe("review intelligence", () => {
     });
   });
 
+  it("does not mark project review contract proof failed after a later matching pass", () => {
+    const changedFiles = ["src/auth/session.ts"];
+    const currentProofSnapshot = proofSnapshot({ "src/auth/session.ts": "fresh" });
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot,
+      projectReviewContract: {
+        enabled: true,
+        rules: [
+          {
+            id: "auth-contract",
+            label: "Auth/session contract",
+            categories: ["auth"],
+            requiredProof: ["test"],
+            severity: "blocking"
+          }
+        ]
+      },
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "failed"),
+          verificationRun("npm test", "passed", {
+            proofSnapshot: currentProofSnapshot
+          })
+        ]
+      })
+    });
+
+    expect(review.proofGaps.map((gap) => gap.id)).not.toContain("failed-verification");
+    expect(review.projectReviewContract?.requirements[0]).toMatchObject({
+      status: "supported",
+      proofStatus: "current",
+      satisfiedProof: {
+        kind: "test",
+        command: "npm test"
+      }
+    });
+    expect(review.readiness.state).toBe("ready_for_review");
+  });
+
   it("leaves project review contract disabled when config disables it", () => {
     const changedFiles = ["src/auth/session.ts"];
     const review = buildReviewIntelligence({
@@ -904,6 +985,93 @@ describe("review intelligence", () => {
       label: "Needs verification",
       suggestedCommand: "npm test"
     });
+  });
+
+  it("attributes stale proof to proof-required files and keeps rerun guidance", () => {
+    const changedFiles = ["src/auth/session.ts", "README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: proofSnapshot({
+        "src/auth/session.ts": "new",
+        "README.md": "new-docs"
+      }),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({
+              "src/auth/session.ts": "old",
+              "README.md": "old-docs"
+            })
+          })
+        ]
+      })
+    });
+
+    expect(review.proofFreshness).toMatchObject({
+      state: "stale",
+      staleFiles: ["README.md", "src/auth/session.ts"],
+      staleCategories: [
+        {
+          category: "auth",
+          files: ["src/auth/session.ts"],
+          proofRequired: true
+        },
+        {
+          category: "docs",
+          files: ["README.md"],
+          proofRequired: false
+        }
+      ]
+    });
+    expect(review.proofGaps).toContainEqual(
+      expect.objectContaining({
+        id: "stale-verification-proof",
+        severity: "warning",
+        suggestedCommand: "npm test",
+        relatedFiles: ["src/auth/session.ts"]
+      })
+    );
+    expect(review.proofGaps.find((gap) => gap.id === "stale-verification-proof")?.message).toBe(
+      "Verification proof is stale for auth changes after proof was captured. Rerun verification for these files. Docs changes also need manual review."
+    );
+  });
+
+  it("attributes docs-only stale proof as manual review without rerun proof gap", () => {
+    const changedFiles = ["README.md"];
+    const review = buildReviewIntelligence({
+      changedFiles,
+      risk: analyzeRisk(changedFiles),
+      currentProofSnapshot: proofSnapshot({ "README.md": "new-docs" }),
+      session: testSession({
+        verificationCommands: ["npm test"],
+        verificationRuns: [
+          verificationRun("npm test", "passed", {
+            proofSnapshot: proofSnapshot({ "README.md": "old-docs" })
+          })
+        ]
+      })
+    });
+
+    expect(review.proofFreshness).toMatchObject({
+      state: "stale",
+      staleFiles: ["README.md"],
+      staleCategories: [
+        {
+          category: "docs",
+          files: ["README.md"],
+          proofRequired: false
+        }
+      ]
+    });
+    expect(review.proofGaps.map((gap) => gap.id)).not.toContain("stale-verification-proof");
+    expect(review.focus[0]).toMatchObject({
+      file: "README.md",
+      proofStatus: "not_required",
+      relatedProofGapIds: []
+    });
+    expect(review.readiness.state).toBe("ready_for_review");
   });
 
   it("reports a clean worktree when no files are changed", () => {
@@ -1022,6 +1190,46 @@ function testSession(options: {
     verificationCommands: options.verificationCommands,
     verificationRuns: options.verificationRuns ?? [],
     events: options.events ?? [],
+    tools: {
+      projscan: { available: false, warnings: [] },
+      agentloopkit: { available: false, warnings: [] }
+    }
+  };
+}
+
+function historicalReadySession(options: {
+  id: string;
+  changedFiles: string[];
+  commands: string[];
+}): AgentFlightSession {
+  return {
+    id: options.id,
+    task: { title: options.id },
+    startedAt: options.id.endsWith("2") ? "2026-06-14T12:02:00.000Z" : "2026-06-14T12:01:00.000Z",
+    repoRoot: "/repo",
+    git: { branch: "main", commit: "abc123", dirty: true, changedFiles: options.changedFiles },
+    packageManager: "npm",
+    verificationCommands: options.commands,
+    verificationRuns: options.commands.map((command) =>
+      verificationRun(command, "passed", {
+        proofSnapshot: proofSnapshot(
+          Object.fromEntries(options.changedFiles.map((file) => [file, command]))
+        )
+      })
+    ),
+    events: [
+      event("report_generated", "Report generated", "2026-06-14T12:10:00.000Z", {
+        path: `.agentflight/reports/${options.id}-proof.md`,
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          riskLevel: "high",
+          changedFiles: options.changedFiles.length,
+          verificationPassed: options.commands.length,
+          verificationFailed: 0
+        }
+      })
+    ],
     tools: {
       projscan: { available: false, warnings: [] },
       agentloopkit: { available: false, warnings: [] }

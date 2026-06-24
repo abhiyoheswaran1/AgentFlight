@@ -296,7 +296,7 @@ function determineRequirementProofStatus(
   options: EvaluateProjectReviewContractOptions
 ): ReviewProofStatus {
   if (requiredProof.length === 0) return "not_required";
-  if (requiredProof.some((kind) => options.proofKinds.failed.has(kind))) return "failed";
+  if (findFailedCommand(options.unresolvedFailedRuns, requiredProof)) return "failed";
   if (!requiredProof.some((kind) => options.proofKinds.passed.has(kind))) return "missing";
   if (options.proofFreshness.state === "stale") return "stale";
   return options.proofFreshness.state === "current" ? "current" : "covered";

@@ -116,6 +116,47 @@ describe("HTML replay", () => {
     expect(html).not.toContain("<script");
   });
 
+  it("renders escaped proof freshness attribution", () => {
+    const html = renderHtmlReplay({
+      task: "Docs freshness",
+      sessionId: "af-freshness",
+      startedAt: "2026-06-17T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["docs/<guide>.md"],
+      riskBadges: ["low", "docs"],
+      verificationEvidence: [],
+      reviewReadiness: "Ready for review",
+      review: {
+        focus: [],
+        proofFreshness: {
+          state: "stale",
+          reason: "docs changed after proof was captured; manual review remains.",
+          staleFiles: ["docs/<guide>.md"],
+          staleCategories: [
+            {
+              category: "docs",
+              files: ["docs/<guide>.md"],
+              proofRequired: false
+            }
+          ]
+        },
+        proofGaps: [],
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Verification evidence matches the observed review risk.",
+          nextAction: "Run agentflight handoff to generate the local review packet.",
+          proofGaps: []
+        }
+      },
+      recommendation: "Review docs."
+    });
+
+    expect(html).toContain("Proof Freshness");
+    expect(html).toContain("docs/&lt;guide&gt;.md");
+    expect(html).not.toContain("docs/<guide>.md");
+  });
+
   it("renders long suggested proof commands compactly with the full command in a title", () => {
     const longCommand = `node -e "${"console.error('very noisy proof command'); ".repeat(12)}process.exit(1)"`;
     const html = renderHtmlReplay({
@@ -168,6 +209,60 @@ describe("HTML replay", () => {
     expect(html).toContain('title="agentflight verify -- node -e');
     expect(html).toContain("process.exit(1)");
     expect(html).toMatch(/>agentflight verify -- node -e [^<]*…<\/code>/);
+  });
+
+  it("renders escaped repo calibration suggestions with full suggested proof in a title", () => {
+    const html = renderHtmlReplay({
+      task: "Update auth flow",
+      sessionId: "af-calibrated-html",
+      startedAt: "2026-06-24T12:00:00.000Z",
+      timeline: [],
+      changedFiles: ["src/auth/session.ts"],
+      riskBadges: ["high", "auth"],
+      verificationEvidence: [],
+      reviewReadiness: "Ready for review",
+      review: {
+        focus: [],
+        proofGaps: [],
+        calibration: {
+          source: "local_session_history",
+          state: "under_proven",
+          summary:
+            "Similar local ready handoffs suggest 1 additional proof command for this change.",
+          scannedSessions: 3,
+          similarReadySessions: 2,
+          suggestions: [
+            {
+              id: "repo-calibration-auth-script",
+              status: "under_proven",
+              category: "auth",
+              message:
+                "Similar local ready handoffs for auth changes usually included npm run e2e:<auth>.",
+              currentProof: ["npm test"],
+              historicalProof: ["npm run e2e:<auth>", "npm test"],
+              suggestedCommand: "npm run e2e:<auth>",
+              similarReadySessions: 2,
+              matchedSessionIds: ["af-auth-1", "af-auth-2"]
+            }
+          ]
+        },
+        readiness: {
+          state: "ready_for_review",
+          label: "Ready for review",
+          reason: "Verification evidence matches the observed review risk.",
+          nextAction: "Run agentflight handoff to generate the local review packet.",
+          proofGaps: []
+        }
+      },
+      recommendation: "Ready for review."
+    });
+
+    expect(html).toContain('href="#repo-calibration"');
+    expect(html).toContain('<section class="section" id="repo-calibration">');
+    expect(html).toContain("Repo Calibration");
+    expect(html).toContain("npm run e2e:&lt;auth&gt;");
+    expect(html).toContain('title="agentflight verify -- npm run e2e:&lt;auth&gt;"');
+    expect(html).not.toContain("npm run e2e:<auth>");
   });
 
   it("renders long verification ledger commands compactly with the full command in a title", () => {

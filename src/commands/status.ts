@@ -9,6 +9,10 @@ import {
   formatProjectRequirementDetailsForDisplay,
   formatProjectReviewDecisionForDisplay,
   formatProjectReviewDecisionReasonsForDisplay,
+  formatProofCalibrationDetailsForDisplay,
+  formatProofCalibrationStatusForDisplay,
+  formatProofCalibrationSummaryForDisplay,
+  formatProofFreshnessAttributionForDisplay,
   formatProjectRequirementStatusForDisplay,
   formatProofStatusForDisplay,
   formatReviewContractReviewPathForDisplay,
@@ -19,6 +23,7 @@ import {
 } from "../core/output.js";
 import { resolveAgentFlightPaths } from "../core/paths.js";
 import { buildProofSnapshot } from "../core/proof-snapshot.js";
+import { loadProofCalibrationHistory } from "../core/proof-calibration.js";
 import { resolveProjectReviewContractConfig } from "../core/project-review-contract.js";
 import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
@@ -31,6 +36,8 @@ import type {
   ProjectReviewRequirementStatus,
   ReviewContract,
   ReviewFocusItem,
+  ProofCalibration,
+  ProofCalibrationSuggestion,
   ReviewReadinessState,
   RiskCategorySummary,
   SessionEvent,
@@ -74,11 +81,15 @@ export async function runStatusCommand(
     capturedAt: now.toISOString(),
     gitCommit: session.git.commit ?? null
   });
+  const calibrationHistory = await loadProofCalibrationHistory(options.repoRoot, {
+    currentSessionId: session.id
+  });
   const review = buildReviewIntelligence({
     changedFiles,
     risk,
     session,
     currentProofSnapshot,
+    historicalSessions: calibrationHistory.sessions,
     projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
   });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
@@ -158,6 +169,9 @@ ${formatProjectReviewDecisionReasonsForDisplay(review.projectReviewContract)
 
 Required proof:
 ${formatProjectReviewContract(review.projectReviewContract)}
+${formatProofFreshnessSection(review.proofFreshness)}
+Repo calibration:
+${formatProofCalibration(review.calibration)}
 
 Review Contract:
 ${formatReviewContract(review.contract, 5)}
@@ -219,7 +233,9 @@ function buildStatusJson(input: {
       projectReviewContract: input.review.projectReviewContract,
       proofGaps: input.review.proofGaps,
       readiness: input.review.readiness,
-      contract: input.review.contract
+      contract: input.review.contract,
+      calibration: input.review.calibration,
+      proofFreshness: input.review.proofFreshness
     },
     latestSnapshot: formatLatestSnapshotJson(input.latestSnapshot),
     reason: input.readinessReason,
@@ -391,6 +407,32 @@ function formatProjectRequirement(requirement: ProjectReviewRequirementStatus): 
     .map((line) => `\n   ${line}`)
     .join("");
   return `- ${formatProjectRequirementStatusForDisplay(requirement.status)} - ${requirement.label}${details}`;
+}
+
+function formatProofCalibration(calibration: ProofCalibration | undefined): string {
+  if (!calibration) return "- No repo calibration history loaded.";
+  if (calibration.suggestions.length === 0) {
+    return `- ${formatProofCalibrationSummaryForDisplay(calibration)}`;
+  }
+  return [
+    `- ${formatProofCalibrationSummaryForDisplay(calibration)}`,
+    ...calibration.suggestions.map(formatProofCalibrationSuggestion)
+  ].join("\n");
+}
+
+function formatProofCalibrationSuggestion(suggestion: ProofCalibrationSuggestion): string {
+  const details = formatProofCalibrationDetailsForDisplay(suggestion)
+    .map((line) => `\n   ${line}`)
+    .join("");
+  return `- ${formatProofCalibrationStatusForDisplay(suggestion.status)} - ${suggestion.category}${details}`;
+}
+
+function formatProofFreshnessSection(
+  freshness: ReturnType<typeof buildReviewIntelligence>["proofFreshness"]
+): string {
+  const lines = formatProofFreshnessAttributionForDisplay(freshness);
+  if (lines.length === 0) return "";
+  return `\nProof freshness:\n${lines.map((line) => `- ${line}`).join("\n")}\n`;
 }
 
 function formatReviewContract(contract: ReviewContract | undefined, limit: number): string {
