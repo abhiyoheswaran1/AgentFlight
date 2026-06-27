@@ -6,6 +6,22 @@ All notable AgentFlight changes are documented here.
 
 No unreleased changes.
 
+## [0.14.1] - 2026-06-27
+
+### Added
+
+- Added a real AgentFlight v0.14.0 Baseframe readiness terminal capture for
+  the product README and website pipeline.
+
+### Changed
+
+- Included the new Baseframe readiness image in the npm package allowlist so
+  the README asset is available from the published package.
+
+### Verification
+
+- Release audit: `docs/development/v0.14.1-release-audit.md`.
+
 ## [0.14.0] - 2026-06-27
 
 ### Added
