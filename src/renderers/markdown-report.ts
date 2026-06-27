@@ -25,8 +25,10 @@ import {
   formatVerificationFailureContext,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
+import { formatBaseframeResultForMarkdown } from "../core/baseframe.js";
 import type { VerificationFailureCounts } from "../core/output.js";
 import type {
+  AgentFlightResultV1,
   ProjectReviewContractEvaluation,
   ProjectReviewRequirementStatus,
   ProofCalibration,
@@ -52,6 +54,7 @@ export interface MarkdownReportInput {
   recommendation?: string | undefined;
   nextAction?: string | undefined;
   review?: ReviewIntelligence | undefined;
+  baseframeResult?: AgentFlightResultV1 | undefined;
   tooling: {
     projscan: ToolAdapterResult;
     agentloopkit: ToolAdapterResult;
@@ -87,6 +90,8 @@ ${renderChangedFileList(input.changedFiles)}
 - Level: ${input.risk.level}
 - Changed files: ${input.risk.changedFiles}
 ${renderList(input.risk.reasons)}
+
+${renderBaseframeIntegration(input)}
 
 ## Verification Evidence
 ${renderVerification(input)}
@@ -152,6 +157,8 @@ Generated locally by AgentFlight. Not posted automatically.
 - Risk: ${input.risk.level}
 - Changed files: ${input.changedFiles.length}
 
+${renderBaseframeIntegration(input).replaceAll("## ", "### ")}
+
 ### Review first
 ${renderReviewFirst(input)}
 
@@ -197,6 +204,8 @@ function renderCompactMarkdownReport(input: MarkdownReportInput): string {
 - Started: ${escapeMarkdownTextForDisplay(input.startedAt)}
 - Changed files: ${input.changedFiles.length}
 - Risk: ${input.risk.level}
+
+${renderBaseframeIntegration(input)}
 
 ## Review Readiness
 ${renderReviewReadiness(input)}
@@ -249,6 +258,10 @@ function renderList(items: string[], empty = "None."): string {
   return items.length
     ? items.map((item) => `- ${escapeMarkdownTextForDisplay(item)}`).join("\n")
     : empty;
+}
+
+function renderBaseframeIntegration(input: MarkdownReportInput): string {
+  return input.baseframeResult ? formatBaseframeResultForMarkdown(input.baseframeResult) : "";
 }
 
 function renderChangedFileList(files: string[]): string {

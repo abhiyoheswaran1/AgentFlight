@@ -3,6 +3,7 @@ import { listChangedFiles } from "../core/git.js";
 import { filterChangedFiles } from "../core/changed-files.js";
 import { loadConfig } from "../core/config.js";
 import { pathExists, readJsonFile } from "../core/fs-safe.js";
+import { formatBaseframeResultForDisplay } from "../core/baseframe.js";
 import {
   compactCommandInText,
   collectSuggestedCommandsForDisplay,
@@ -41,7 +42,9 @@ import {
   reviewSummaryMatchesCurrentWork
 } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
+import { refreshBaseframeResultIfPresent } from "./baseframe-result.js";
 import type {
+  AgentFlightResultV1,
   AgentFlightSession,
   ProofGap,
   ProjectReviewContractEvaluation,
@@ -104,6 +107,12 @@ export async function runStatusCommand(
     historicalSessions: calibrationHistory.sessions,
     projectReviewContract: resolveProjectReviewContractConfig(config?.projectReviewContract)
   });
+  const baseframeResult = await refreshBaseframeResultIfPresent({
+    repoRoot: options.repoRoot,
+    session,
+    changedFiles,
+    now
+  });
   const latestSnapshot = getLatestSessionEvent(session, "snapshot_created");
   const readinessReason = compactCommandInText(
     review.readiness.reason,
@@ -132,6 +141,7 @@ export async function runStatusCommand(
           risk,
           verification,
           review,
+          baseframeResult: baseframeResult ?? undefined,
           latestSnapshot,
           readinessReason,
           nextAction: statusTextNextAction
@@ -160,6 +170,7 @@ ${formatChangedAreas(risk.categories)}
 Risk: ${risk.level}
 ${risk.reasons.map((reason) => `- ${reason}`).join("\n")}
 
+${formatBaseframeStatus(baseframeResult)}
 Verification Evidence:
 ${formatVerificationCountLine(verification)}
 ${verificationFailureContext ? `${verificationFailureContext}\n` : ""}${formatVerificationRuns(
@@ -232,6 +243,7 @@ function buildStatusJson(input: {
   risk: ReturnType<typeof analyzeRisk>;
   verification: ReturnType<typeof buildVerificationSummary>;
   review: ReturnType<typeof buildReviewIntelligence>;
+  baseframeResult?: AgentFlightResultV1 | undefined;
   latestSnapshot: SessionEvent | null;
   readinessReason: string;
   nextAction: string;
@@ -267,10 +279,15 @@ function buildStatusJson(input: {
       calibration: input.review.calibration,
       proofFreshness: input.review.proofFreshness
     },
+    baseframe: input.baseframeResult ?? null,
     latestSnapshot: formatLatestSnapshotJson(input.latestSnapshot),
     reason: input.readinessReason,
     nextAction: input.nextAction
   };
+}
+
+function formatBaseframeStatus(result: AgentFlightResultV1 | null): string {
+  return result ? `${formatBaseframeResultForDisplay(result)}\n` : "";
 }
 
 function formatLatestSnapshotJson(event: SessionEvent | null): Record<string, unknown> | null {

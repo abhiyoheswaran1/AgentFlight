@@ -10,6 +10,10 @@ See what changed, what proof ran, what failed, and whether the work is ready for
 
 AgentFlight is a local-first review layer for coding agent sessions from Baseframe Labs. It records task, git, snapshot, and verification evidence, shows failure excerpts, and tells you whether the proof is right for this repo before you trust the result.
 
+ProjScan finds the risk.
+AgentLoopKit controls the work.
+AgentFlight proves the result.
+
 Website: [baseframelabs.com/apps/agentflight](https://www.baseframelabs.com/apps/agentflight)
 
 AgentFlight helps you:
@@ -28,6 +32,7 @@ AgentFlight helps you:
 - create snapshots during the session
 - generate a local review handoff
 - generate a proof report and local replay timeline
+- emit Baseframe Suite evidence for AgentLoopKit from local JSON contracts
 - find recent local sessions and their artifacts
 - create a resume prompt for the next agent or reviewer
 
@@ -49,6 +54,8 @@ npx agentflight@latest status
 npx agentflight@latest handoff
 npx agentflight@latest history --limit 1
 ```
+
+Baseframe Suite Integration v1 is documented in [`docs/integrations/baseframe-suite-v1.md`](docs/integrations/baseframe-suite-v1.md).
 
 What you get:
 

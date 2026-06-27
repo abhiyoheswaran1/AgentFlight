@@ -18,6 +18,7 @@ import {
 import { buildVerificationSummary } from "../core/verification.js";
 import { formatVerificationCountLine, formatVerificationFailureContext } from "../core/output.js";
 import { renderResumePrompt } from "../renderers/resume-prompt.js";
+import { refreshBaseframeResultIfPresent } from "./baseframe-result.js";
 import { readCurrentSession } from "./status.js";
 
 export interface ResumeCommandOptions {
@@ -80,6 +81,13 @@ export async function runResumeCommand(
     openFirstReadiness !== undefined
       ? await readOpenFirstArtifact(options.repoRoot, session.id, openFirstReadiness)
       : null;
+  const baseframeResult = await refreshBaseframeResultIfPresent({
+    repoRoot: options.repoRoot,
+    session,
+    changedFiles,
+    now,
+    artifacts: [{ kind: "resume", path: `.agentflight/reports/${session.id}-resume.md` }]
+  });
   const event = {
     type: "resume_generated",
     timestamp: now,
@@ -108,6 +116,7 @@ export async function runResumeCommand(
     reviewContract: review.contract,
     proofGaps: review.proofGaps,
     readiness: review.readiness,
+    baseframeResult: baseframeResult ?? undefined,
     openFirstArtifact: openFirstArtifact ?? undefined,
     latestSnapshotNote: latestSnapshot?.message,
     verificationState: formatVerificationCountLine(verification),

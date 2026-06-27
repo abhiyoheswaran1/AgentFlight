@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { getRepositoryRoot } from "./core/git.js";
 import { runDoctorCommand } from "./commands/doctor.js";
+import { runFinalizeCommand } from "./commands/finalize.js";
 import { runHandoffCommand } from "./commands/handoff.js";
 import { runHistoryCommand } from "./commands/history.js";
 import { runInitCommand } from "./commands/init.js";
@@ -15,6 +16,14 @@ import { runSnapshotCommand } from "./commands/snapshot.js";
 import { runStartCommand } from "./commands/start.js";
 import { runStatusCommand } from "./commands/status.js";
 import { runVerifyCommand } from "./commands/verify.js";
+
+export { createAgentFlightResult, loadBaseframeIntegrationContext } from "./core/baseframe.js";
+export type {
+  AgentFlightResultV1,
+  AgentLoopKitTaskContractV1,
+  BaseframeIntegrationContext,
+  ProjScanAssessmentV1
+} from "./types/index.js";
 
 export function createCli(): Command {
   const program = new Command();
@@ -34,17 +43,31 @@ export function createCli(): Command {
   program
     .command("start")
     .description("Start or resume a coding agent session.")
-    .requiredOption("--task <task>", "task title")
+    .option("--task <task>", "task title")
+    .option("--task-id <taskId>", "Baseframe task ID")
+    .option("--from-task <path>", "AgentLoopKit Baseframe task contract JSON")
+    .option("--from-projscan <path>", "ProjScan Baseframe assessment JSON")
     .option("-y, --yes", "initialise safely if AgentFlight is missing")
-    .action(async (options: { task: string; yes?: boolean }) => {
-      await printResult(
-        runStartCommand({
-          repoRoot: await getRepositoryRoot(process.cwd()),
-          task: options.task,
-          yes: options.yes
-        })
-      );
-    });
+    .action(
+      async (options: {
+        task?: string;
+        taskId?: string;
+        fromTask?: string;
+        fromProjscan?: string;
+        yes?: boolean;
+      }) => {
+        await printResult(
+          runStartCommand({
+            repoRoot: await getRepositoryRoot(process.cwd()),
+            task: options.task,
+            taskId: options.taskId,
+            fromTask: options.fromTask,
+            fromProjscan: options.fromProjscan,
+            yes: options.yes
+          })
+        );
+      }
+    );
 
   program
     .command("status")
@@ -112,6 +135,19 @@ export function createCli(): Command {
     .description("Generate a prompt to continue the current session safely.")
     .action(async () => {
       await printResult(runResumeCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
+    });
+
+  program
+    .command("finalize")
+    .description("Write the Baseframe AgentFlight result artifact for AgentLoopKit.")
+    .option("--task-id <taskId>", "Baseframe task ID")
+    .action(async (options: { taskId?: string }) => {
+      await printResult(
+        runFinalizeCommand({
+          repoRoot: await getRepositoryRoot(process.cwd()),
+          taskId: options.taskId
+        })
+      );
     });
 
   program

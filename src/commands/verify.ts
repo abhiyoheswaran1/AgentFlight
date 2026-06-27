@@ -7,6 +7,7 @@ import {
   parseCommandLine,
   runVerificationCommand
 } from "../core/verification.js";
+import { refreshBaseframeResultIfPresent } from "./baseframe-result.js";
 import { readCurrentSession } from "./status.js";
 import type { AgentFlightSession, VerificationRun } from "../types/index.js";
 import type { CommandRunner } from "../core/process.js";
@@ -43,6 +44,11 @@ export async function runVerifyCommand(
     session,
     commandResolution
   );
+  await refreshBaseframeResultIfPresent({
+    repoRoot: options.repoRoot,
+    session: await readCurrentSession(options.repoRoot),
+    now: options.now?.() ?? new Date()
+  });
 
   return {
     output: `${output.join("\n")}\n`,

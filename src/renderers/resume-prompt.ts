@@ -21,7 +21,9 @@ import {
   formatTrustDeltaForDisplay,
   formatVerifyCommandForDisplay
 } from "../core/output.js";
+import { formatBaseframeResultForMarkdown } from "../core/baseframe.js";
 import type {
+  AgentFlightResultV1,
   ProofGap,
   ProofCalibration,
   ProofCalibrationSuggestion,
@@ -58,6 +60,7 @@ export interface ResumePromptInput {
   reviewContract?: ReviewContract | undefined;
   proofGaps?: ProofGap[] | undefined;
   readiness?: ReviewReadinessDecision | undefined;
+  baseframeResult?: AgentFlightResultV1 | undefined;
   openFirstArtifact?: string | undefined;
   latestSnapshotNote?: string | undefined;
   verificationState?: string | undefined;
@@ -83,6 +86,8 @@ ${renderChangedFileList(input.changedFiles)}
 
 ## Risks
 ${renderList(input.riskReasons, "No specific risks detected yet.")}
+
+${renderBaseframeIntegration(input)}
 
 ## Latest Snapshot
 ${escapeMarkdownTextForDisplay(input.latestSnapshotNote ?? "No snapshot recorded.")}
@@ -136,6 +141,12 @@ function renderList(items: string[], empty: string): string {
   return items.length
     ? items.map((item) => `- ${escapeMarkdownTextForDisplay(item)}`).join("\n")
     : empty;
+}
+
+function renderBaseframeIntegration(input: ResumePromptInput): string {
+  return input.baseframeResult
+    ? `${formatBaseframeResultForMarkdown(input.baseframeResult)}\n`
+    : "";
 }
 
 function renderChangedFileList(files: string[]): string {

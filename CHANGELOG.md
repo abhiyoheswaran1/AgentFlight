@@ -6,6 +6,54 @@ All notable AgentFlight changes are documented here.
 
 No unreleased changes.
 
+## [0.14.0] - 2026-06-27
+
+### Added
+
+- Added Baseframe Suite Integration v1 so AgentFlight can start from
+  AgentLoopKit task-contract JSON, resolve linked ProjScan assessment JSON,
+  persist optional Baseframe integration context, and remain independent of
+  ProjScan and AgentLoopKit internals.
+- Added `agentflight finalize`, which writes
+  `.baseframe/evidence/<task-id>/agentflight-result.json`, refreshes local
+  report/replay/resume evidence, updates `.baseframe/agent-workflow.json`, and
+  prints the AgentLoopKit reconciliation command.
+- Added deterministic scope-drift detection for Baseframe sessions using
+  allowed and excluded path globs while preserving AgentFlight runtime-file
+  filters and keeping `.agentflight/config.json` visible.
+- Added required verification gate reconciliation with exact command and
+  normalized-whitespace matching only.
+- Added exported Baseframe contract/result types plus
+  `loadBaseframeIntegrationContext` and `createAgentFlightResult`.
+- Added Baseframe sections to status, Markdown report, HTML replay, and resume
+  prompt: Repository Assessment, Task Contract, Scope Adherence, Verification
+  Gates, Review Focus, Proof Gaps, Readiness, and Next Action.
+- Added Baseframe contract fixtures and end-to-end tests that simulate ProjScan,
+  AgentLoopKit, AgentFlight execution drift, verification outcomes, and final
+  result generation without depending on sibling packages at runtime.
+
+### Changed
+
+- `agentflight start` now accepts `--from-task`, `--from-projscan`, and
+  `--task-id` for Baseframe workflows while preserving the existing
+  `--task`-based standalone session flow.
+- `verify`, `snapshot`, `report`, `replay`, `resume`, and `status` now refresh
+  the Baseframe result artifact when the current session has Baseframe
+  integration context.
+- Package contents now include the Baseframe Suite Integration v1 documentation.
+
+### Security
+
+- Baseframe integration reads and writes only repository-local JSON artifacts
+  with safe path validation, task ID validation, schema/kind checks, and atomic
+  writes for generated result and workflow manifest files.
+- Verification gate matching intentionally avoids fuzzy matching so unrelated
+  commands cannot satisfy required AgentLoopKit gates.
+
+### Verification
+
+- Release audit: `docs/development/v0.14.0-release-audit.md`.
+
 ## [0.13.0] - 2026-06-24
 
 ### Added

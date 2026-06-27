@@ -16,6 +16,7 @@ import {
 } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderMarkdownReport, type MarkdownReportMode } from "../renderers/markdown-report.js";
+import { refreshBaseframeResultIfPresent } from "./baseframe-result.js";
 import { readCurrentSession } from "./status.js";
 
 export interface ReportCommandOptions {
@@ -66,6 +67,13 @@ export async function runReportCommand(
   const suffix = reportPathSuffix(mode);
   const relativeReportPath = `.agentflight/reports/${session.id}${suffix}`;
   const reportPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}${suffix}`;
+  const baseframeResult = await refreshBaseframeResultIfPresent({
+    repoRoot: options.repoRoot,
+    session,
+    changedFiles,
+    now,
+    artifacts: [{ kind: "report", path: relativeReportPath }]
+  });
   const event = {
     type: "report_generated",
     timestamp: now,
@@ -100,6 +108,7 @@ export async function runReportCommand(
       recommendation: review.readiness.label,
       nextAction: review.readiness.nextAction,
       review,
+      baseframeResult: baseframeResult ?? undefined,
       tooling: session.tools
     },
     {

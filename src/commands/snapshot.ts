@@ -7,6 +7,7 @@ import { analyzeRisk } from "../core/risk.js";
 import { buildReviewIntelligence } from "../core/review-intelligence.js";
 import { appendSessionEvent } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
+import { refreshBaseframeResultIfPresent } from "./baseframe-result.js";
 import { readCurrentSession } from "./status.js";
 import type { GitInfo, SessionEvent } from "../types/index.js";
 
@@ -83,6 +84,12 @@ export async function runSnapshotCommand(
   if (!event) {
     throw new Error("Snapshot event was not recorded.");
   }
+  await refreshBaseframeResultIfPresent({
+    repoRoot: options.repoRoot,
+    session: updatedSession,
+    changedFiles: git.changedFiles,
+    now
+  });
 
   return {
     output: `Snapshot recorded

@@ -16,10 +16,12 @@ import {
   formatVerifyCommandForDisplay,
   selectReviewContractProofReferencesForDisplay
 } from "../core/output.js";
+import { formatBaseframeResultForDisplay } from "../core/baseframe.js";
 import { safeAnchorId, stableAnchorId } from "../core/ids.js";
 import { getUnresolvedFailedRuns } from "../core/verification-runs.js";
 import type { VerificationFailureCounts } from "../core/output.js";
 import type {
+  AgentFlightResultV1,
   ProofGap,
   ProofCalibration,
   ProofCalibrationSuggestion,
@@ -55,6 +57,7 @@ export interface HtmlReplayInput {
   verificationSummary?: VerificationFailureCounts | undefined;
   reviewReadiness?: string | undefined;
   review?: ReviewIntelligence | undefined;
+  baseframeResult?: AgentFlightResultV1 | undefined;
   recommendation: string;
 }
 
@@ -493,6 +496,8 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
     ${renderJumpNav(input, urgentFailedRunIndex)}
 
+    ${renderBaseframeSections(input.baseframeResult)}
+
     ${renderReviewPath(input, urgentFailedRunIndex)}
 
     ${renderReview(input.review, urgentFailedRunIndex)}
@@ -534,6 +539,16 @@ export function renderHtmlReplay(input: HtmlReplayInput): string {
 
 function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): string {
   const links: Array<{ href: string; label: string; urgent?: boolean }> = [];
+  if (input.baseframeResult) {
+    links.push({ href: "#repository-assessment", label: "Repository Assessment" });
+    links.push({ href: "#task-contract", label: "Task Contract" });
+    links.push({ href: "#scope-adherence", label: "Scope Adherence" });
+    links.push({ href: "#verification-gates", label: "Verification Gates" });
+    links.push({ href: "#baseframe-review-focus", label: "Review Focus" });
+    links.push({ href: "#baseframe-proof-gaps", label: "Proof Gaps" });
+    links.push({ href: "#baseframe-readiness", label: "Readiness" });
+    links.push({ href: "#baseframe-next-action", label: "Next Action" });
+  }
   if (input.review) {
     links.push({ href: "#review-path", label: "Review Path" });
     links.push({ href: "#review-focus", label: "Review Focus" });
@@ -571,6 +586,36 @@ function renderJumpNav(input: HtmlReplayInput, firstFailedRunIndex: number): str
         `<a href="${escapeHtml(link.href)}"${link.urgent ? ` class="nav-urgent"` : ""}>${escapeHtml(link.label)}</a>`
     )
     .join("")}</nav>`;
+}
+
+function renderBaseframeSections(result: AgentFlightResultV1 | undefined): string {
+  if (!result) return "";
+  return parseBaseframeSections(formatBaseframeResultForDisplay(result))
+    .map(
+      (section) => `<section class="section" id="${escapeHtml(sectionId(section.heading))}">
+      <div class="section-head"><h2 class="label">${escapeHtml(section.heading)}</h2></div>
+      <p>${escapeHtml(section.body || "No Baseframe evidence recorded.")}</p>
+    </section>`
+    )
+    .join("\n");
+}
+
+function parseBaseframeSections(text: string): Array<{ heading: string; body: string }> {
+  return text.split("\n\n").map((section) => {
+    const [heading = "Baseframe", ...body] = section.split("\n");
+    return { heading, body: body.join("\n") };
+  });
+}
+
+function sectionId(heading: string): string {
+  if (heading === "Review Focus") return "baseframe-review-focus";
+  if (heading === "Proof Gaps") return "baseframe-proof-gaps";
+  if (heading === "Readiness") return "baseframe-readiness";
+  if (heading === "Next Action") return "baseframe-next-action";
+  return heading
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 interface ReviewPathItem {

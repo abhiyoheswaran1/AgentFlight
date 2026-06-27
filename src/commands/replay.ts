@@ -16,6 +16,7 @@ import {
 } from "../core/session.js";
 import { buildVerificationSummary } from "../core/verification.js";
 import { renderHtmlReplay } from "../renderers/html-replay.js";
+import { refreshBaseframeResultIfPresent } from "./baseframe-result.js";
 import { readCurrentSession } from "./status.js";
 
 export interface ReplayCommandOptions {
@@ -63,6 +64,13 @@ export async function runReplayCommand(
   });
   const relativeReplayPath = `.agentflight/reports/${session.id}-replay.html`;
   const replayPath = `${resolveAgentFlightPaths(options.repoRoot).reports}/${session.id}-replay.html`;
+  const baseframeResult = await refreshBaseframeResultIfPresent({
+    repoRoot: options.repoRoot,
+    session,
+    changedFiles,
+    now,
+    artifacts: [{ kind: "replay", path: relativeReplayPath }]
+  });
   const event = {
     type: "replay_generated",
     timestamp: now,
@@ -94,6 +102,7 @@ export async function runReplayCommand(
     },
     reviewReadiness: review.readiness.label,
     review,
+    baseframeResult: baseframeResult ?? undefined,
     recommendation: `${review.readiness.label}. ${review.readiness.nextAction}`
   });
 

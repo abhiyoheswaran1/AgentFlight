@@ -1,5 +1,28 @@
 # Decisions
 
+## 2026-06-27: Baseframe Suite Integration Uses Local JSON Contracts
+
+Decision: integrate AgentFlight with ProjScan and AgentLoopKit through local,
+versioned Baseframe JSON artifacts instead of importing either tool's internals.
+
+Rationale:
+
+- The tools need to compose without becoming one product or sharing runtime
+  implementation details.
+- AgentFlight already owns local session, verification, report, replay, and
+  resume evidence, so the unified result should be another local artifact.
+- Deterministic scope and gate reconciliation are review evidence, not cloud or
+  identity features.
+
+Consequence:
+
+- `agentflight start --from-task` records optional Baseframe integration context
+  on the session while old sessions remain valid.
+- `agentflight finalize` writes `.baseframe/evidence/<task-id>/agentflight-result.json`
+  and updates only the `agentflight` section of `.baseframe/agent-workflow.json`.
+- Future suite changes should version the JSON contracts before changing
+  AgentFlight behavior.
+
 ## 2026-06-23: Project Review Contract Explanations Live In Core
 
 Decision: generate Project Review Contract explanations in the core evaluator,

@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "projscan-assessment",
+  "producer": {
+    "name": "projscan",
+    "version": "4.5.0"
+  },
+  "taskId": "auth-password-reset-20260626-01",
+  "intent": "Implement password reset",
+  "generatedAt": "2026-06-26T09:00:00.000Z",
+  "repository": {
+    "root": ".",
+    "branch": "main",
+    "commit": "abc123"
+  },
+  "verdict": "caution",
+  "summary": "Caution, authentication-sensitive change.",
+  "repositoryType": "typescript-cli",
+  "impactedAreas": [
+    {
+      "name": "Authentication",
+      "paths": ["src/auth/**"],
+      "reason": "Password reset touches identity-sensitive flow."
+    }
+  ],
+  "reviewFocus": [
+    {
+      "path": "src/auth/reset.ts",
+      "priority": "high",
+      "reasons": ["authentication-sensitive change", "token lifecycle"]
+    }
+  ],
+  "risks": [
+    {
+      "id": "risk-auth",
+      "severity": "warning",
+      "category": "auth",
+      "message": "Password reset can affect account access.",
+      "files": ["src/auth/reset.ts"],
+      "suggestedAction": "Run auth-specific tests."
+    }
+  ],
+  "suggestedChecks": [
+    {
+      "command": "npm test -- auth",
+      "reason": "Covers authentication behavior.",
+      "required": true
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "report",
+      "path": ".baseframe/evidence/auth-password-reset-20260626-01/projscan-report.md"
+    }
+  ]
+}

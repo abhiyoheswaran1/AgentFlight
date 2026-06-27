@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "agentloopkit-task",
+  "producer": {
+    "name": "agentloopkit",
+    "version": "0.35.2"
+  },
+  "taskId": "auth-password-reset-20260626-01",
+  "intent": "Implement password reset",
+  "title": "Implement password reset",
+  "createdAt": "2026-06-26T09:10:00.000Z",
+  "sourceAssessment": {
+    "path": ".baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json",
+    "producerVersion": "4.5.0",
+    "verdict": "caution"
+  },
+  "scope": {
+    "allowedPaths": ["src/auth/**", "tests/auth/**"],
+    "reviewFirst": [
+      {
+        "path": "src/auth/reset.ts",
+        "reasons": ["acceptance-critical implementation file"]
+      }
+    ],
+    "excludedPaths": ["package.json", "package-lock.json"]
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "ac-reset-email",
+      "text": "Users can request a password reset email.",
+      "status": "satisfied"
+    },
+    {
+      "id": "ac-token-expiry",
+      "text": "Reset tokens expire safely.",
+      "status": "pending"
+    }
+  ],
+  "verificationGates": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "reason": "TypeScript must compile.",
+      "required": true,
+      "status": "pending"
+    },
+    {
+      "id": "auth-tests",
+      "command": "npm test -- auth",
+      "reason": "Authentication tests must pass.",
+      "required": true,
+      "status": "pending"
+    },
+    {
+      "id": "build",
+      "command": "npm run build",
+      "reason": "Package build must succeed.",
+      "required": true,
+      "status": "pending"
+    }
+  ],
+  "risks": [
+    {
+      "id": "task-risk-auth",
+      "severity": "warning",
+      "message": "Identity-sensitive flow.",
+      "files": ["src/auth/reset.ts"]
+    }
+  ],
+  "status": "active",
+  "nativeTaskPath": ".agentloop/tasks/2026-06-26-password-reset.md"
+}

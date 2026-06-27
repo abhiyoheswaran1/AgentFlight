@@ -1,6 +1,6 @@
 {
   "name": "agentflight",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Local-first review layer for coding agent sessions.",
   "type": "module",
   "main": "./dist/cli.js",
@@ -23,6 +23,7 @@
     "docs/development/project-review-contract.md",
     "docs/development/release.md",
     "docs/examples/basic-agentflight-session.md",
+    "docs/integrations/baseframe-suite-v1.md",
     "docs/roadmap/index.md",
     "docs/roadmap/v0.4.0-review-intelligence-plan.md",
     "LICENSE"

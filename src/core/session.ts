@@ -7,6 +7,7 @@ import { assertSafeSessionId } from "./session-id.js";
 import { getUnresolvedFailedRuns } from "./verification-runs.js";
 import type {
   AgentFlightSession,
+  BaseframeIntegrationContext,
   GitInfo,
   ReviewReceipt,
   ReviewReceiptDecision,
@@ -28,6 +29,7 @@ export interface BuildSessionRecordOptions {
   packageManager: string | null;
   repoSummary?: string | undefined;
   verificationCommands?: string[] | undefined;
+  baseframeIntegration?: BaseframeIntegrationContext | undefined;
   tools?:
     | {
         projscan: ToolAdapterResult;
@@ -154,6 +156,10 @@ export function buildSessionRecord(options: BuildSessionRecordOptions): AgentFli
       agentloopkit: unavailableTool
     }
   };
+
+  if (options.baseframeIntegration !== undefined) {
+    session.baseframeIntegration = options.baseframeIntegration;
+  }
 
   if (options.repoSummary !== undefined) {
     session.repoSummary = options.repoSummary;

@@ -58,6 +58,7 @@ export interface AgentFlightSession {
   packageManager: string | null;
   repoSummary?: string;
   verificationCommands: string[];
+  baseframeIntegration?: BaseframeIntegrationContext;
   verificationRuns?: VerificationRun[];
   reviewReceipts?: ReviewReceipt[];
   events?: SessionEvent[];
@@ -76,6 +77,7 @@ export type SessionEventType =
   | "report_generated"
   | "replay_generated"
   | "resume_generated"
+  | "baseframe_result_generated"
   | "review_receipt_recorded"
   | "doctor_run";
 
@@ -151,6 +153,7 @@ export interface ProofSnapshot {
 }
 
 export interface VerificationRun {
+  id?: string;
   command: string;
   startedAt: string;
   finishedAt: string;
@@ -171,6 +174,189 @@ export interface VerificationRun {
    * the evidence files above.
    */
   proofSnapshot?: ProofSnapshot;
+}
+
+export interface ProjScanAssessmentV1 {
+  schemaVersion: "1.0";
+  kind: "projscan-assessment";
+  producer: {
+    name: "projscan";
+    version: string;
+  };
+  taskId: string;
+  intent: string;
+  generatedAt: string;
+  repository: {
+    root: string;
+    branch?: string;
+    commit?: string;
+  };
+  verdict: "proceed" | "caution" | "block" | "unknown";
+  summary: string;
+  repositoryType?: string;
+  impactedAreas: Array<{
+    name: string;
+    paths: string[];
+    reason: string;
+  }>;
+  reviewFocus: Array<{
+    path: string;
+    priority: "high" | "medium" | "low";
+    reasons: string[];
+  }>;
+  risks: Array<{
+    id: string;
+    severity: "info" | "warning" | "blocking";
+    category: string;
+    message: string;
+    files?: string[];
+    suggestedAction?: string;
+  }>;
+  suggestedChecks: Array<{
+    command: string;
+    reason: string;
+    required: boolean;
+  }>;
+  artifacts?: Array<{
+    kind: "report" | "scan" | "log";
+    path: string;
+  }>;
+}
+
+export interface AgentLoopKitTaskContractV1 {
+  schemaVersion: "1.0";
+  kind: "agentloopkit-task";
+  producer: {
+    name: "agentloopkit";
+    version: string;
+  };
+  taskId: string;
+  intent: string;
+  title: string;
+  createdAt: string;
+  sourceAssessment: {
+    path: string;
+    producerVersion: string;
+    verdict: "proceed" | "caution" | "block" | "unknown";
+  };
+  scope: {
+    allowedPaths: string[];
+    reviewFirst: Array<{
+      path: string;
+      reasons: string[];
+    }>;
+    excludedPaths: string[];
+  };
+  acceptanceCriteria: Array<{
+    id: string;
+    text: string;
+    status: "pending" | "satisfied" | "failed" | "unknown";
+  }>;
+  verificationGates: Array<{
+    id: string;
+    command: string;
+    reason: string;
+    required: boolean;
+    status: "pending" | "passed" | "failed" | "skipped";
+  }>;
+  risks: Array<{
+    id: string;
+    severity: "info" | "warning" | "blocking";
+    message: string;
+    files?: string[];
+  }>;
+  status: "draft" | "active" | "blocked" | "complete";
+  nativeTaskPath?: string;
+}
+
+export interface BaseframeIntegrationContext {
+  schemaVersion: "1.0";
+  taskId: string;
+  projscanAssessmentPath?: string;
+  agentloopkitTaskPath?: string;
+  expectedScope: {
+    allowedPaths: string[];
+    excludedPaths: string[];
+  };
+  requiredVerification: Array<{
+    id: string;
+    command: string;
+    reason: string;
+    required: boolean;
+  }>;
+  importedReviewFocus: Array<{
+    path: string;
+    priority: "high" | "medium" | "low";
+    reasons: string[];
+    source: "projscan" | "agentloopkit";
+  }>;
+}
+
+export interface ScopeDriftFinding {
+  path: string;
+  reason: "outside-allowed-scope" | "inside-excluded-scope" | "unclassified";
+  severity: "warning" | "blocking";
+}
+
+export interface GateEvidenceStatus {
+  gateId: string;
+  command: string;
+  status: "passed" | "failed" | "incomplete" | "missing" | "skipped";
+  matchingVerificationRunId?: string;
+}
+
+export interface AgentFlightResultV1 {
+  schemaVersion: "1.0";
+  kind: "agentflight-result";
+  producer: {
+    name: "agentflight";
+    version: string;
+  };
+  taskId: string;
+  generatedAt: string;
+  source: {
+    projscanAssessmentPath?: string;
+    agentloopkitTaskPath?: string;
+  };
+  readiness:
+    | "ready_for_review"
+    | "not_ready_for_review"
+    | "needs_verification"
+    | "blocked_by_failed_verification"
+    | "unknown";
+  summary: string;
+  changedFiles: string[];
+  scopeDrift: Array<{
+    path: string;
+    reason: string;
+  }>;
+  verification: Array<{
+    command: string;
+    status: "passed" | "failed" | "incomplete";
+    exitCode?: number;
+  }>;
+  gates: Array<{
+    gateId: string;
+    command: string;
+    status: "passed" | "failed" | "incomplete" | "missing" | "skipped";
+    verificationRunId?: string;
+  }>;
+  proofGaps: Array<{
+    severity: "info" | "warning" | "blocking";
+    message: string;
+    suggestedCommand?: string;
+    relatedFiles?: string[];
+  }>;
+  reviewFocus: Array<{
+    path: string;
+    priority: "high" | "medium" | "low";
+    reasons: string[];
+    sources: Array<"projscan" | "agentloopkit" | "agentflight">;
+  }>;
+  artifacts: Array<{
+    kind: "report" | "replay" | "resume" | "log";
+    path: string;
+  }>;
 }
 
 export type ReviewReceiptDecision = "accepted" | "needs_changes" | "blocked" | "superseded";

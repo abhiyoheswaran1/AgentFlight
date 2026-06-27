@@ -1,5 +1,6 @@
 import { inspectAgentLoopKit, linkAgentLoopTask } from "../adapters/agentloopkit.js";
 import { inspectProjScan } from "../adapters/projscan.js";
+import { loadBaseframeContracts } from "../core/baseframe.js";
 import { initAgentFlight, loadConfig } from "../core/config.js";
 import { pathExists } from "../core/fs-safe.js";
 import { getGitInfo } from "../core/git.js";
@@ -23,7 +24,10 @@ interface StartToolInspectors {
 
 export interface StartCommandOptions {
   repoRoot: string;
-  task: string;
+  task?: string | undefined;
+  taskId?: string | undefined;
+  fromTask?: string | undefined;
+  fromProjscan?: string | undefined;
   yes?: boolean | undefined;
   now?: Date | undefined;
   git?: GitInfo | undefined;
@@ -44,45 +48,72 @@ export interface StartCommandResult {
 
 export async function runStartCommand(options: StartCommandOptions): Promise<StartCommandResult> {
   const autoInitNotice = await ensureAgentFlightInitialized(options);
+  const baseframe = options.fromTask
+    ? await loadBaseframeContracts({
+        repoRoot: options.repoRoot,
+        taskPath: options.fromTask,
+        projscanPath: options.fromProjscan,
+        taskId: options.taskId
+      })
+    : undefined;
+  const taskTitle = options.task ?? baseframe?.task.title;
+  if (!taskTitle) {
+    throw new Error('Provide --task "Describe the task" or --from-task <agentloopkit-task.json>.');
+  }
   const config = await loadConfig(options.repoRoot);
   const packageJson = await readPackageJson(options.repoRoot);
   const verificationCommands = detectVerificationCommands(packageJson);
   const configuredVerificationCommands = config?.verification.commands ?? [];
+  const baseframeVerificationCommands =
+    baseframe?.context.requiredVerification
+      .filter((gate) => gate.required)
+      .map((gate) => gate.command) ?? [];
   const sessionVerificationCommands =
-    configuredVerificationCommands.length > 0
-      ? configuredVerificationCommands
-      : verificationCommands;
+    baseframeVerificationCommands.length > 0
+      ? baseframeVerificationCommands
+      : configuredVerificationCommands.length > 0
+        ? configuredVerificationCommands
+        : verificationCommands;
   const git = options.git ?? (await getGitInfo(options.repoRoot));
   const packageManager = options.packageManager ?? (await detectPackageManager(options.repoRoot));
-  const tools = options.tools ?? (await inspectStartTools(options.repoRoot, options.task));
+  const tools = options.tools ?? (await inspectStartTools(options.repoRoot, taskTitle));
 
   const result = await startSession({
     repoRoot: options.repoRoot,
-    task: options.task,
+    task: taskTitle,
     now: options.now,
     git,
     packageManager,
     verificationCommands: sessionVerificationCommands,
+    baseframeIntegration: baseframe?.context,
     tools
   });
   const initializedSection = autoInitNotice ? `\n${autoInitNotice}\n` : "\n";
+  const baseframeSection = baseframe
+    ? `
+Baseframe task:
+${baseframe.context.taskId}
+AgentLoopKit task: ${baseframe.context.agentloopkitTaskPath}
+ProjScan assessment: ${baseframe.context.projscanAssessmentPath}
+`
+    : "";
 
   return {
     output: `AgentFlight started
 
 Task:
-${options.task}
+${taskTitle}
 
 Session:
 ${result.session.id}
-${initializedSection}Detected:
+${initializedSection}${baseframeSection}Detected:
 Git branch: ${git.branch ?? "unknown"}
 Package manager: ${packageManager ?? "unknown"}
 ProjScan: ${formatToolForReport("ProjScan", tools.projscan)}
 AgentLoopKit: ${formatToolForReport("AgentLoopKit", tools.agentloopkit)}
 
 Suggested proof:
-${formatSuggestedProof(configuredVerificationCommands, verificationCommands)}
+${formatSuggestedProof(configuredVerificationCommands, verificationCommands, baseframeVerificationCommands)}
 
 Handoff saved:
 ${formatRepoRelativePath(options.repoRoot, result.handoffPath)}
@@ -94,7 +125,15 @@ Now run your coding agent normally.
   };
 }
 
-function formatSuggestedProof(configuredCommands: string[], detectedCommands: string[]): string {
+function formatSuggestedProof(
+  configuredCommands: string[],
+  detectedCommands: string[],
+  baseframeCommands: string[] = []
+): string {
+  if (baseframeCommands.length > 0) {
+    return baseframeCommands.map((command) => `agentflight verify -- ${command}`).join("\n");
+  }
+
   if (configuredCommands.length > 0) {
     return `agentflight verify
 Configured commands:
