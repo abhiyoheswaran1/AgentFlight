@@ -16,6 +16,10 @@ AgentFlight proves the result.
 
 Website: [baseframelabs.com/apps/agentflight](https://www.baseframelabs.com/apps/agentflight)
 
+Real v0.14.0 Baseframe readiness capture:
+
+![AgentFlight Baseframe readiness view showing repository assessment, scope adherence, verification gates, proof gaps, readiness, and next action](docs/assets/agentflight-baseframe-readiness.png)
+
 AgentFlight helps you:
 
 - start a coding agent session
