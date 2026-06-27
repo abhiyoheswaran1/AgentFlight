@@ -6,6 +6,7 @@ import { Command } from "commander";
 import { getRepositoryRoot } from "./core/git.js";
 import { runDoctorCommand } from "./commands/doctor.js";
 import { runFinalizeCommand } from "./commands/finalize.js";
+import { runFinishCommand } from "./commands/finish.js";
 import { runHandoffCommand } from "./commands/handoff.js";
 import { runHistoryCommand } from "./commands/history.js";
 import { runInitCommand } from "./commands/init.js";
@@ -18,11 +19,13 @@ import { runStatusCommand } from "./commands/status.js";
 import { runVerifyCommand } from "./commands/verify.js";
 
 export { createAgentFlightResult, loadBaseframeIntegrationContext } from "./core/baseframe.js";
+export { createReviewPassport } from "./core/review-passport.js";
 export type {
   AgentFlightResultV1,
   AgentLoopKitTaskContractV1,
   BaseframeIntegrationContext,
-  ProjScanAssessmentV1
+  ProjScanAssessmentV1,
+  ReviewPassportV1
 } from "./types/index.js";
 
 export function createCli(): Command {
@@ -148,6 +151,13 @@ export function createCli(): Command {
           taskId: options.taskId
         })
       );
+    });
+
+  program
+    .command("finish")
+    .description("Generate the local Review Passport and end-of-session review packet.")
+    .action(async () => {
+      await printResult(runFinishCommand({ repoRoot: await getRepositoryRoot(process.cwd()) }));
     });
 
   program

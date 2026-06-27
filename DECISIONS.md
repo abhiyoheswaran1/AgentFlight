@@ -1,5 +1,30 @@
 # Decisions
 
+## 2026-06-27: Review Passport Is The End-Of-Session Artifact
+
+Decision: make `agentflight finish` the default end-of-session command and
+write a source-free Review Passport JSON plus Markdown artifact alongside the
+existing handoff, report, replay, and resume outputs.
+
+Rationale:
+
+- Reviewers need one local artifact that names readiness, proof gaps,
+  verification runs, review focus, routes, artifacts, and the next action.
+- AgentFlight already records the local evidence, so the passport should reuse
+  existing Review Intelligence instead of creating a hosted workflow.
+- Baseframe sessions need a single command that also finalizes
+  `agentflight-result.json` for AgentLoopKit reconciliation.
+
+Consequence:
+
+- `agentflight finish` refreshes the local review packet and writes
+  `.agentflight/reports/<session-id>-review-passport.json` and `.md`.
+- In Baseframe sessions, `finish` also finalizes
+  `.baseframe/evidence/<task-id>/agentflight-result.json` and preserves
+  generated Baseframe output outside scope-drift analysis.
+- `agentflight finalize` remains available for users who only need the
+  Baseframe result artifact.
+
 ## 2026-06-27: Baseframe Suite Integration Uses Local JSON Contracts
 
 Decision: integrate AgentFlight with ProjScan and AgentLoopKit through local,

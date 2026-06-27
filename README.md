@@ -16,7 +16,7 @@ AgentFlight proves the result.
 
 Website: [baseframelabs.com/apps/agentflight](https://www.baseframelabs.com/apps/agentflight)
 
-Real v0.14.0 Baseframe readiness capture:
+Real AgentFlight Baseframe readiness capture:
 
 ![AgentFlight Baseframe readiness view showing repository assessment, scope adherence, verification gates, proof gaps, readiness, and next action](docs/assets/agentflight-baseframe-readiness.png)
 
@@ -24,6 +24,7 @@ AgentFlight helps you:
 
 - start a coding agent session
 - capture verification evidence
+- finish a session with one Review Passport
 - see changed files and risk
 - read a local Review Contract with claim-by-claim proof references
 - compare the change against a local Project Review Contract proof standard that explains why each rule matched
@@ -35,6 +36,7 @@ AgentFlight helps you:
 - see when an accepted handoff becomes stale after files change
 - create snapshots during the session
 - generate a local review handoff
+- generate a Review Passport for reviewers and downstream tools
 - generate a proof report and local replay timeline
 - emit Baseframe Suite evidence for AgentLoopKit from local JSON contracts
 - find recent local sessions and their artifacts
@@ -50,16 +52,15 @@ AgentFlight helps you:
 npx agentflight@latest init
 npx agentflight@latest start --task "Add password reset flow"
 
-# Run your coding agent normally
+# Run your coding agent
 
 npx agentflight@latest verify
 npx agentflight@latest snapshot --note "Initial implementation verified"
-npx agentflight@latest status
-npx agentflight@latest handoff
+npx agentflight@latest finish
 npx agentflight@latest history --limit 1
 ```
 
-Baseframe Suite Integration v1 is documented in [`docs/integrations/baseframe-suite-v1.md`](docs/integrations/baseframe-suite-v1.md).
+Baseframe Suite Integration v1 is documented in [`docs/integrations/baseframe-suite-v1.md`](docs/integrations/baseframe-suite-v1.md). Review Passport details are documented in [`docs/development/review-passport.md`](docs/development/review-passport.md).
 
 What you get:
 
@@ -68,6 +69,7 @@ What you get:
 - `verify` runs configured commands and stores stdout, stderr, exit code, timing, pass/fail status, and a source-free changed-file proof snapshot. Use `verify -- <command>` for one explicit proof command.
 - `status` answers what changed, how risky it is, what proof the repo requires, why those requirements matched, what changed the trust state, who should review which path, whether proof is current or stale, which files invalidated stale proof, whether similar local ready handoffs used stronger proof, what the Review Contract claims, and what to do next.
 - `snapshot --note "..."` records the current git, risk, and proof state as a timeline event.
+- `finish` generates the local Review Passport plus handoff, report, replay, and resume artifacts. In Baseframe sessions, it also finalizes `agentflight-result.json`.
 - `handoff` generates the local review packet: decision, readiness, required proof, proof reasons, Review Contract path, proof gaps, failed excerpts, and report/replay/resume artifact paths.
 - After local review acceptance, `handoff --accept` records a local review receipt for the accepted handoff. It stores local metadata and changed-file fingerprints only, then lets later `status`, `history`, `report`, `replay`, and `resume` show whether that acceptance is current, stale, blocked, or needs changes. It is not identity, a signature, approval automation, or a PR comment.
 - `report` writes a Markdown proof report with claim-to-proof references for review.
@@ -114,7 +116,7 @@ AgentFlight turns a loose coding agent session into a local proof trail:
 2. Capture real verification output with `agentflight verify`.
 3. Snapshot meaningful checkpoints.
 4. Read `status` to see changed files, risk, required proof, Trust Delta, review queue, reviewer routing, proof freshness, repo calibration, gaps, and next action.
-5. Run `handoff` when the work is ready to review or when you need a clear fix-before-sharing summary.
+5. Run `finish` when you need the Review Passport and full local review packet.
 6. Run `handoff --accept` after local review acceptance to record a receipt.
 7. Use `history --limit 1` to reopen the latest local handoff, report, replay, or resume artifact.
 
@@ -489,6 +491,7 @@ The current AgentFlight release supports:
 - Trust Delta summaries that show failed, stale, missing, manual-review, and under-proven proof changes
 - review queues that order proof reruns, manual checks, and file inspection
 - reviewer routing for maintainer, verification, security, Docs/DX, and release review paths
+- Review Passport artifacts with readiness, proof, scope, review focus, and integrity fingerprints
 - repo calibration suggestions that compare current proof with similar local ready handoffs
 - proof gap detection and review readiness recommendations
 - config-defined verification commands for repeated local proof capture
@@ -603,6 +606,7 @@ See [docs/development/changed-file-filters.md](docs/development/changed-file-fil
 - `agentflight verify` runs commands from `.agentflight/config.json`.
 - `agentflight verify --profile <name>` runs a named local command group from `.agentflight/config.json`.
 - `agentflight snapshot --note "..."` records current git, risk, and verification state as a timeline event.
+- `agentflight finish` writes `.agentflight/reports/<session-id>-review-passport.json` and `.agentflight/reports/<session-id>-review-passport.md`, then points to the handoff, report, replay, and resume artifacts.
 - `agentflight report` generates a Markdown proof report with Trust Delta, Review Queue, Review Routing, Review Receipt, review focus, required proof, repo calibration, Review Contract claims, and readiness.
 - `agentflight report --mode compact` writes a shorter local Markdown review summary.
 - `agentflight report --mode pr-comment` writes a local PR-comment draft without posting anywhere.

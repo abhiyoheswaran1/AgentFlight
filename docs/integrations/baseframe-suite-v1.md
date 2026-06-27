@@ -37,14 +37,14 @@ agentflight verify -- npm test
 agentflight verify -- npm run build
 
 agentflight snapshot --note "Implementation complete"
-agentflight finalize
+agentflight finish
 
 agentloopkit check-gates \
   --task auth-password-reset-20260626-01 \
   --from-agentflight .baseframe/evidence/auth-password-reset-20260626-01/agentflight-result.json
 ```
 
-You can also pass both inputs explicitly:
+You can also pass both inputs:
 
 ```bash
 agentflight start \
@@ -53,9 +53,9 @@ agentflight start \
   --from-projscan .baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json
 ```
 
-## What AgentFlight Checks
+## Checks
 
-AgentFlight validates schema version, kind, required fields, task ID agreement, practical intent agreement, and repository-local safe paths. Task ID conflicts fail clearly.
+AgentFlight validates schema version, kind, required fields, task ID agreement, practical intent agreement, and repository-local safe paths. Task ID conflicts produce a clear error.
 
 Scope drift is deterministic:
 
@@ -63,10 +63,18 @@ Scope drift is deterministic:
 - changed files outside non-empty `allowedPaths` are warnings.
 - when `allowedPaths` is empty, changed files are unclassified warnings instead of blockers.
 - AgentFlight and AgentLoopKit runtime evidence filters are respected, while `.agentflight/config.json` remains visible.
+- AgentFlight-owned Baseframe output, `.baseframe/agent-workflow.json` and
+  `.baseframe/evidence/<task-id>/agentflight-result.json`, is filtered from
+  changed-file analysis so generated reconciliation evidence does not create
+  scope drift.
 
-Verification gates use only exact command matches or normalized whitespace matches. There is no fuzzy matching. If the same normalized command later passes, that later pass satisfies an earlier failed run, matching AgentFlight’s existing unresolved-failure behavior.
+Verification gates use exact command matches or normalized whitespace matches. There is no fuzzy matching. If the same normalized command later passes, that later pass satisfies an earlier failed run, matching AgentFlight’s existing unresolved-failure behavior.
 
 ## Result
+
+`agentflight finish` writes the local Review Passport, refreshes the normal
+AgentFlight artifacts, and finalizes the Baseframe result. `agentflight
+finalize` remains available for Baseframe result generation.
 
 `agentflight finalize` writes:
 
@@ -74,7 +82,7 @@ Verification gates use only exact command matches or normalized whitespace match
 .baseframe/evidence/<task-id>/agentflight-result.json
 ```
 
-It also updates only the `agentflight` section of `.baseframe/agent-workflow.json`:
+It updates the `agentflight` section of `.baseframe/agent-workflow.json`:
 
 ```json
 {
@@ -86,4 +94,4 @@ It also updates only the `agentflight` section of `.baseframe/agent-workflow.jso
 }
 ```
 
-The result includes readiness, changed files, scope drift, verification runs, gate reconciliation, proof gaps, merged review focus, and generated local artifacts. Status, report, replay, and resume show separate Repository Assessment, Task Contract, Scope Adherence, Verification Gates, Review Focus, Proof Gaps, Readiness, and Next Action sections for Baseframe sessions.
+The result includes readiness, changed files, scope drift, verification runs, gate reconciliation, proof gaps, merged review focus, and generated local artifacts. Status, report, replay, resume, and finish show separate Repository Assessment, Task Contract, Scope Adherence, Verification Gates, Review Focus, Proof Gaps, Readiness, and Next Action sections for Baseframe sessions.

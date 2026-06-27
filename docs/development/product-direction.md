@@ -9,7 +9,7 @@ not treat this as a release checklist.
 
 AgentFlight is a local-first review layer for coding agent sessions.
 
-It should help real engineers answer five questions quickly:
+It should help real engineers answer five questions:
 
 1. What changed?
 2. What proof exists or failed?
@@ -24,18 +24,20 @@ artifact is excellent.
 
 ## Prioritized Work Areas
 
-### 1. Local Handoff Golden Path
+### 1. Review Passport Golden Path
 
-The handoff command should be the default end-of-session path. It must remain
-local-only, deterministic, and concise. It should point to report, replay, and
-resume artifacts without replacing them.
+The Review Passport should be the default end-of-session artifact. It must
+remain local-only, deterministic, source-free, and concise. It should point to
+handoff, report, replay, resume, and Baseframe result artifacts without
+replacing them.
 
 Ready-session discovery should open the handoff packet first. Replay remains the
 best artifact for chronological inspection, and report remains the best artifact
 for failed or incomplete proof.
 
 User problem: engineers should not need to choose between five AgentFlight
-commands when deciding whether work is reviewable.
+commands when deciding whether work is reviewable. `agentflight finish` should
+write the passport, refresh the review packet, and print one next action.
 
 ### 2. Trust Delta And Review Queue
 
@@ -82,14 +84,14 @@ review assignment map without PR comments or hosted workflow.
 First-run generated files should not make a simple trial look riskier than the
 actual user change. AgentFlight runtime files stay filtered, project config
 stays visible, and generated tool state such as `.projscan-memory/memory.json`
-stays suggestion-only rather than globally ignored.
+stays suggestion-only rather than ignored for every repo.
 
-User problem: first-time users decide whether to trust a tool quickly. Review
+User problem: first-time users decide whether to trust a tool in a few minutes. Review
 focus should not lead with generated tool memory when a real app file or
 project config needs attention.
 
 Generated helper files such as `.agentflight/.gitignore` should remain visible,
-but should not outrank `.agentflight/config.json` or real app changes in the
+but should not outrank `.agentflight/config.json` or app changes in the
 first-run review path.
 
 ### 6. Local Session Discovery
@@ -99,7 +101,7 @@ artifacts without remembering `.agentflight/` paths. This should stay read-only:
 no search index, sync, export, or session switching until those workflows earn
 their keep through dogfood.
 
-User problem: after several agent loops, the evidence exists locally but the
+User problem: after several agent loops, the evidence exists on disk but the
 developer may not know which replay or report to open.
 
 Start-only sessions without proof or review artifacts should remain visible,
@@ -142,7 +144,7 @@ hiding the reason.
 
 ## Team Persona Opinions
 
-- Product Maintainer: keep the handoff loop as the golden path and avoid
+- Product Maintainer: keep `finish` as the local golden path and avoid
   premature distribution features.
 - CLI Engineer: prefer small composable command behavior over parallel
   renderers or hidden state.
@@ -152,7 +154,7 @@ hiding the reason.
   guidance in user language.
 - Security Reviewer: keep no upload, no telemetry, no auto-posting, and no
   secret printing as non-negotiable defaults.
-- Release Engineer: do not release from this workstream unless explicitly asked.
+- Release Engineer: do not release from this workstream unless the user asks.
 - Repo Steward: keep changes small, archived tasks tidy, and generated evidence
   out of product diffs.
 
@@ -166,6 +168,6 @@ Work one item at a time:
 4. use ProjScan for health/preflight signals
 5. write focused tests before behavior changes
 6. implement the smallest maintainable fix
-7. run a bug pass immediately after implementation
+7. run a bug pass after implementation
 8. document findings when they affect product direction
-9. do not release unless explicitly asked
+9. do not release unless the user asks

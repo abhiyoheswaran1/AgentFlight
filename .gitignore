@@ -15,6 +15,7 @@ output/
 
 .agentloop/reports/*
 !.agentloop/reports/README.md
+.agentloop/state.json
 
 .env
 .env.*

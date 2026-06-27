@@ -3,6 +3,7 @@ import {
   filterAgentFlightRuntimePaths,
   filterBuiltInRuntimePaths,
   filterChangedFiles,
+  isBaseframeAgentFlightOutputPath,
   isAgentLoopKitEvidencePath,
   isAgentFlightRuntimePath
 } from "../../src/core/changed-files.js";
@@ -47,6 +48,32 @@ describe("changed-file filtering", () => {
     ]);
     expect(isAgentLoopKitEvidencePath(".agentloop/state.json")).toBe(true);
     expect(isAgentLoopKitEvidencePath(".agentloop/tasks/2026-06-19-implementation.md")).toBe(false);
+  });
+
+  it("filters AgentFlight-owned Baseframe output while leaving source contracts visible", () => {
+    const files = [
+      ".baseframe/agent-workflow.json",
+      ".baseframe/evidence/auth-password-reset-20260626-01/agentflight-result.json",
+      ".baseframe/evidence/auth-password-reset-20260626-01/agentloopkit-task.json",
+      ".baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json",
+      "src/auth/session.ts"
+    ];
+
+    expect(filterBuiltInRuntimePaths(files)).toEqual([
+      ".baseframe/evidence/auth-password-reset-20260626-01/agentloopkit-task.json",
+      ".baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json",
+      "src/auth/session.ts"
+    ]);
+    expect(
+      isBaseframeAgentFlightOutputPath(
+        ".baseframe/evidence/auth-password-reset-20260626-01/agentflight-result.json"
+      )
+    ).toBe(true);
+    expect(
+      isBaseframeAgentFlightOutputPath(
+        ".baseframe/evidence/auth-password-reset-20260626-01/agentloopkit-task.json"
+      )
+    ).toBe(false);
   });
 
   it("applies user-configured generated/internal ignore patterns after built-in filters", () => {

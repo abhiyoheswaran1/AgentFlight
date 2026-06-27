@@ -12,6 +12,7 @@ const agentLoopKitEvidencePrefixes = [
 ];
 
 const agentLoopKitEvidencePaths = [".agentloop/state.json"];
+const baseframeAgentFlightOutputPaths = [".baseframe/agent-workflow.json"];
 
 export interface ChangedFileFilterOptions {
   ignore?: string[] | undefined;
@@ -61,7 +62,17 @@ export function isAgentLoopKitEvidencePath(file: string): boolean {
 }
 
 export function isBuiltInRuntimePath(file: string): boolean {
-  return isAgentFlightRuntimePath(file) || isAgentLoopKitEvidencePath(file);
+  return (
+    isAgentFlightRuntimePath(file) ||
+    isAgentLoopKitEvidencePath(file) ||
+    isBaseframeAgentFlightOutputPath(file)
+  );
+}
+
+export function isBaseframeAgentFlightOutputPath(file: string): boolean {
+  const normalized = normalizeChangedFilePath(file);
+  if (baseframeAgentFlightOutputPaths.includes(normalized)) return true;
+  return /^\.baseframe\/evidence\/[^/]+\/agentflight-result\.json$/.test(normalized);
 }
 
 function normalizeChangedFilePath(file: string): string {

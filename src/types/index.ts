@@ -68,6 +68,127 @@ export interface AgentFlightSession {
   };
 }
 
+export interface ReviewPassportArtifact {
+  kind:
+    | "passport-json"
+    | "passport-markdown"
+    | "handoff"
+    | "report"
+    | "replay"
+    | "resume"
+    | "baseframe-result";
+  path: string;
+}
+
+export interface ReviewPassportIntegrityInput {
+  kind: "session" | "changed-files" | "verification" | "review" | "baseframe" | "artifacts";
+  sha256: string;
+}
+
+export interface ReviewPassportIntegrity {
+  hashAlgorithm: "sha256";
+  inputs: ReviewPassportIntegrityInput[];
+  fingerprintHash: string;
+}
+
+export interface ReviewPassportV1 {
+  schemaVersion: "1.0";
+  kind: "agentflight-review-passport";
+  producer: {
+    name: "agentflight";
+    version: string;
+  };
+  generatedAt: string;
+  session: {
+    id: string;
+    task: string;
+    startedAt: string;
+    branch: string | null;
+    commit: string | null;
+    packageManager: string | null;
+  };
+  readiness: {
+    state: ReviewReadinessState;
+    label: string;
+    reason: string;
+    nextAction: string;
+    suggestedCommand?: string;
+  };
+  summary: string;
+  changedFiles: string[];
+  risk: {
+    level: RiskLevel;
+    reasons: string[];
+    categories: RiskCategorySummary[];
+  };
+  verification: {
+    passed: number;
+    failed: number;
+    unresolvedFailed: number;
+    resolvedFailed: number;
+    runs: Array<{
+      id?: string;
+      command: string;
+      status: "passed" | "failed";
+      exitCode: number | null;
+      startedAt: string;
+      finishedAt: string;
+      durationMs: number;
+    }>;
+  };
+  proofGaps: Array<{
+    id: string;
+    severity: "info" | "warning" | "blocking";
+    message: string;
+    suggestedCommand?: string;
+    relatedFiles: string[];
+  }>;
+  reviewFocus: Array<{
+    rank: number;
+    path: string;
+    category: RiskCategory;
+    proofStatus: ReviewProofStatus;
+    reasons: string[];
+    suggestedReviewerFocus: string;
+    suggestedCommand?: string;
+  }>;
+  reviewQueue: Array<{
+    rank: number;
+    action: ReviewQueueAction;
+    label: string;
+    detail: string;
+    relatedFiles: string[];
+    suggestedCommand?: string;
+  }>;
+  reviewRoutes: Array<{
+    role: ReviewRouteRole;
+    label: string;
+    status: ReviewRouteStatus;
+    summary: string;
+    relatedFiles: string[];
+    suggestedCommand?: string;
+  }>;
+  trustDelta: {
+    summary: string;
+    items: Array<{
+      kind: TrustDeltaItemKind;
+      severity: "info" | "warning" | "blocking";
+      message: string;
+      relatedFiles: string[];
+      suggestedCommand?: string;
+    }>;
+  };
+  baseframe?: {
+    taskId: string;
+    readiness: AgentFlightResultV1["readiness"];
+    resultPath: string;
+    gates: AgentFlightResultV1["gates"];
+    scopeDrift: AgentFlightResultV1["scopeDrift"];
+  };
+  artifacts: ReviewPassportArtifact[];
+  integrity: ReviewPassportIntegrity;
+}
+
 export type SessionEventType =
   | "session_started"
   | "verification_started"
@@ -78,6 +199,7 @@ export type SessionEventType =
   | "replay_generated"
   | "resume_generated"
   | "baseframe_result_generated"
+  | "review_passport_generated"
   | "review_receipt_recorded"
   | "doctor_run";
 

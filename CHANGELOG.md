@@ -6,6 +6,40 @@ All notable AgentFlight changes are documented here.
 
 No unreleased changes.
 
+## [0.15.0] - 2026-06-27
+
+### Added
+
+- Added `agentflight finish`, a local end-of-session command that writes a
+  Review Passport and refreshes the handoff, report, replay, and resume
+  artifacts.
+- Added Review Passport JSON and Markdown artifacts under
+  `.agentflight/reports/<session-id>-review-passport.json` and `.md`.
+- Added source-free Review Passport integrity fingerprints for session,
+  changed-file, verification, review, Baseframe, and artifact metadata.
+- Added exported `ReviewPassportV1` and `createReviewPassport` for package API
+  consumers.
+- Added Review Passport documentation and README workflow updates.
+
+### Changed
+
+- In Baseframe sessions, `agentflight finish` also finalizes
+  `.baseframe/evidence/<task-id>/agentflight-result.json` and prints the
+  AgentLoopKit reconciliation command.
+- AgentFlight-owned Baseframe output is filtered from changed-file analysis so
+  generated `agentflight-result.json` and `.baseframe/agent-workflow.json` do
+  not create scope drift.
+
+### Security
+
+- Review Passport artifacts remain local and source-free. They store paths,
+  commands, statuses, timestamps, counts, artifact paths, and hashes, without
+  uploads, telemetry, PR posting, source contents, or secret reads.
+
+### Verification
+
+- Release audit: `docs/development/v0.15.0-release-audit.md`.
+
 ## [0.14.1] - 2026-06-27
 
 ### Added

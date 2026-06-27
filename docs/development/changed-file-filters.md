@@ -13,7 +13,7 @@ AgentFlight always excludes its own runtime artifacts:
 
 These files are evidence and generated session data. Including them would make AgentFlight pollute its own risk and review output.
 
-`.agentflight/config.json` stays visible because it is user-controlled project configuration and may be intentionally committed.
+`.agentflight/config.json` stays visible because it is user-controlled project configuration and may be committed.
 
 AgentFlight classifies `.agentflight/config.json` and `.agentflight/.gitignore`
 as AgentFlight project config. They remain reviewable without being treated as
@@ -37,6 +37,16 @@ These paths are local loop state, verification reports, handoffs, and run
 ledgers. AgentLoopKit project contracts and repo guidance stay visible,
 including `.agentloop/tasks/**`, `.agentloop/policies/**`,
 `.agentloop/harness/**`, and `.agentloop/gates/**`.
+
+Baseframe sessions also produce AgentFlight-owned reconciliation output:
+
+- `.baseframe/agent-workflow.json`
+- `.baseframe/evidence/<task-id>/agentflight-result.json`
+
+AgentFlight excludes those files from changed-file analysis. They prove the
+handoff result, but they are not implementation scope drift. Baseframe input
+contracts stay visible, including `agentloopkit-task.json` and
+`projscan-assessment.json`.
 
 ## Project Filters
 
@@ -76,11 +86,11 @@ run, dogfood work, or a handoff check, AgentFlight will suggest adding
 where ProjScan writes local fallback state. AgentFlight does not ignore that
 path by default because some teams may want generated tool state to remain
 visible. Treat the suggestion as a local repo-policy decision: add the filter
-only when ProjScan memory is generated evidence rather than a file reviewers
+when ProjScan memory is generated evidence rather than a file reviewers
 should inspect.
 
 `agentflight doctor` uses the same policy. If `.projscan-memory/memory.json`
-exists locally and is not filtered, doctor warns that the file remains
+exists on disk and is not filtered, doctor warns that the file remains
 reviewable and suggests adding `.projscan-memory/**` when that matches repo
 policy. If the filter is already configured, doctor reports the generated tool
 state as OK.
