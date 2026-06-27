@@ -2,7 +2,7 @@
 
 - Created date: 2026-06-27
 - Task type: release
-- Status: in-progress
+- Status: done
 
 ## Problem Statement
 Ship the verified Baseframe Suite Integration v1 changes as a public AgentFlight release.
