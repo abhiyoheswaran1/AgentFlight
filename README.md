@@ -16,6 +16,10 @@ AgentFlight proves the result.
 
 Website: [baseframelabs.com/apps/agentflight](https://www.baseframelabs.com/apps/agentflight)
 
+Real AgentFlight finish capture:
+
+![AgentFlight finish terminal output showing blocked readiness, changed files, verification counts, Review Passport paths, generated artifacts, Baseframe result path, and next action](docs/assets/agentflight-finish.png)
+
 Real AgentFlight Baseframe readiness capture:
 
 ![AgentFlight Baseframe readiness view showing repository assessment, scope adherence, verification gates, proof gaps, readiness, and next action](docs/assets/agentflight-baseframe-readiness.png)
