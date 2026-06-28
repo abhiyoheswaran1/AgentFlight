@@ -140,11 +140,7 @@ Command reference should list:
 - `handoff`: still available for the local review handoff and `handoff
 --accept` receipt flow.
 
-## Changelog Blurb
+## Changelog Handling
 
-```text
-AgentFlight v0.15.0 adds `agentflight finish` and the Review Passport: one
-local, source-free artifact with readiness, proof, review focus, artifact paths,
-and integrity fingerprints. Baseframe sessions now finish by writing the
-AgentLoopKit-consumable `agentflight-result.json` in the same command.
-```
+Do not update the website changelog page by hand. The changelog is automated.
+Let the release pipeline pick up v0.15.0 from GitHub and npm release metadata.
