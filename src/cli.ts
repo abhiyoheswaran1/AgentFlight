@@ -7,6 +7,7 @@ import { getRepositoryRoot } from "./core/git.js";
 import { runDoctorCommand } from "./commands/doctor.js";
 import { runFinalizeCommand } from "./commands/finalize.js";
 import { runFinishCommand } from "./commands/finish.js";
+import { runGuardCommand } from "./commands/guard.js";
 import { runHandoffCommand } from "./commands/handoff.js";
 import { runHistoryCommand } from "./commands/history.js";
 import { runInitCommand } from "./commands/init.js";
@@ -19,8 +20,11 @@ import { runStatusCommand } from "./commands/status.js";
 import { runVerifyCommand } from "./commands/verify.js";
 
 export { createAgentFlightResult, loadBaseframeIntegrationContext } from "./core/baseframe.js";
+export { createAgentFlightGuardSummary } from "./core/guard.js";
 export { createReviewPassport } from "./core/review-passport.js";
 export type {
+  AgentFlightGuardSignal,
+  AgentFlightGuardSummary,
   AgentFlightResultV1,
   AgentLoopKitTaskContractV1,
   BaseframeIntegrationContext,
@@ -84,6 +88,27 @@ export function createCli(): Command {
         })
       );
     });
+
+  program
+    .command("guard")
+    .description("Watch local trust state while an agent works.")
+    .option("--once", "print one Guard summary and exit")
+    .option("--format <format>", "guard output format: text or json", "text")
+    .option("--interval <ms>", "watch interval in milliseconds", "2000")
+    .option("--no-clear", "do not clear the terminal between watch updates")
+    .action(
+      async (options: { once?: boolean; format?: string; interval?: string; clear?: boolean }) => {
+        await printResult(
+          runGuardCommand({
+            repoRoot: await getRepositoryRoot(process.cwd()),
+            once: options.once,
+            format: options.format,
+            intervalMs: options.interval === undefined ? undefined : Number(options.interval),
+            clear: options.clear
+          })
+        );
+      }
+    );
 
   program
     .command("verify")

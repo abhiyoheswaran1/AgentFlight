@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createTempRepo } from "../helpers/temp.js";
 import { runDoctorCommand } from "../../src/commands/doctor.js";
+import { runGuardCommand } from "../../src/commands/guard.js";
 import { runHandoffCommand } from "../../src/commands/handoff.js";
 import { runInitCommand } from "../../src/commands/init.js";
 import { runReplayCommand } from "../../src/commands/replay.js";
@@ -138,6 +139,18 @@ npm run typecheck`);
         })
       ])
     );
+
+    const guard = await runGuardCommand({
+      repoRoot,
+      once: true,
+      changedFiles: ["src/auth/reset.ts"],
+      now: new Date("2026-06-13T12:21:00.000Z")
+    });
+    expect(guard.output).toContain("AgentFlight guard");
+    expect(guard.output).toContain("Trust state:");
+    expect(guard.output).toContain("Finish targets:");
+    expect(guard.output).toContain("Next action:");
+    expect(guard.output).not.toContain(repoRoot);
 
     const report = await runReportCommand({
       repoRoot,

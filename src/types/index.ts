@@ -189,6 +189,73 @@ export interface ReviewPassportV1 {
   integrity: ReviewPassportIntegrity;
 }
 
+export type AgentFlightGuardSignalSource = "agentflight" | "baseframe";
+
+export type AgentFlightGuardSignalCategory =
+  | "proof-gap"
+  | "verification-gate"
+  | "scope-drift"
+  | "review-receipt"
+  | "readiness";
+
+export interface AgentFlightGuardSignal {
+  id: string;
+  severity: "info" | "warning" | "blocking";
+  source: AgentFlightGuardSignalSource;
+  category: AgentFlightGuardSignalCategory;
+  message: string;
+  relatedFiles: string[];
+  suggestedCommand?: string;
+}
+
+export interface AgentFlightGuardArtifactHints {
+  reviewPassportJson: string;
+  reviewPassportMarkdown: string;
+  baseframeResult?: string;
+}
+
+export interface AgentFlightGuardSummary {
+  schemaVersion: "1.0";
+  kind: "agentflight-guard-summary";
+  generatedAt: string;
+  taskTitle: string;
+  readiness: {
+    state: ReviewReadinessState;
+    label: string;
+    reason: string;
+    nextAction: string;
+    suggestedCommand?: string;
+  };
+  changedFiles: {
+    count: number;
+    paths: string[];
+  };
+  verification: {
+    passed: number;
+    failed: number;
+    unresolvedFailed: number;
+    resolvedFailed: number;
+  };
+  baseframe?: {
+    taskId: string;
+    readiness: AgentFlightResultV1["readiness"];
+    gateCounts: {
+      passed: number;
+      failed: number;
+      incomplete: number;
+      missing: number;
+      skipped: number;
+    };
+    scopeDriftCount: number;
+  };
+  artifactHints?: AgentFlightGuardArtifactHints;
+  signals: AgentFlightGuardSignal[];
+  reviewQueue: ReviewQueueItem[];
+  reviewRoutes: ReviewRouteItem[];
+  nextAction: string;
+  localOnly: true;
+}
+
 export type SessionEventType =
   | "session_started"
   | "verification_started"

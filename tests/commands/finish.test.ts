@@ -157,7 +157,7 @@ describe("finish command", () => {
     const passport = JSON.parse(await readFile(finish.passportPath, "utf8")) as ReviewPassportV1;
     expect(passport.changedFiles).toEqual(result.changedFiles);
     expect(passport.baseframe?.scopeDrift).toEqual(result.scopeDrift);
-  }, 20_000);
+  }, 30_000);
 
   it("exposes finish in CLI help", () => {
     expect(createCli().helpInformation()).toContain(
@@ -293,7 +293,7 @@ async function initializeGitRepo(repoRoot: string): Promise<void> {
 }
 
 async function runGit(repoRoot: string, args: string[]): Promise<void> {
-  const result = await runCommand("git", args, { cwd: repoRoot, timeoutMs: 10_000 });
+  const result = await runCommand("git", args, { cwd: repoRoot, timeoutMs: 30_000 });
   if (result.exitCode !== 0) {
     throw new Error(`git ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
   }

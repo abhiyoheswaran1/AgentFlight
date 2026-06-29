@@ -6,6 +6,42 @@ All notable AgentFlight changes are documented here.
 
 No unreleased changes.
 
+## [0.16.0] - 2026-06-29
+
+### Added
+
+- Added `agentflight guard`, a local live trust monitor for active coding-agent
+  sessions with watch mode, `--once`, JSON output, exit codes, and CLI help.
+- Added Guard trust signals for proof gaps, Baseframe scope drift, Baseframe
+  verification gates, stale review receipts, and ready states.
+- Added finish-target hints to Guard output for Review Passport JSON,
+  Review Passport Markdown, and Baseframe result artifacts.
+- Added exported Guard package API types plus
+  `createAgentFlightGuardSummary`.
+- Added Guard documentation, a website update prompt, and pre-release
+  readiness evidence.
+
+### Changed
+
+- README workflow now places Guard before explicit verification and `finish`,
+  while keeping Review Passport as the final review packet.
+- Package contents now include `docs/development/guard.md`.
+
+### Fixed
+
+- Stabilized git-heavy Baseframe fixture tests under full-suite load by
+  increasing local fixture git timeouts for Guard and Finish tests.
+
+### Security
+
+- Guard remains local-only and source-free. It reads existing AgentFlight status
+  and Baseframe metadata, does not run hidden verification commands, and does
+  not upload source, send telemetry, or post PR comments.
+
+### Verification
+
+- Release audit: `docs/development/v0.16.0-release-audit.md`.
+
 ## [0.15.0] - 2026-06-27
 
 ### Added

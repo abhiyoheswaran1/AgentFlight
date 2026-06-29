@@ -5,6 +5,56 @@ Older entries may preserve historical command transcripts and release notes;
 current public positioning is "local-first review layer for coding agent
 sessions."
 
+## 2026-06-29
+
+### Prepare v0.16.0 Release
+
+Goal:
+
+- Ship AgentFlight Guard as a minor release after the five-loop bug pass,
+  release verification, tag push, and npm Trusted Publishing workflow.
+
+Release theme:
+
+- AgentFlight v0.16.0 adds a live local trust monitor before `finish`. Guard
+  watches readiness, changed-file count, verification counts, proof gaps,
+  Baseframe gates, scope drift, Review Passport targets, and one next action
+  while the coding agent works.
+
+Release prep notes:
+
+- Created `.agentloop/tasks/2026-06-29-release-agentflight-v0-16-0.md`.
+- Promoted Guard from pre-release readiness to the `0.16.0` changelog.
+- Bumped `package.json` and `package-lock.json` to `0.16.0`.
+- Release remains local-first and source-free. No hosted review, PR comments,
+  telemetry, login, billing, GitHub App, database, or team feature was added.
+
+### AgentFlight Guard Pre-Release Bug Pass
+
+Implemented locally:
+
+- Added `agentflight guard` with watch mode, one-shot mode, text output, JSON
+  output, exit codes, and CLI help.
+- Added Guard summary types and `createAgentFlightGuardSummary` for package API
+  consumers.
+- Reused `agentflight status --format json` as the evidence source, so Guard
+  reads existing local trust metadata and does not run verification commands.
+- Added Guard signals for AgentFlight proof gaps, Baseframe scope drift,
+  Baseframe gate status, stale review receipts, and ready state.
+- Added finish-target hints for Review Passport JSON, Review Passport Markdown,
+  and Baseframe result paths.
+- Documented Guard behavior and website copy guidance.
+- Stabilized git-heavy Baseframe fixture tests under full-suite load.
+
+Verification evidence before release prep:
+
+- Guard targeted tests passed.
+- Baseframe/session compatibility tests passed.
+- Docs/DX checks and stop-slop review passed.
+- Security/privacy review found no hidden command execution, network calls,
+  telemetry, uploads, or source reads in Guard.
+- Full local verification passed before the release task started.
+
 ## 2026-06-24
 
 ### Prepare v0.13.0 Release
