@@ -2,7 +2,7 @@
 
 - Created date: 2026-06-29
 - Task type: release
-- Status: review
+- Status: done
 
 ## Problem Statement
 AgentFlight v0.16.0 README references docs/assets/agentflight-finish.png, but the npm package allowlist does not include that asset, so the published README can render with a missing image.

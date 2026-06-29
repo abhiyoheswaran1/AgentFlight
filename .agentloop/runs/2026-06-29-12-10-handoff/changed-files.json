@@ -1,0 +1,30 @@
+[
+  {
+    "status": "D",
+    "path": ".agentloop/tasks/2026-06-29-release-agentflight-v0-16-1-package-asset-fix.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/handoffs/2026-06-29-12-09-pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-29-12-09-handoff/changed-files.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-29-12-09-handoff/diffstat.txt"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-29-12-09-handoff/metadata.json"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/runs/2026-06-29-12-09-handoff/pr-summary.md"
+  },
+  {
+    "status": "??",
+    "path": ".agentloop/tasks/archive/2026-06-29-release-agentflight-v0-16-1-package-asset-fix.md"
+  }
+]

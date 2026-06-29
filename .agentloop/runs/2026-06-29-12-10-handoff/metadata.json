@@ -1,0 +1,14 @@
+{
+  "id": "2026-06-29-12-10-handoff",
+  "command": "handoff",
+  "createdAt": "2026-06-29-12-10",
+  "createdAtEpochMs": 1782727841421,
+  "task": {
+    "path": ".agentloop/tasks/archive/2026-06-29-release-agentflight-v0-16-1-package-asset-fix.md",
+    "title": "Release AgentFlight v0.16.1 package asset fix",
+    "status": "done"
+  },
+  "verificationReportPath": ".agentloop/reports/2026-06-29-12-00-verification-report.md",
+  "handoffPath": ".agentloop/handoffs/2026-06-29-12-10-pr-summary.md",
+  "changedFileCount": 7
+}
