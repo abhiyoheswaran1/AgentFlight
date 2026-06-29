@@ -7,6 +7,27 @@ sessions."
 
 ## 2026-06-29
 
+### Prepare v0.16.1 Release
+
+Goal:
+
+- Ship a focused packaging patch so npm consumers receive the real
+  `agentflight-finish.png` README asset.
+
+Release theme:
+
+- AgentFlight v0.16.1 fixes package contents only. It includes the
+  README-referenced finish screenshot in the npm tarball and adds regression
+  coverage for local README image assets listed in `package.json` `files`.
+
+Release prep notes:
+
+- Created `.agentloop/tasks/2026-06-29-release-agentflight-v0-16-1-package-asset-fix.md`.
+- Bumped `package.json` and `package-lock.json` to `0.16.1`.
+- Added `docs/assets/agentflight-finish.png` to the npm package allowlist.
+- No product behavior, dependency, cloud, login, billing, GitHub App,
+  telemetry, or team feature changed.
+
 ### Prepare v0.16.0 Release
 
 Goal:

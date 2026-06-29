@@ -1,6 +1,6 @@
 {
   "name": "agentflight",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "description": "Local-first review layer for coding agent sessions.",
   "type": "module",
   "main": "./dist/cli.js",
@@ -15,6 +15,7 @@
     "docs/agentflight_logo/icon.svg",
     "docs/assets/agentflight-baseframe-readiness.png",
     "docs/assets/agentflight-cli-demo.svg",
+    "docs/assets/agentflight-finish.png",
     "docs/assets/agentflight-review-contract-decision.svg",
     "docs/assets/agentflight-replay-timeline.png",
     "docs/assets/agentflight-replay-scroll.gif",

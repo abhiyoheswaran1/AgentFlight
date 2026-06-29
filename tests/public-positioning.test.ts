@@ -37,4 +37,32 @@ describe("public positioning copy", () => {
 
     expect(matches).toEqual([]);
   });
+
+  it("publishes local README image assets referenced by npm", async () => {
+    const [readme, packageJson] = await Promise.all([
+      readFile("README.md", "utf8"),
+      readFile("package.json", "utf8")
+    ]);
+    const packageFiles = JSON.parse(packageJson).files as string[];
+    const imageReferences = [...readme.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)]
+      .flatMap((match) => (match[1] ? [match[1]] : []))
+      .filter((path) => !path.startsWith("http"));
+
+    const missing = imageReferences.filter(
+      (path) => !isPathIncludedByPackageFiles(path, packageFiles)
+    );
+
+    expect(missing).toEqual([]);
+  });
 });
+
+function isPathIncludedByPackageFiles(path: string, packageFiles: string[]): boolean {
+  return packageFiles.some((entry) => {
+    if (entry === path) {
+      return true;
+    }
+
+    const directory = entry.endsWith("/") ? entry : `${entry}/`;
+    return path.startsWith(directory);
+  });
+}

@@ -6,6 +6,17 @@ All notable AgentFlight changes are documented here.
 
 No unreleased changes.
 
+## [0.16.1] - 2026-06-29
+
+### Fixed
+
+- Included the real AgentFlight finish screenshot in the npm package allowlist
+  so the published README can render `docs/assets/agentflight-finish.png`.
+
+### Verification
+
+- Release audit: `docs/development/v0.16.1-release-audit.md`.
+
 ## [0.16.0] - 2026-06-29
 
 ### Added
