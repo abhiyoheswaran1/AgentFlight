@@ -142,6 +142,19 @@ black-box reviewer.
 User problem: high-signal files should rise above low-signal files without
 hiding the reason.
 
+## FAQ
+
+### Is AgentFlight a session viewer?
+
+No. Session viewers help you browse transcripts to see what the agent did.
+AgentFlight runs verification commands you configure or explicitly request,
+collects their output and exit codes, and checks recorded Review Contract claims
+against proof references. The Review Passport packages evidence and readiness;
+Trust Delta highlights failed, stale, or missing proof and remaining manual
+review. Readiness guides human review before a merge; it does not replace it.
+The tools complement each other. AgentFlight is local-first, with no telemetry
+and no account required.
+
 ## Team Persona Opinions
 
 - Product Maintainer: keep `finish` as the local golden path and avoid
