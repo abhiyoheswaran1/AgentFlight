@@ -8,6 +8,22 @@
 
 See what changed, what proof ran, what failed, and whether the work is ready for review.
 
+## AgentFlight is not a session viewer
+
+Session viewers show what the agent did. Use one when you want to browse transcripts.
+AgentFlight helps developers using Codex, Claude Code, or similar agents check “done, tests pass” against recorded proof before reviewing or merging.
+Run `agentflight verify` to re-run checks and collect their output and exit codes.
+The Review Contract checks each recorded review claim against proof references and flags gaps.
+The Review Passport packages the evidence and readiness decision; Trust Delta highlights failed, stale, or missing proof and remaining manual review.
+AgentFlight is local-first, with no telemetry and no account required.
+Session viewers and AgentFlight complement each other: browse the conversation in a viewer, then inspect the proof in AgentFlight.
+
+| Question                      | Tool                  |
+| ----------------------------- | --------------------- |
+| What did the agent do?        | Session viewer        |
+| Is the claim backed by proof? | AgentFlight           |
+| Is it ready to review?        | AgentFlight readiness |
+
 AgentFlight is a local-first review layer for coding agent sessions from Baseframe Labs. It records task, git, snapshot, and verification evidence, shows failure excerpts, and tells you whether the proof is right for this repo before you trust the result.
 
 ProjScan finds the risk.
