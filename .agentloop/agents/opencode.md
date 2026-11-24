@@ -1,5 +1,7 @@
 # OpenCode Agent Instructions
 
+Stable. Bug fixes and security updates only.
+
 Use AgentLoopKit as the working loop for this repository.
 
 Before editing:

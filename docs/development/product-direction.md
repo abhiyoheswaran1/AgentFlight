@@ -1,5 +1,7 @@
 # AgentFlight Product Direction
 
+Stable. Bug fixes and security updates only.
+
 Date: 2026-06-24
 
 Status: current product direction for the unreleased local review workflow. Do

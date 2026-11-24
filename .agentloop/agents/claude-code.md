@@ -1,5 +1,7 @@
 # Claude Code Agent Instructions
 
+Stable. Bug fixes and security updates only.
+
 Use AgentLoopKit task contracts and verification reports.
 
 Before editing:

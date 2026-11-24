@@ -1,5 +1,7 @@
 # GitHub Copilot CLI Agent Instructions
 
+Stable. Bug fixes and security updates only.
+
 Use AgentLoopKit as the engineering loop for this repo.
 
 Before editing:

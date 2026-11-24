@@ -1,5 +1,7 @@
 # AgentLoopKit
 
+Stable. Bug fixes and security updates only.
+
 AgentLoopKit gives coding agents a repeatable engineering loop inside this repo.
 
 ## Loop

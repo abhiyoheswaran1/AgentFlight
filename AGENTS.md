@@ -1,5 +1,7 @@
 # AGENTS
 
+Stable. Bug fixes and security updates only.
+
 <!-- agentloopkit:start -->
 
 This repository uses AgentLoopKit.
