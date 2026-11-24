@@ -1,5 +1,7 @@
 # Codex Agent Instructions
 
+Stable. Bug fixes and security updates only.
+
 Use the AgentLoopKit harness in this repo.
 
 Before editing:

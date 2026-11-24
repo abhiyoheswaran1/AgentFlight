@@ -1,5 +1,7 @@
 # AgentFlight
 
+Stable. Bug fixes and security updates only.
+
 <p align="center">
   <a href="https://www.baseframelabs.com/apps/agentflight">
     <img src="docs/agentflight_logo/icon.svg" alt="AgentFlight logo" width="112" />

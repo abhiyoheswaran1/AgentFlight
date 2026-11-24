@@ -1,5 +1,7 @@
 # Gemini CLI Agent Instructions
 
+Stable. Bug fixes and security updates only.
+
 Use AgentLoopKit task contracts, harness files, and verification reports.
 
 Before editing:

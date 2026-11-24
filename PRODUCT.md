@@ -1,5 +1,7 @@
 # Product
 
+Stable. Bug fixes and security updates only.
+
 ## Register
 
 product

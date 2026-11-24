@@ -1,5 +1,7 @@
 # Generic Coding Agent Instructions
 
+Stable. Bug fixes and security updates only.
+
 Use AgentLoopKit for disciplined repo work.
 
 Before editing:

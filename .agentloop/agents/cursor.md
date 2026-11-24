@@ -1,5 +1,7 @@
 # Cursor Agent Instructions
 
+Stable. Bug fixes and security updates only.
+
 Use this file as repo-level guidance for Cursor-assisted work.
 
 Before editing:

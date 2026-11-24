@@ -6,6 +6,7 @@ All notable AgentFlight changes are documented here.
 
 ### Docs
 
+- Maintenance notice; no functional changes.
 - Clarified how AgentFlight checks recorded review claims against proof and
   complements session viewers, with a comparison table and product-direction FAQ.
 
